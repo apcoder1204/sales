@@ -17,6 +17,12 @@ frontend/.env.local
 *.swp
 .DS_Store
 
+# SSH keys — never commit these
+*.pem
+*.ppk
+id_rsa*
+id_ed25519*
+
 # Claude Code local tool state
 .claude/
 
