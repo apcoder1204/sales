@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dukani_pos}
+      POSTGRES_USER: ${POSTGRES_USER:-dukani}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dukani} -d ${POSTGRES_DB:-dukani_pos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Deliberately no "ports:" mapping — only the backend container reaches
+    # Postgres, over the internal compose network. Nothing external touches it.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dukani}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB:-dukani_pos}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      DEBUG: "false"
+      ENVIRONMENT: production
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required, e.g. ["https://yourdomain.com"]}
+    ports:
+      # Bound to localhost only — Nginx on the host proxies /api to this port.
+      # The container is never reachable directly from the internet.
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

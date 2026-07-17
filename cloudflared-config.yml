@@ -1,0 +1,13 @@
+# Cloudflare Tunnel config — DEMO MODE
+# Replace <TUNNEL_ID> with your actual tunnel ID from: cloudflared tunnel list
+# Replace demo.yourdomain.com with your actual subdomain
+#
+# REMOVE THIS FILE BEFORE PRODUCTION DEPLOYMENT.
+
+tunnel: <TUNNEL_ID>
+credentials-file: /home/apcoder/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: demo.yourdomain.com
+    service: http://localhost:5173
+  - service: http_status:404
