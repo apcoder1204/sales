@@ -5,8 +5,10 @@ import DataTable from '@components/tables/DataTable'
 import Badge from '@components/ui/Badge'
 import Button from '@components/ui/Button'
 import { formatNumber, formatCurrency } from '@utils/formatters'
+import { usePermission } from '@hooks/usePermission'
 
 export default function InventoryGrid({ items, loading, onAdjust, onSend, pagination }) {
+  const { can } = usePermission()
   const columns = [
     {
       key: 'product_name', header: 'Bidhaa',
@@ -35,7 +37,7 @@ export default function InventoryGrid({ items, loading, onAdjust, onSend, pagina
         </span>
       ),
     },
-    {
+    can('products.cost') && {
       key: 'cost_price', header: 'Bei Ununuzi',
       render: (v) => <span className="text-text-secondary text-sm">{formatCurrency(v)}</span>,
     },

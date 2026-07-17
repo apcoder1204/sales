@@ -10,7 +10,7 @@ export const GLOBAL_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.GENERAL_MANAG
 
 export const PERMISSION_MAP = {
   super_admin: [
-    'products.read', 'products.write', 'products.delete',
+    'products.read', 'products.write', 'products.delete', 'products.cost',
     'inventory.read', 'inventory.adjust',
     'sales.read', 'sales.create', 'sales.void',
     'transfers.read', 'transfers.request', 'transfers.approve', 'transfers.execute',
@@ -21,7 +21,7 @@ export const PERMISSION_MAP = {
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
   ],
   admin: [
-    'products.read', 'products.write', 'products.delete',
+    'products.read', 'products.write', 'products.delete', 'products.cost',
     'inventory.read', 'inventory.adjust',
     'sales.read', 'sales.create', 'sales.void',
     'transfers.read', 'transfers.request', 'transfers.approve', 'transfers.execute',
@@ -32,7 +32,7 @@ export const PERMISSION_MAP = {
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
   ],
   general_manager: [
-    'products.read',
+    'products.read', 'products.cost',
     'inventory.read',
     'sales.read',
     'transfers.read', 'transfers.request', 'transfers.approve', 'transfers.execute',
@@ -43,7 +43,7 @@ export const PERMISSION_MAP = {
     'closing.view',
   ],
   store_keeper: [
-    'products.read',
+    'products.read', 'products.cost',
     'inventory.read', 'inventory.adjust',
     'transfers.read', 'transfers.request', 'transfers.execute',
     'reports.inventory',

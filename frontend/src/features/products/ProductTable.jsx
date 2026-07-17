@@ -4,9 +4,11 @@ import DataTable from '@components/tables/DataTable'
 import Badge from '@components/ui/Badge'
 import Button from '@components/ui/Button'
 import { formatCurrency } from '@utils/formatters'
+import { usePermission } from '@hooks/usePermission'
 import SW from '@constants/sw'
 
 export default function ProductTable({ products, loading, onEdit, pagination }) {
+  const { can } = usePermission()
   // Optional columns appear only when at least one product has data in that field
   const hasFamily = products.some((p) => p.family_name)
   const hasDescription = products.some((p) => p.description)
@@ -39,7 +41,7 @@ export default function ProductTable({ products, loading, onEdit, pagination }) 
       width: 90,
       render: (v) => <span className="text-text-secondary text-sm">{v || 'Kipande'}</span>,
     },
-    {
+    can('products.cost') && {
       key: 'cost_price',
       header: SW.bidhaa.beiGhali,
       render: (v) => <span className="text-text-secondary">{formatCurrency(v)}</span>,

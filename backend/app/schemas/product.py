@@ -90,7 +90,7 @@ class ProductResponse(BaseModel):
     family_name: str | None
     unit: str = "Kipande"
     description: str | None = None
-    cost_price: Decimal
+    cost_price: Decimal | None = None  # omitted for roles without cost-price visibility (see product_service.py)
     selling_price: Decimal
     minimum_stock: int
     status: str

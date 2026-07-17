@@ -9,6 +9,9 @@ from app.services.audit_service import audit_service
 import math
 
 
+COST_PRICE_ROLES = {"super_admin", "admin", "general_manager", "store_keeper"}
+
+
 class ProductService:
     async def list_products(
         self, db: AsyncSession,
@@ -16,11 +19,13 @@ class ProductService:
         brand: str | None, status: str,
         page: int, per_page: int,
         branch_id: UUID | None = None,
+        current_user=None,
     ):
         skip = (page - 1) * per_page
         products, total, stock_by_product = await product_repo.list_products(
             db, search, category_id, brand, status, skip, per_page, branch_id
         )
+        show_cost = bool(current_user) and current_user.role.name in COST_PRICE_ROLES
         from app.schemas.product import ProductResponse
         items = []
         for p in products:
@@ -35,7 +40,7 @@ class ProductService:
                 category=p.category.name, category_id=p.category_id,
                 brand=p.brand, family_name=p.family_name,
                 unit=p.unit or "Kipande", description=p.description,
-                cost_price=p.cost_price, selling_price=p.selling_price,
+                cost_price=p.cost_price if show_cost else None, selling_price=p.selling_price,
                 minimum_stock=p.minimum_stock, status=p.status,
                 created_at=p.created_at,
                 available_qty=available_qty, is_low_stock=is_low_stock,
@@ -73,12 +78,13 @@ class ProductService:
             )
             for inv, branch in inventory_rows
         ]
+        show_cost = bool(user) and user.role.name in COST_PRICE_ROLES
         return ProductWithInventory(
             id=product.id, product_code=product.product_code, name=product.name,
             category=product.category.name, category_id=product.category_id,
             brand=product.brand, family_name=product.family_name,
             unit=product.unit or "Kipande", description=product.description,
-            cost_price=product.cost_price, selling_price=product.selling_price,
+            cost_price=product.cost_price if show_cost else None, selling_price=product.selling_price,
             minimum_stock=product.minimum_stock, status=product.status,
             created_at=product.created_at, inventory=branch_stocks,
         )

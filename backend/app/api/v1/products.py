@@ -80,7 +80,7 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
 ):
     return await product_service.list_products(
-        db, search, category_id, brand, status, page, per_page, branch_id
+        db, search, category_id, brand, status, page, per_page, branch_id, current_user
     )
 
 
