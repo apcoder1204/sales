@@ -16,11 +16,22 @@ class UserRepository(BaseRepository[User]):
         result = await db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
-    async def list_users(self, db: AsyncSession, skip: int = 0, limit: int = 20) -> tuple[list[User], int]:
+    async def list_users(
+        self, db: AsyncSession, skip: int = 0, limit: int = 20,
+        exclude_roles: list[str] | None = None,
+    ) -> tuple[list[User], int]:
         from sqlalchemy import func
-        count = (await db.execute(select(func.count()).select_from(User))).scalar_one()
+        from app.models.role import Role
+
+        count_query = select(func.count()).select_from(User)
+        query = select(User)
+        if exclude_roles:
+            count_query = count_query.join(Role, User.role_id == Role.id).where(Role.name.notin_(exclude_roles))
+            query = query.join(Role, User.role_id == Role.id).where(Role.name.notin_(exclude_roles))
+
+        count = (await db.execute(count_query)).scalar_one()
         rows = (await db.execute(
-            select(User).order_by(User.created_at.desc()).offset(skip).limit(limit)
+            query.order_by(User.created_at.desc()).offset(skip).limit(limit)
         )).scalars().all()
         return rows, count
 

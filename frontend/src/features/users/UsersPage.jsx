@@ -9,6 +9,7 @@ import UserDrawer from './UserDrawer'
 import { userService } from '@services/userService'
 import { useApi } from '@hooks/useApi'
 import { usePagination } from '@hooks/usePagination'
+import { usePermission } from '@hooks/usePermission'
 import { formatDateTime } from '@utils/formatters'
 import SW from '@constants/sw'
 
@@ -19,6 +20,12 @@ export default function UsersPage() {
   const [editing, setEditing] = useState(null)
   const { call } = useApi()
   const pagination = usePagination()
+  const { can, role } = usePermission()
+
+  // Backend already excludes super_admin/admin rows from admin's view — this
+  // is defense in depth, not the real enforcement, in case a stale/cached
+  // response ever included one.
+  const visibleUsers = role === 'super_admin' ? users : users.filter((u) => u.role !== 'super_admin')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,14 +79,16 @@ export default function UsersPage() {
       key: '_actions', header: '',
       render: (_, row) => (
         <div className="flex gap-1">
-          {row.locked_until && (
+          {can('users.write') && row.locked_until && (
             <Button variant="success" size="sm" onClick={() => handleUnlock(row.id)}>
               Fungua
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => { setEditing(row); setDrawerOpen(true) }}>
-            Hariri
-          </Button>
+          {can('users.write') && (
+            <Button variant="ghost" size="sm" onClick={() => { setEditing(row); setDrawerOpen(true) }}>
+              Hariri
+            </Button>
+          )}
         </div>
       ),
     },
@@ -90,14 +99,16 @@ export default function UsersPage() {
       title={SW.nav.watumiaji}
       subtitle="Simamia watumiaji wa mfumo"
       action={
-        <Button onClick={() => { setEditing(null); setDrawerOpen(true) }} leftIcon={<Plus size={16} />}>
-          {SW.watumiaji.ongeza}
-        </Button>
+        can('users.write') && (
+          <Button onClick={() => { setEditing(null); setDrawerOpen(true) }} leftIcon={<Plus size={16} />}>
+            {SW.watumiaji.ongeza}
+          </Button>
+        )
       }
     >
       <DataTable
         columns={columns}
-        data={users}
+        data={visibleUsers}
         loading={loading}
         pagination={pagination}
         emptyTitle="Hakuna watumiaji waliopo"

@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime, timezone
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -9,7 +9,6 @@ from app.core.exceptions import (
     InvalidTokenException, InactiveUserException,
     AccountLockedException, InsufficientPermissionException,
 )
-from app.core.permissions import GLOBAL_ROLES
 
 UTC = timezone.utc
 
@@ -40,8 +39,23 @@ async def get_current_user(
 
 
 def require_role(*roles: str):
-    async def checker(current_user=Depends(get_current_user)):
+    async def checker(
+        request: Request,
+        current_user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ):
         if current_user.role.name not in roles:
+            from app.services.audit_service import audit_service
+            await audit_service.log(
+                db, action="PERMISSION_DENIED", category="system",
+                user_id=current_user.id, username=current_user.username,
+                user_role=current_user.role.name,
+                details={
+                    "path": request.url.path, "method": request.method,
+                    "required_roles": list(roles),
+                },
+                ip_address=request.client.host if request.client else None,
+            )
             raise InsufficientPermissionException()
         return current_user
     return checker

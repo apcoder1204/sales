@@ -5,9 +5,11 @@ import Input from '@components/ui/Input'
 import Select from '@components/ui/Select'
 import { userService } from '@services/userService'
 import { useApi } from '@hooks/useApi'
+import { usePermission } from '@hooks/usePermission'
 import SW from '@constants/sw'
 
 const GLOBAL_ROLE_NAMES = ['super_admin', 'admin', 'general_manager']
+const HIDDEN_FROM_ADMIN = ['admin', 'super_admin']
 
 const empty = { full_name: '', username: '', email: '', password: '', confirm_password: '', role_id: '', branch_id: '' }
 
@@ -16,6 +18,11 @@ export default function UserDrawer({ open, onClose, user, onSaved }) {
   const [branches, setBranches] = useState([])
   const [roles, setRoles] = useState([])
   const { loading, call } = useApi()
+  const { role: viewerRole } = usePermission()
+
+  // The backend's /users/roles already omits admin/super_admin for admin
+  // callers — this is defense in depth, not the real enforcement.
+  const visibleRoles = viewerRole === 'super_admin' ? roles : roles.filter((r) => !HIDDEN_FROM_ADMIN.includes(r.name))
 
   useEffect(() => {
     userService.branches().then((b) => setBranches(b.map((x) => ({ value: x.id, label: x.name })))).catch(() => {})
@@ -80,7 +87,7 @@ export default function UserDrawer({ open, onClose, user, onSaved }) {
           label={SW.watumiaji.jukumu}
           value={form.role_id}
           onChange={set('role_id')}
-          options={roles.map((r) => ({ value: r.id, label: SW.majukumu[r.name] || r.name }))}
+          options={visibleRoles.map((r) => ({ value: r.id, label: SW.majukumu[r.name] || r.name }))}
           placeholder="Chagua jukumu..."
           required
         />
