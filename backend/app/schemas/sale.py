@@ -13,9 +13,9 @@ class SaleItemInput(BaseModel):
 class SaleCreate(BaseModel):
     branch_id: UUID
     payment_method: Literal["cash", "mobile_money", "bank_transfer"]
-    payment_reference: str | None = None
-    notes: str | None = None
-    items: list[SaleItemInput] = Field(min_length=1)
+    payment_reference: str | None = Field(None, max_length=100)
+    notes: str | None = Field(None, max_length=500)
+    items: list[SaleItemInput] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
     def validate_payment_reference(self):
@@ -68,7 +68,7 @@ class ReceiptData(BaseModel):
 
 
 class SaleVoidRequest(BaseModel):
-    reason: str = Field(min_length=5)
+    reason: str = Field(min_length=5, max_length=500)
 
 
 class SaleCreateResponse(BaseModel):

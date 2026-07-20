@@ -10,14 +10,14 @@ class StockRequestItemCreate(BaseModel):
 
 
 class StockRequestCreate(BaseModel):
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=500)
     from_branch_id: UUID
     to_branch_id: UUID
-    items: list[StockRequestItemCreate] = Field(min_length=1)
+    items: list[StockRequestItemCreate] = Field(min_length=1, max_length=100)
 
 
 class StockRequestReview(BaseModel):
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=500)
 
 
 class StockRequestItemApproval(BaseModel):
@@ -26,8 +26,8 @@ class StockRequestItemApproval(BaseModel):
 
 
 class StockRequestApprovalRequest(BaseModel):
-    items: list[StockRequestItemApproval] = Field(min_length=1)
-    notes: str | None = None
+    items: list[StockRequestItemApproval] = Field(min_length=1, max_length=100)
+    notes: str | None = Field(None, max_length=500)
 
 
 class DirectTransferItem(BaseModel):
@@ -38,8 +38,8 @@ class DirectTransferItem(BaseModel):
 class DirectTransferCreate(BaseModel):
     from_branch_id: UUID
     to_branch_id: UUID
-    notes: str | None = None
-    items: list[DirectTransferItem] = Field(min_length=1)
+    notes: str | None = Field(None, max_length=500)
+    items: list[DirectTransferItem] = Field(min_length=1, max_length=100)
 
 
 class StockRequestItemResponse(BaseModel):

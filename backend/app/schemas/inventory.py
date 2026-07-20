@@ -9,7 +9,7 @@ class StockAdjustRequest(BaseModel):
     branch_id: UUID
     quantity: int = Field(gt=0)
     type: Literal["stock_in", "stock_out", "adjustment", "damaged"]
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=500)
 
 
 class InventoryMovementResponse(BaseModel):

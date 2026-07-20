@@ -17,7 +17,7 @@ class ClosingPreviewResponse(BaseModel):
 
 
 class ExpenseEntry(BaseModel):
-    description: str = Field(min_length=2)
+    description: str = Field(min_length=2, max_length=500)
     amount: Decimal = Field(gt=0)
 
 
@@ -33,12 +33,12 @@ class CloseDayRequest(BaseModel):
     branch_id: UUID
     business_date: date | None = None
     counted_cash: Decimal | None = Field(None, ge=0)
-    notes: str | None = None
-    expenses: list[ExpenseEntry] = []
+    notes: str | None = Field(None, max_length=500)
+    expenses: list[ExpenseEntry] = Field(default=[], max_length=100)
 
 
 class ReopenRequest(BaseModel):
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=500)
 
 
 class ClosingResponse(BaseModel):

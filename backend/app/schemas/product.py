@@ -9,11 +9,11 @@ class ProductCreate(BaseModel):
     product_code: str | None = Field(None, max_length=30)
     name: str = Field(min_length=2, max_length=200)
     category_id: int
-    brand: str | None = None
-    family_name: str | None = None
-    family_id: str | None = None
-    unit: str = "Kipande"
-    description: str | None = None
+    brand: str | None = Field(None, max_length=100)
+    family_name: str | None = Field(None, max_length=100)
+    family_id: str | None = Field(None, max_length=50)
+    unit: str = Field("Kipande", max_length=50)
+    description: str | None = Field(None, max_length=1000)
     cost_price: Decimal = Field(ge=0)
     selling_price: Decimal = Field(ge=0)
     minimum_stock: int = Field(ge=0, default=5)
@@ -26,13 +26,13 @@ class ProductCreate(BaseModel):
 
 
 class ProductUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(None, max_length=200)
     category_id: int | None = None
-    brand: str | None = None
-    family_name: str | None = None
-    family_id: str | None = None
-    unit: str | None = None
-    description: str | None = None
+    brand: str | None = Field(None, max_length=100)
+    family_name: str | None = Field(None, max_length=100)
+    family_id: str | None = Field(None, max_length=50)
+    unit: str | None = Field(None, max_length=50)
+    description: str | None = Field(None, max_length=1000)
     cost_price: Decimal | None = Field(None, ge=0)
     selling_price: Decimal | None = Field(None, ge=0)
     minimum_stock: int | None = Field(None, ge=0)
@@ -41,20 +41,20 @@ class ProductUpdate(BaseModel):
 
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=2, max_length=100)
-    name_sw: str | None = None
+    name_sw: str | None = Field(None, max_length=100)
     category_code: str | None = Field(None, max_length=30)
-    brand_name: str | None = None
-    family: str | None = None
-    description: str | None = None
+    brand_name: str | None = Field(None, max_length=100)
+    family: str | None = Field(None, max_length=100)
+    description: str | None = Field(None, max_length=1000)
 
 
 class CategoryUpdate(BaseModel):
-    name: str | None = None
-    name_sw: str | None = None
-    category_code: str | None = None
-    brand_name: str | None = None
-    family: str | None = None
-    description: str | None = None
+    name: str | None = Field(None, max_length=100)
+    name_sw: str | None = Field(None, max_length=100)
+    category_code: str | None = Field(None, max_length=30)
+    brand_name: str | None = Field(None, max_length=100)
+    family: str | None = Field(None, max_length=100)
+    description: str | None = Field(None, max_length=1000)
 
 
 class CategoryResponse(BaseModel):
