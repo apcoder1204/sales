@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     CURRENCY: str = "TSh"
     DEFAULT_TIMEZONE: str = "Africa/Dar_es_Salaam"
 
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+    FRONTEND_URL: str = "http://localhost:5173"
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 20
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
     @model_validator(mode="after")
@@ -46,6 +51,10 @@ class Settings(BaseSettings):
             logger.warning(
                 "CORS_ORIGINS contains '*' (all origins allowed). "
                 "Restrict this to specific domains in production."
+            )
+        if not self.RESEND_API_KEY:
+            logger.warning(
+                "RESEND_API_KEY is not set — password reset emails will fail to send."
             )
         return self
 

@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, RefreshResponse, UserProfile
+from app.schemas.auth import (
+    LoginRequest, TokenResponse, RefreshRequest, RefreshResponse, UserProfile,
+    ForgotPasswordRequest, ResetPasswordRequest,
+)
 from app.schemas.common import MessageResponse
 from app.services.auth_service import auth_service
 
@@ -24,6 +27,20 @@ async def refresh(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
 async def logout(current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await auth_service.logout(db, current_user)
     return {"message": "Umetoka mfumoni"}
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.forgot_password(db, data.email)
+    # Same response regardless of whether the email matched an account —
+    # never reveal which case, to prevent account enumeration.
+    return {"message": "Kama barua pepe hii ipo kwenye mfumo, kiungo cha kuweka upya nenosiri kimetumwa."}
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.reset_password(db, data.token, data.new_password)
+    return {"message": "Nenosiri limebadilishwa. Tafadhali ingia tena."}
 
 
 @router.get("/me", response_model=UserProfile)

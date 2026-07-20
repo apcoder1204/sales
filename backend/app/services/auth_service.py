@@ -1,15 +1,20 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.security import (
-    verify_password, create_access_token, create_refresh_token, decode_token, generate_jti,
+    verify_password, hash_password, create_access_token, create_refresh_token,
+    decode_token, generate_jti,
 )
 from app.core.exceptions import (
     InvalidCredentialsException, AccountLockedException,
-    InactiveUserException, InvalidTokenException
+    InactiveUserException, InvalidTokenException, ValidationException,
 )
 from app.repositories.user_repo import user_repo
+from app.repositories.password_reset_repo import password_reset_repo
 from app.services.audit_service import audit_service
+from app.services.email_service import email_service
 from app.schemas.auth import TokenResponse, UserProfile, RefreshRequest, RefreshResponse
 
 UTC = timezone.utc
@@ -122,6 +127,60 @@ class AuthService:
         await db.commit()
         await audit_service.log(
             db, action="USER_LOGOUT", category="authentication",
+            user_id=user.id, username=user.username, user_role=user.role.name,
+        )
+
+    async def forgot_password(self, db: AsyncSession, email: str) -> None:
+        """Always succeeds from the caller's point of view — never reveals
+        whether the email matched an account, to prevent enumeration."""
+        user = await user_repo.get_by_email(db, email)
+        if not user or not user.is_active:
+            return
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        expires_at = _utcnow() + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
+
+        await password_reset_repo.create(db, {
+            "user_id": user.id,
+            "token_hash": token_hash,
+            "expires_at": expires_at,
+        })
+        await db.commit()
+
+        await audit_service.log(
+            db, action="PASSWORD_RESET_REQUESTED", category="authentication",
+            user_id=user.id, username=user.username, user_role=user.role.name,
+        )
+
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+        await email_service.send_password_reset(user.email, user.full_name, reset_url)
+
+    async def reset_password(self, db: AsyncSession, token: str, new_password: str) -> None:
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        reset_token = await password_reset_repo.get_valid_by_hash(db, token_hash)
+        if not reset_token:
+            await audit_service.log(
+                db, action="PASSWORD_RESET_INVALID_TOKEN", category="authentication",
+                username="unknown", user_role="unknown",
+            )
+            raise ValidationException("Kiungo cha kuweka upya nenosiri si sahihi au kimeisha muda")
+
+        user = reset_token.user
+        reset_token.used_at = _utcnow()
+        await user_repo.update(db, user.id, {
+            "password_hash": hash_password(new_password),
+            # A password reset should kill every existing session, the same
+            # way logout does — otherwise a stolen-and-since-reset account
+            # would still be usable via a token minted before the reset.
+            "token_version": user.token_version + 1,
+            "current_refresh_jti": None,
+        })
+        await db.flush()
+        await db.commit()
+
+        await audit_service.log(
+            db, action="PASSWORD_RESET_COMPLETED", category="authentication",
             user_id=user.id, username=user.username, user_role=user.role.name,
         )
 

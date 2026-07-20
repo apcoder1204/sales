@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Zap, Lock, User } from 'lucide-react'
 import { useAuth } from '@hooks/useAuth'
@@ -100,6 +100,13 @@ export default function LoginPage() {
             <Button type="submit" loading={loading} className="w-full" size="lg">
               {SW.auth.kuingia}
             </Button>
+
+            <Link
+              to="/forgot-password"
+              className="block text-center text-sm text-text-muted hover:text-text-primary transition-colors"
+            >
+              {SW.auth.umesahauNenosiri}
+            </Link>
           </form>
 
           {/* Demo hint */}

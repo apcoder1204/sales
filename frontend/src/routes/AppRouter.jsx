@@ -11,6 +11,8 @@ import RoleRoute from './RoleRoute'
 import Spinner from '@components/feedback/Spinner'
 
 const LoginPage = lazy(() => import('@features/auth/LoginPage'))
+const ForgotPasswordPage = lazy(() => import('@features/auth/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('@features/auth/ResetPasswordPage'))
 const AppShell = lazy(() => import('@components/layout/AppShell'))
 const DashboardPage = lazy(() => import('@features/dashboard/DashboardPage'))
 const ProductsPage = lazy(() => import('@features/products/ProductsPage'))
@@ -42,6 +44,8 @@ function RoutedApp() {
     <Suspense key={language} fallback={<Fallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route index element={<Navigate to="/dashibodi" replace />} />
