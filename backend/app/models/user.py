@@ -19,8 +19,11 @@ class User(Base):
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_login: Mapped[datetime | None] = mapped_column()
+    last_login_ip: Mapped[str | None] = mapped_column(String(45))
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column()
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    current_refresh_jti: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
 

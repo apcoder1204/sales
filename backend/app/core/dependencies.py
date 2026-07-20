@@ -31,6 +31,11 @@ async def get_current_user(
         raise InactiveUserException()
     if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
         raise AccountLockedException(user.locked_until)
+    # Logout / password reset bump token_version — any token minted before
+    # that point (access or refresh) must stop working immediately, not just
+    # at its natural expiry.
+    if payload.get("tv") != user.token_version:
+        raise InvalidTokenException()
     return user
 
 

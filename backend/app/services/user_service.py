@@ -55,7 +55,7 @@ class UserService:
         if not user:
             raise NotFoundException("Mtumiaji")
 
-        updates = data.model_dump(exclude_none=True)
+        updates = data.model_dump(exclude_none=True, exclude={"confirm_password"})
         if "password" in updates:
             updates["password_hash"] = hash_password(updates.pop("password"))
 

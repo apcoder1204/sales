@@ -30,4 +30,9 @@ export const userService = {
     const { data } = await api.get('/users/branches')
     return data
   },
+
+  roles: async () => {
+    const { data } = await api.get('/users/roles')
+    return data
+  },
 }

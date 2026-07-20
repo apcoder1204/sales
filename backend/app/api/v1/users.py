@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
 from app.core.dependencies import require_role, get_current_user
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.user import UserCreate, UserUpdate, UserResponse, RoleResponse
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.user_service import user_service
 
@@ -21,6 +21,13 @@ async def list_branches(
     return [{"id": str(b.id), "name": b.name, "code": b.code, "branch_type": b.branch_type} for b in rows]
 
 _super = Depends(require_role("super_admin"))
+
+
+@router.get("/roles", response_model=list[RoleResponse], dependencies=[_super])
+async def list_roles(db: AsyncSession = Depends(get_db)):
+    from app.models.role import Role
+    rows = (await db.execute(select(Role).order_by(Role.id))).scalars().all()
+    return rows
 
 
 @router.get("", response_model=PaginatedResponse[UserResponse], dependencies=[_super])

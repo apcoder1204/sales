@@ -7,38 +7,43 @@ import { userService } from '@services/userService'
 import { useApi } from '@hooks/useApi'
 import SW from '@constants/sw'
 
-const ROLE_OPTIONS = [
-  { value: 'super_admin', label: SW.majukumu.super_admin },
-  { value: 'admin', label: SW.majukumu.admin },
-  { value: 'general_manager', label: SW.majukumu.general_manager },
-  { value: 'store_keeper', label: SW.majukumu.store_keeper },
-  { value: 'cashier', label: SW.majukumu.cashier },
-]
+const GLOBAL_ROLE_NAMES = ['super_admin', 'admin', 'general_manager']
 
-const empty = { full_name: '', username: '', email: '', password: '', role: 'cashier', branch_id: '' }
+const empty = { full_name: '', username: '', email: '', password: '', confirm_password: '', role_id: '', branch_id: '' }
 
 export default function UserDrawer({ open, onClose, user, onSaved }) {
   const [form, setForm] = useState(empty)
   const [branches, setBranches] = useState([])
+  const [roles, setRoles] = useState([])
   const { loading, call } = useApi()
 
   useEffect(() => {
     userService.branches().then((b) => setBranches(b.map((x) => ({ value: x.id, label: x.name })))).catch(() => {})
+    userService.roles().then(setRoles).catch(() => {})
   }, [])
 
   useEffect(() => {
-    if (user) setForm({ ...user, password: '', branch_id: user.branch_id || '' })
+    if (user) setForm({ ...user, password: '', confirm_password: '', branch_id: user.branch_id || '' })
     else setForm(empty)
   }, [user, open])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const globalRoles = ['super_admin', 'admin', 'general_manager']
-  const needsBranch = !globalRoles.includes(form.role)
+  const selectedRoleName = roles.find((r) => String(r.id) === String(form.role_id))?.name
+  const needsBranch = selectedRoleName && !GLOBAL_ROLE_NAMES.includes(selectedRoleName)
 
   const handleSave = async () => {
-    const payload = { ...form, branch_id: needsBranch ? form.branch_id : null }
-    if (!user) payload.password = form.password
+    const payload = {
+      full_name: form.full_name,
+      username: form.username,
+      email: form.email,
+      role_id: parseInt(form.role_id, 10),
+      branch_id: needsBranch ? form.branch_id : null,
+    }
+    if (!user) {
+      payload.password = form.password
+      payload.confirm_password = form.confirm_password
+    }
     await call(
       () => user ? userService.update(user.id, payload) : userService.create(payload),
       { successMsg: SW.mafanikio.imehifadhiwa, onSuccess: onSaved }
@@ -62,13 +67,21 @@ export default function UserDrawer({ open, onClose, user, onSaved }) {
         <Input label={SW.watumiaji.jinalaMtumiaji} value={form.username} onChange={set('username')} required />
         <Input label={SW.watumiaji.barua} type="email" value={form.email} onChange={set('email')} required />
         {!user && (
-          <Input label={SW.watumiaji.nenosiri} type="password" value={form.password} onChange={set('password')} required />
+          <>
+            <Input label={SW.watumiaji.nenosiri} type="password" value={form.password} onChange={set('password')} required />
+            <Input
+              label="Thibitisha Nenosiri" type="password"
+              value={form.confirm_password} onChange={set('confirm_password')}
+              required
+            />
+          </>
         )}
         <Select
           label={SW.watumiaji.jukumu}
-          value={form.role}
-          onChange={set('role')}
-          options={ROLE_OPTIONS}
+          value={form.role_id}
+          onChange={set('role_id')}
+          options={roles.map((r) => ({ value: r.id, label: SW.majukumu[r.name] || r.name }))}
+          placeholder="Chagua jukumu..."
           required
         />
         {needsBranch && (

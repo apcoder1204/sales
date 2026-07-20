@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserProfile
+from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, RefreshResponse, UserProfile
 from app.schemas.common import MessageResponse
 from app.services.auth_service import auth_service
-from app.services.audit_service import audit_service
 
 router = APIRouter(prefix="/auth", tags=["Uthibitisho"])
 
@@ -16,18 +15,14 @@ async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends
     return await auth_service.login(db, data.username, data.password, ip)
 
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=RefreshResponse)
 async def refresh(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
     return await auth_service.refresh_token(db, data.refresh_token)
 
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(current_user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    await audit_service.log(
-        db, action="USER_LOGOUT", category="authentication",
-        user_id=current_user.id, username=current_user.username,
-        user_role=current_user.role.name,
-    )
+    await auth_service.logout(db, current_user)
     return {"message": "Umetoka mfumoni"}
 
 

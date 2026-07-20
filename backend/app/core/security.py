@@ -1,3 +1,5 @@
+import re
+import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from jose import jwt, JWTError, ExpiredSignatureError
@@ -15,6 +17,24 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
+def validate_password_strength(password: str) -> str:
+    """Shared by every schema that accepts a new password (user create/update,
+    password reset) so the policy can't drift between call sites."""
+    if len(password) < 8:
+        raise ValueError("Nenosiri lazima liwe na herufi angalau 8")
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Nenosiri ni refu mno")
+    if not re.search(r"[A-Za-z]", password):
+        raise ValueError("Nenosiri lazima liwe na angalau herufi moja")
+    if not re.search(r"\d", password):
+        raise ValueError("Nenosiri lazima liwe na angalau namba moja")
+    return password
+
+
+def generate_jti() -> str:
+    return secrets.token_urlsafe(24)
+
+
 def create_access_token(user) -> str:
     now = datetime.now(UTC)
     payload = {
@@ -23,17 +43,20 @@ def create_access_token(user) -> str:
         "role": user.role.name,
         "branch_id": str(user.branch_id) if user.branch_id else None,
         "type": "access",
+        "tv": user.token_version,
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(user_id: UUID) -> str:
+def create_refresh_token(user_id: UUID, token_version: int, jti: str) -> str:
     now = datetime.now(UTC)
     payload = {
         "sub": str(user_id),
         "type": "refresh",
+        "tv": token_version,
+        "jti": jti,
         "iat": now,
         "exp": now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     }
