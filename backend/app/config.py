@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: List[str] = ["*"]
 
+    # Off by default — the current deployment serves plain HTTP with no
+    # domain/TLS yet. Flip on once certbot/TLS is in place (see DEPLOYMENT.md).
+    ENABLE_HSTS: bool = False
+
     CURRENCY: str = "TSh"
     DEFAULT_TIMEZONE: str = "Africa/Dar_es_Salaam"
 

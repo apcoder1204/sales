@@ -121,6 +121,10 @@ server {
     listen 80;
     server_name yourdomain.com;
 
+    # Don't advertise the exact Nginx version in the Server header —
+    # trivial to strip, no reason to hand it to anyone fingerprinting for CVEs.
+    server_tokens off;
+
     root /opt/dukani/frontend/dist;
     index index.html;
 
@@ -174,6 +178,11 @@ Update `frontend/.env.production` and `CORS_ORIGINS` in `.env.prod` to use
 - [ ] Do **not** run `start-demo.sh` / the Cloudflare tunnel on this server —
       that's for local dev demos only.
 - [ ] Consider restricting SSH (port 22) in the security group to your own IP.
+
+`server_tokens off` above already strips Nginx's version from the `Server`
+header seen by the internet. The backend (gunicorn + uvicorn workers, bound
+to `127.0.0.1:8000` only, never reachable directly) sends `Server: uvicorn`
+with no version string — that's uvicorn's default, nothing to configure.
 
 ## Updating the deployment later
 

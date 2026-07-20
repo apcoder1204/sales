@@ -45,8 +45,25 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         return response
 
 
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com data:; "
+    "img-src 'self' data: blob:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add defensive HTTP security headers to every response."""
+
+    def __init__(self, app, enable_hsts: bool = False):
+        super().__init__(app)
+        self.enable_hsts = enable_hsts
 
     async def dispatch(self, request: Request, call_next) -> Response:
         response: Response = await call_next(request)
@@ -54,4 +71,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+        response.headers["Content-Security-Policy"] = _CSP
+        if self.enable_hsts:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
