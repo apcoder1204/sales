@@ -2,6 +2,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 import math
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.branch import Branch
 from app.repositories.inventory_repo import inventory_repo
 from app.repositories.product_repo import product_repo
 from app.repositories.transfer_repo import transfer_repo
@@ -214,6 +215,18 @@ class TransferService:
             raise NotFoundException("Ombi")
         if req.status != "approved":
             raise ValidationException("Ombi hili halijaidhinishwa bado")
+
+        # Execution is a physical handover — only whoever holds the stock being
+        # sent may confirm it: a cashier for their own branch, a store keeper
+        # for Duka Kuu (main store). Managers approve/allocate but do not
+        # execute — mirrors the existing main-store flow (manager approves,
+        # store keeper executes) for POS-to-POS requests too.
+        if user.role.name == "cashier" and str(user.branch_id) != str(req.from_branch_id):
+            raise TransferPermissionException()
+        if user.role.name == "store_keeper":
+            from_branch = await db.get(Branch, req.from_branch_id)
+            if not from_branch or from_branch.branch_type != "main_store":
+                raise TransferPermissionException()
 
         approved_items = [i for i in req.items if i.status == "approved" and (i.approved_qty or 0) > 0]
         if not approved_items:

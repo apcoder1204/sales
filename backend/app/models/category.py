@@ -7,7 +7,7 @@ class Category(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    category_code: Mapped[str | None] = mapped_column(String(30), unique=True)
+    category_code: Mapped[str | None] = mapped_column(String(30))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     name_sw: Mapped[str | None] = mapped_column(String(100))
     brand_name: Mapped[str | None] = mapped_column(String(100))

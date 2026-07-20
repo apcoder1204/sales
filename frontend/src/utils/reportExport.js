@@ -171,6 +171,13 @@ function normalise(type, data, period) {
               c.total_expenses > 0 ? fmtCurrency(c.total_expenses) : '', c.closed_by || '',
             ]),
           },
+          {
+            name: 'Matumizi',
+            head: [['Tarehe', 'Tawi', 'Maelezo', 'Kiasi']],
+            rows: (data.closings || []).flatMap((c) =>
+              (c.expenses || []).map((e) => [c.business_date, c.branch, e.description, fmtCurrency(e.amount)])
+            ),
+          },
         ],
       }
     }

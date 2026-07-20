@@ -6,13 +6,16 @@ import Badge from '@components/ui/Badge'
 import Divider from '@components/ui/Divider'
 import { transferService } from '@services/transferService'
 import { usePermission } from '@hooks/usePermission'
+import { useAuth } from '@hooks/useAuth'
 import { useApi } from '@hooks/useApi'
 import { formatDateTime } from '@utils/formatters'
 import { TRANSFER_STATUSES } from '@utils/constants'
+import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
 
 export default function ReviewRequestModal({ open, request, onClose, onUpdated }) {
   const { can } = usePermission()
+  const { user } = useAuth()
   const { loading, call } = useApi()
   const [rejectReason, setRejectReason] = useState('')
   const [showReject, setShowReject] = useState(false)
@@ -55,6 +58,11 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
   if (!request) return null
   const isPending = request.status === 'pending'
   const isApproved = request.status === 'approved'
+  // Execution is a physical handover — only whoever's providing the stock
+  // may confirm it: admin/super_admin can always execute, everyone else only
+  // for requests sourced from their own branch (store_keeper's is Duka Kuu).
+  const canExecuteThis = can('transfers.execute')
+    && (isGlobalRole(user) || user?.branch_id === request.from_branch_id)
 
   return (
     <Modal
@@ -71,7 +79,7 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
               <Button variant="success" onClick={handleApprove} loading={loading}>{SW.uhamisho.thibitishaOmbi}</Button>
             </>
           )}
-          {isApproved && can('transfers.execute') && (
+          {isApproved && canExecuteThis && (
             <Button onClick={handleExecute} loading={loading}>{SW.uhamisho.tekeleza}</Button>
           )}
         </div>

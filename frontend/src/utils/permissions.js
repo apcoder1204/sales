@@ -32,10 +32,10 @@ export const PERMISSION_MAP = {
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
   ],
   general_manager: [
-    'products.read', 'products.cost',
+    'products.read', 'products.write', 'products.cost',
     'inventory.read',
     'sales.read',
-    'transfers.read', 'transfers.request', 'transfers.approve', 'transfers.execute',
+    'transfers.read', 'transfers.request', 'transfers.approve',
     'reports.sales', 'reports.inventory', 'reports.branch', 'reports.cashier',
     'reports.closing',
     'audit.read',
@@ -54,7 +54,7 @@ export const PERMISSION_MAP = {
     'products.read',
     'inventory.read',
     'sales.read', 'sales.create',
-    'transfers.read', 'transfers.request',
+    'transfers.read', 'transfers.request', 'transfers.execute',
     'closing.close', 'closing.view',
   ],
 }

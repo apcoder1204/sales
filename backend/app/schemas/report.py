@@ -101,6 +101,11 @@ class CashierPerformanceResponse(BaseModel):
     generated_at: datetime
 
 
+class ClosingReportExpense(BaseModel):
+    description: str
+    amount: float
+
+
 class ClosingReportRow(BaseModel):
     business_date: date
     branch: str
@@ -111,6 +116,7 @@ class ClosingReportRow(BaseModel):
     total_revenue: float
     cash_variance: float | None
     total_expenses: float
+    expenses: list[ClosingReportExpense]
     closed_by: str | None
 
 

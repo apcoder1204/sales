@@ -41,7 +41,7 @@ async def list_categories(
 @router.post("/categories", response_model=CategoryResponse, status_code=201)
 async def create_category(
     data: CategoryCreate,
-    current_user=Depends(require_role("super_admin", "admin")),
+    current_user=Depends(require_role("super_admin", "admin", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
     return await product_service.create_category(db, data, current_user)
@@ -50,7 +50,7 @@ async def create_category(
 @router.put("/categories/{cat_id}", response_model=CategoryResponse)
 async def update_category(
     cat_id: int, data: CategoryUpdate,
-    current_user=Depends(require_role("super_admin", "admin")),
+    current_user=Depends(require_role("super_admin", "admin", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
     return await product_service.update_category(db, cat_id, data, current_user)
@@ -59,7 +59,7 @@ async def update_category(
 @router.delete("/categories/{cat_id}", response_model=MessageResponse)
 async def delete_category(
     cat_id: int,
-    current_user=Depends(require_role("super_admin", "admin")),
+    current_user=Depends(require_role("super_admin", "admin", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
     await product_service.delete_category(db, cat_id, current_user)
@@ -87,7 +87,7 @@ async def list_products(
 @router.post("", response_model=ProductResponse, status_code=201)
 async def create_product(
     data: ProductCreate,
-    current_user=Depends(require_role("super_admin", "admin")),
+    current_user=Depends(require_role("super_admin", "admin", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_service.create_product(db, data, current_user)
@@ -106,7 +106,7 @@ async def get_product(
 @router.put("/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: UUID, data: ProductUpdate,
-    current_user=Depends(require_role("super_admin", "admin")),
+    current_user=Depends(require_role("super_admin", "admin", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_service.update_product(db, product_id, data, current_user)

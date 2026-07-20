@@ -17,7 +17,7 @@ from app.schemas.report import (
     PaymentBreakdown, InventoryReportResponse, InventorySummary,
     BranchInventory, LowStockItem, BranchPerformanceResponse,
     BranchPerformance, CashierPerformanceResponse, CashierPerformance,
-    ClosingReportResponse, ClosingReportRow, ClosingReportSummary
+    ClosingReportResponse, ClosingReportRow, ClosingReportSummary, ClosingReportExpense
 )
 from app.repositories.inventory_repo import inventory_repo
 
@@ -280,6 +280,10 @@ class ReportService:
                 total_bank_transfer=float(c.total_bank_transfer), total_revenue=float(c.total_revenue),
                 cash_variance=float(c.cash_variance) if c.cash_variance is not None else None,
                 total_expenses=float(sum((e.amount for e in c.expenses), Decimal("0"))),
+                expenses=[
+                    ClosingReportExpense(description=e.description, amount=float(e.amount))
+                    for e in c.expenses
+                ],
                 closed_by=c.closer.full_name if c.closer else None,
             ) for c in rows
         ]

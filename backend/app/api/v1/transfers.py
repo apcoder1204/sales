@@ -60,7 +60,7 @@ async def reject_request(
 @router.post("/requests/{req_id}/execute", response_model=MessageResponse)
 async def execute_request(
     req_id: UUID,
-    current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
+    current_user=Depends(require_role("super_admin", "admin", "store_keeper", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
     await transfer_service.execute_request(db, req_id, current_user)

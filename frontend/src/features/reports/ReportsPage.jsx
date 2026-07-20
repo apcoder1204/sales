@@ -376,7 +376,23 @@ function ClosingReport({ data }) {
               </span>
             ),
           },
-          { key: 'total_expenses', header: SW.ufungaji.matumizi, render: (v) => v > 0 ? formatCurrency(v) : '—' },
+          {
+            key: 'expenses', header: SW.ufungaji.matumizi,
+            render: (v, row) => (!v || v.length === 0) ? '—' : (
+              <div className="space-y-0.5 min-w-40">
+                {v.map((e, i) => (
+                  <div key={i} className="flex justify-between gap-2 text-xs text-text-secondary">
+                    <span className="truncate">{e.description}</span>
+                    <span className="flex-shrink-0">{formatCurrency(e.amount)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-2 text-xs font-semibold text-text-primary border-t border-border pt-0.5">
+                  <span>{SW.common.jumla}</span>
+                  <span>{formatCurrency(row.total_expenses)}</span>
+                </div>
+              </div>
+            ),
+          },
           { key: 'closed_by', header: SW.ufungaji.aliyefunga, render: (v) => v || '—' },
         ]}
         data={data.closings || []}

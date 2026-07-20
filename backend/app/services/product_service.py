@@ -148,11 +148,8 @@ class ProductService:
 
     async def create_category(self, db: AsyncSession, data, user):
         from app.models.category import Category
-        from sqlalchemy import select
-        if data.category_code:
-            exists_code = (await db.execute(select(Category).where(Category.category_code == data.category_code))).scalar_one_or_none()
-            if exists_code:
-                raise DuplicateException("Msimbo wa Jamii")
+        # category_code is a supplier/batch label, not a unique key — the same
+        # code is expected to repeat across multiple category rows/products.
         cat = Category(
             name=data.name,
             name_sw=data.name_sw,
