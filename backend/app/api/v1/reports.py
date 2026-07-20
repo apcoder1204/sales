@@ -168,14 +168,19 @@ async def cashier_performance(
     return await report_service.get_cashier_performance(db, branch_id, period, from_date, to_date)
 
 
-@router.get("/closing", dependencies=[_financial_access])
+@router.get("/closing")
 async def closing_report(
     period: str = "month",
     from_date: date | None = None,
     to_date: date | None = None,
     branch_id: UUID | None = None,
+    current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Cashiers (POS) can only pull their own branch's closing report — never
+    # someone else's, regardless of what branch_id they pass.
+    if current_user.role.name == "cashier":
+        branch_id = current_user.branch_id
     return await report_service.get_closing_report(db, period, from_date, to_date, branch_id)
 
 

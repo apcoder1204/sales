@@ -27,7 +27,7 @@ const bottomNavItems = [
   { to: '/mauzo', icon: ShoppingCart, label: SW.nav.mauzo, permission: 'sales.create' },
   { to: '/uhamisho', icon: ArrowLeftRight, label: SW.nav.uhamisho, permission: 'transfers.read' },
   { to: '/ufungaji', icon: Lock, label: SW.nav.ufungaji, permission: 'closing.view' },
-  { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: 'reports.sales' },
+  { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },
   { to: '/kumbukumbu', icon: ScrollText, label: SW.nav.kumbukumbu, permission: 'audit.read' },
   { to: '/watumiaji', icon: Users, label: SW.nav.watumiaji, permission: 'users.read' },
 ]
@@ -50,7 +50,9 @@ export default function Sidebar({ open, onToggle }) {
   const isBidhaaActive = location.pathname.startsWith('/bidhaa')
 
   const renderNavItem = (item) => {
-    if (item.permission && !can(item.permission)) return null
+    const hasAccess = !item.permission
+      || (Array.isArray(item.permission) ? item.permission.some(can) : can(item.permission))
+    if (!hasAccess) return null
     return (
       <NavLink
         key={item.to}

@@ -55,7 +55,7 @@ export const PERMISSION_MAP = {
     'inventory.read',
     'sales.read', 'sales.create',
     'transfers.read', 'transfers.request', 'transfers.execute',
-    'closing.close', 'closing.view',
+    'closing.close', 'closing.view', 'reports.closing',
   ],
 }
 

@@ -83,7 +83,7 @@ function RoutedApp() {
             } />
 
             <Route path="/ripoti" element={
-              <RoleRoute permissions={['reports.sales', 'reports.inventory']} any>
+              <RoleRoute permissions={['reports.sales', 'reports.inventory', 'reports.closing']} any>
                 <ReportsPage />
               </RoleRoute>
             } />
