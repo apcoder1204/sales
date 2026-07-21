@@ -73,6 +73,14 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # run twice —
 be served from (scheme + host, no trailing slash) — e.g.
 `["https://pos.yourdomain.com"]`.
 
+Optionally add `REDIS_URL=redis://default:<password>@<host>:<port>` to
+`.env.prod` for distributed rate limiting on login/forgot-password (shared
+correctly across all gunicorn workers, survives restarts). Any Redis
+instance works — a managed one (e.g. Redis Cloud) needs no extra
+infrastructure here, since there's no `redis` service in
+`docker-compose.prod.yml`. If unset, rate limiting still works but falls
+back to in-process memory (not shared across workers, resets on restart).
+
 ## 4. Start the database + backend
 
 ```bash

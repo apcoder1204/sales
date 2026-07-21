@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     PASSWORD_RESET_EXPIRE_MINUTES: int = 20
 
+    # Rate limiting — falls back to in-process memory (not shared across
+    # workers/restarts) if unset, so the app still runs without Redis.
+    REDIS_URL: str = ""
+    RATE_LIMIT_LOGIN: str = "5/minute"
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
     @model_validator(mode="after")
@@ -59,6 +65,11 @@ class Settings(BaseSettings):
         if not self.RESEND_API_KEY:
             logger.warning(
                 "RESEND_API_KEY is not set — password reset emails will fail to send."
+            )
+        if not self.REDIS_URL:
+            logger.warning(
+                "REDIS_URL is not set — rate limiting will fall back to in-process "
+                "memory, which is not shared across workers and resets on restart."
             )
         return self
 

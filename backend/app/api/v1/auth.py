@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.config import settings
 from app.db.session import get_db
 from app.core.dependencies import get_current_user
+from app.core.rate_limit import limiter
 from app.schemas.auth import (
     LoginRequest, TokenResponse, RefreshRequest, RefreshResponse, UserProfile,
     ForgotPasswordRequest, ResetPasswordRequest,
@@ -13,7 +15,8 @@ router = APIRouter(prefix="/auth", tags=["Uthibitisho"])
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else "unknown"
     return await auth_service.login(db, data.username, data.password, ip)
 
@@ -30,7 +33,8 @@ async def logout(current_user=Depends(get_current_user), db: AsyncSession = Depe
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def forgot_password(request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     await auth_service.forgot_password(db, data.email)
     # Same response regardless of whether the email matched an account —
     # never reveal which case, to prevent account enumeration.
