@@ -21,18 +21,16 @@ from decimal import Decimal
 from sqlalchemy import select, delete
 
 from app.db.session import AsyncSessionLocal
-from app.models.branch import Branch
-from app.models.role import Role
-from app.models.category import Category
-from app.models.user import User
-from app.models.product import Product
-from app.models.inventory import Inventory
-from app.models.inventory_transaction import InventoryTransaction
-from app.models.sale import Sale
-from app.models.sale_item import SaleItem
-from app.models.stock_transfer import StockTransfer
-from app.models.stock_transfer_item import StockTransferItem
-from app.models.daily_closing import DailyClosing
+# Import the full model registry (not just the models this script touches
+# directly) so every string-based relationship() on them — e.g.
+# DailyClosing -> DailyClosingExpense — can actually be resolved by
+# SQLAlchemy's mapper configuration. Mirrors how alembic/env.py does this.
+from app.db.base import (  # noqa: F401
+    Branch, Role, Category, User, Product, Inventory, InventoryTransaction,
+    Sale, SaleItem, StockRequest, StockRequestItem, StockTransfer,
+    StockTransferItem, AuditLog, DailyClosing, DailyClosingExpense,
+    PasswordResetToken,
+)
 
 UTC = timezone.utc
 
