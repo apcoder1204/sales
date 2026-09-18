@@ -3,6 +3,7 @@ export const SW = {
   // App
   appName: 'DUKANI POS',
   tagline: 'Mfumo wa Uuzaji na Usimamizi wa Bidhaa',
+  demoRibbon: 'Mazingira ya Onyesho — data ya mfano tu, si data halisi',
 
   // Nav
   nav: {

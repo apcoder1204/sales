@@ -3,6 +3,7 @@ export const EN = {
   // App
   appName: 'DUKANI POS',
   tagline: 'Sales and Inventory Management System',
+  demoRibbon: 'Demo Environment — sample data only, not real data',
 
   // Nav
   nav: {
