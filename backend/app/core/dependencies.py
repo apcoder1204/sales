@@ -28,7 +28,11 @@ async def get_current_user(
     user = await user_repo.get_by_id(db, UUID(payload["sub"]))
     if not user or not user.is_active:
         raise InactiveUserException()
-    if user.locked_until and user.locked_until > datetime.now(UTC).replace(tzinfo=None):
+    # locked_until comes back tz-aware (TIMESTAMPTZ column); every other
+    # "now" in this codebase is naive-but-UTC by convention — normalize
+    # before comparing, or this raises TypeError instead of enforcing the
+    # lockout.
+    if user.locked_until and user.locked_until.replace(tzinfo=None) > datetime.now(UTC).replace(tzinfo=None):
         raise AccountLockedException(user.locked_until)
     # Logout / password reset bump token_version — any token minted before
     # that point (access or refresh) must stop working immediately, not just

@@ -26,6 +26,21 @@ export const userService = {
     return data
   },
 
+  deactivate: async (id) => {
+    const { data } = await api.delete(`/users/${id}`)
+    return data
+  },
+
+  activate: async (id) => {
+    const { data } = await api.put(`/users/${id}`, { is_active: true })
+    return data
+  },
+
+  permanentlyDelete: async (id) => {
+    const { data } = await api.delete(`/users/${id}/permanent`)
+    return data
+  },
+
   branches: async () => {
     const { data } = await api.get('/users/branches')
     return data

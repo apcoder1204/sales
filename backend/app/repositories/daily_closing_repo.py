@@ -22,13 +22,42 @@ class DailyClosingRepository(BaseRepository[DailyClosing]):
     async def get_by_branch_date(
         self, db: AsyncSession, branch_id: UUID, business_date: date
     ) -> DailyClosing | None:
+        """The most recent register/period for a branch on a business_date
+        — a branch may have several (register_number 1, 2, ...) if it was
+        closed and then reopened for a fresh operating period on the same
+        date, so "the closing for today" always means the latest one."""
+        result = await db.execute(
+            select(DailyClosing)
+            .where(
+                DailyClosing.branch_id == branch_id,
+                DailyClosing.business_date == business_date,
+            )
+            .order_by(DailyClosing.register_number.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_open_register(self, db: AsyncSession, branch_id: UUID) -> DailyClosing | None:
+        """The single currently-open register for a branch, if any — a
+        branch can have at most one (enforced by
+        uq_daily_closing_one_open_per_branch)."""
         result = await db.execute(
             select(DailyClosing).where(
+                DailyClosing.branch_id == branch_id, DailyClosing.status == "open"
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_max_register_number(
+        self, db: AsyncSession, branch_id: UUID, business_date: date
+    ) -> int:
+        result = await db.execute(
+            select(func.max(DailyClosing.register_number)).where(
                 DailyClosing.branch_id == branch_id,
                 DailyClosing.business_date == business_date,
             )
         )
-        return result.scalar_one_or_none()
+        return result.scalar_one() or 0
 
     async def list_closings(
         self, db: AsyncSession,

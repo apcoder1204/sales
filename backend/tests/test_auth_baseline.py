@@ -16,11 +16,54 @@ async def test_inactive_user_rejected(client, db_session):
 
 async def test_locked_user_rejected(client, db_session):
     user = await make_user(db_session, "cashier")
+    headers = auth_headers(user)
     user.locked_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=30)
     await db_session.flush()
+    # locked_until is a TIMESTAMPTZ column — a real request re-fetches the
+    # user in a fresh session and gets back a tz-aware value; force that
+    # same round-trip here instead of comparing against the still-naive
+    # Python value this test just assigned in memory (see
+    # test_lockout_after_failed_logins_returns_423_not_500 for why that
+    # distinction matters). Expiring after capturing `headers` (rather than
+    # before) avoids a synchronous lazy-load of user.id outside an async
+    # context when auth_headers() reads it.
+    db_session.expire(user)
 
-    resp = await client.get("/api/v1/auth/me", headers=auth_headers(user))
+    resp = await client.get("/api/v1/auth/me", headers=headers)
     assert resp.status_code == 423
+
+
+async def test_lockout_after_failed_logins_returns_423_not_500(client, db_session):
+    """locked_until reads back tz-aware (TIMESTAMPTZ column) while every
+    other 'now' in this codebase is naive-but-UTC by convention — comparing
+    the two directly in Python raises TypeError instead of enforcing the
+    lockout, surfacing as an opaque 500 instead of a clean 423. Exercise the
+    real failed-login path (not a directly-assigned locked_until) so this
+    actually goes through a fresh DB read of the tz-aware column.
+
+    Pre-seeds 4 failed attempts directly (MAX_LOGIN_ATTEMPTS - 1) rather
+    than making 4 real login calls: RATE_LIMIT_LOGIN (5/minute) is a
+    separate protective layer, keyed the same way across every test in this
+    process, and this test only needs to isolate the lockout comparison
+    itself, not re-prove the rate limiter."""
+    user = await make_user(db_session, "cashier", password="Correct12345")
+    user.failed_login_attempts = 4
+    await db_session.flush()
+
+    # 5th failure — crosses MAX_LOGIN_ATTEMPTS and sets locked_until.
+    fifth_attempt = await client.post(
+        "/api/v1/auth/login",
+        json={"username": user.username, "password": "WrongPassword1"},
+    )
+    assert fifth_attempt.status_code == 401
+
+    # Now locked — even the correct password must cleanly report the
+    # lockout (423), not crash with a raw 500.
+    locked_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"username": user.username, "password": "Correct12345"},
+    )
+    assert locked_resp.status_code == 423
 
 
 async def test_invalid_jwt_rejected(client):

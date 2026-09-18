@@ -1,7 +1,24 @@
 import logging
+import os
+import time
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+# Every "UTC now" timestamp in this codebase (see the several local
+# `_utcnow()` helpers in app/services/*.py) is a *naive* datetime — built by
+# stripping tzinfo off an aware UTC value, then written straight into
+# TIMESTAMPTZ columns. asyncpg encodes a naive datetime parameter using the
+# *process's* local system timezone, not the Postgres session's — so on any
+# host whose OS timezone isn't already UTC (e.g. this app's own
+# DEFAULT_TIMEZONE, Africa/Dar_es_Salaam), every such write/comparison would
+# silently be off by that host's UTC offset. Forcing the process itself to
+# UTC, as early as possible (this module is imported before any DB code),
+# makes asyncpg's assumption match the convention every naive timestamp in
+# this codebase already relies on.
+os.environ["TZ"] = "UTC"
+if hasattr(time, "tzset"):
+    time.tzset()
 
 logger = logging.getLogger("dukani.config")
 
@@ -42,9 +59,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     PASSWORD_RESET_EXPIRE_MINUTES: int = 20
 
-    # Rate limiting — falls back to in-process memory (not shared across
-    # workers/restarts) if unset, so the app still runs without Redis.
-    REDIS_URL: str = ""
+    # Rate limiting uses in-process memory only (see core/rate_limit.py) —
+    # not shared across workers, resets on restart, but has no external
+    # dependency.
     RATE_LIMIT_LOGIN: str = "5/minute"
     RATE_LIMIT_DEFAULT: str = "100/minute"
 
@@ -65,11 +82,6 @@ class Settings(BaseSettings):
         if not self.RESEND_API_KEY:
             logger.warning(
                 "RESEND_API_KEY is not set — password reset emails will fail to send."
-            )
-        if not self.REDIS_URL:
-            logger.warning(
-                "REDIS_URL is not set — rate limiting will fall back to in-process "
-                "memory, which is not shared across workers and resets on restart."
             )
         return self
 

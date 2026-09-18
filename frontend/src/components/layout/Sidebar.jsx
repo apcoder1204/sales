@@ -13,25 +13,6 @@ import { useToast } from '@hooks/useToast'
 import Avatar from '@components/ui/Avatar'
 import SW from '@constants/sw'
 
-const bidhaaChildren = [
-  { to: '/bidhaa', label: SW.nav.orodhaYaBidhaa, icon: List, permission: 'products.read', exact: true },
-  { to: '/bidhaa/jamii', label: SW.nav.jamiiYaBidhaa, icon: Tag, permission: 'products.read' },
-  { to: '/bidhaa/marekebisho', label: SW.nav.marekebishoYaBidhaa, icon: RefreshCw, permission: 'inventory.adjust' },
-  { to: '/hifadhi/harakati', label: 'Harakati', icon: Activity, permission: 'inventory.read' },
-]
-
-const topNavItems = [
-  { to: '/dashibodi', icon: LayoutDashboard, label: SW.nav.dashibodi, permission: null },
-]
-const bottomNavItems = [
-  { to: '/mauzo', icon: ShoppingCart, label: SW.nav.mauzo, permission: 'sales.create' },
-  { to: '/uhamisho', icon: ArrowLeftRight, label: SW.nav.uhamisho, permission: 'transfers.read' },
-  { to: '/ufungaji', icon: Lock, label: SW.nav.ufungaji, permission: 'closing.view' },
-  { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },
-  { to: '/kumbukumbu', icon: ScrollText, label: SW.nav.kumbukumbu, permission: 'audit.read' },
-  { to: '/watumiaji', icon: Users, label: SW.nav.watumiaji, permission: 'users.read' },
-]
-
 export default function Sidebar({ open, onToggle }) {
   const { user, logout } = useAuth()
   const { can } = usePermission()
@@ -40,10 +21,29 @@ export default function Sidebar({ open, onToggle }) {
   const location = useLocation()
   const [bidhaaOpen, setBidhaaOpen] = useState(location.pathname.startsWith('/bidhaa'))
 
+  const bidhaaChildren = [
+    { to: '/bidhaa', label: SW.nav.orodhaYaBidhaa, icon: List, permission: 'products.read', exact: true },
+    { to: '/bidhaa/jamii', label: SW.nav.jamiiYaBidhaa, icon: Tag, permission: 'products.read' },
+    { to: '/bidhaa/marekebisho', label: SW.nav.marekebishoYaBidhaa, icon: RefreshCw, permission: 'inventory.adjust' },
+    { to: '/hifadhi/harakati', label: SW.nav.harakatiZaBidhaa, icon: Activity, permission: 'inventory.read' },
+  ]
+
+  const topNavItems = [
+    { to: '/dashibodi', icon: LayoutDashboard, label: SW.nav.dashibodi, permission: null },
+  ]
+  const bottomNavItems = [
+    { to: '/mauzo', icon: ShoppingCart, label: SW.nav.mauzo, permission: 'sales.create' },
+    { to: '/uhamisho', icon: ArrowLeftRight, label: SW.nav.uhamisho, permission: 'transfers.read' },
+    { to: '/ufungaji', icon: Lock, label: SW.nav.ufungaji, permission: 'closing.view' },
+    { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },
+    { to: '/kumbukumbu', icon: ScrollText, label: SW.nav.kumbukumbu, permission: 'audit.read' },
+    { to: '/watumiaji', icon: Users, label: SW.nav.watumiaji, permission: 'users.read' },
+  ]
+
   const handleLogout = async () => {
     await logout()
     navigate('/login')
-    toast.info('Umefanikiwa kutoka')
+    toast.info(SW.mafanikio.umefanikiwaKutoka)
   }
 
   const showBidhaa = bidhaaChildren.some((c) => !c.permission || can(c.permission))
@@ -101,8 +101,8 @@ export default function Sidebar({ open, onToggle }) {
         <AnimatePresence>
           {open && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-w-0">
-              <p className="font-bold text-text-primary text-sm leading-tight">DUKANI POS</p>
-              <p className="text-text-muted text-[10px] truncate">Mfumo wa Uuzaji</p>
+              <p className="font-bold text-text-primary text-sm leading-tight">{SW.appName}</p>
+              <p className="text-text-muted text-[10px] truncate">{SW.tagline}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -208,17 +208,24 @@ export default function Sidebar({ open, onToggle }) {
 
       {/* User */}
       <div className="border-t border-border px-2 py-3 space-y-1 flex-shrink-0">
-        <div className={clsx('flex items-center gap-3 px-3 py-2 rounded-lg', open && 'bg-bg-hover')}>
+        <button
+          onClick={() => navigate('/wasifu')}
+          title={SW.nav.wasifu}
+          className={clsx(
+            'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
+            open && 'bg-bg-hover hover:bg-bg-panel'
+          )}
+        >
           <Avatar name={user?.full_name || ''} size="sm" className="flex-shrink-0" />
           <AnimatePresence>
             {open && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0 text-left">
                 <p className="text-xs font-medium text-text-primary truncate">{user?.full_name}</p>
                 <p className="text-[10px] text-text-muted truncate">{SW.majukumu[user?.role] || user?.role}</p>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:text-accent-red hover:bg-accent-red-muted transition-colors"

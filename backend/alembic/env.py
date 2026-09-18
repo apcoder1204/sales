@@ -30,7 +30,13 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(settings.DATABASE_URL, poolclass=pool.NullPool)
+    # Match app/db/session.py's UTC override — migrations that write
+    # timestamp data (backfills, defaults) must agree with the app's naive-
+    # means-UTC convention, not the server's configured zone.
+    engine = create_async_engine(
+        settings.DATABASE_URL, poolclass=pool.NullPool,
+        connect_args={"server_settings": {"timezone": "UTC"}},
+    )
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()

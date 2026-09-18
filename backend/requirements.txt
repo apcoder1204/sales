@@ -11,4 +11,3 @@ bcrypt==4.2.0
 python-multipart==0.0.32
 resend==2.34.0
 slowapi==0.1.10
-redis==8.0.1

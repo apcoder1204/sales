@@ -9,7 +9,10 @@ from app.models.branch import Branch
 from sqlalchemy.exc import IntegrityError
 from app.repositories.daily_closing_repo import daily_closing_repo
 from app.repositories.sale_repo import sale_repo
-from app.schemas.daily_closing import CloseDayRequest, ClosingPreviewResponse, ClosingResponse, ExpenseResponse
+from app.schemas.daily_closing import (
+    CloseDayRequest, ClosingPreviewResponse, ClosingResponse, ExpenseResponse,
+    OpenRegisterRequest,
+)
 from app.core.exceptions import NotFoundException, ValidationException, DuplicateException
 from app.services.audit_service import audit_service
 
@@ -44,6 +47,26 @@ def utc_range_for_business_date(business_date: date) -> tuple[datetime, datetime
     )
 
 
+def _window_for_register(existing, business_date: date) -> tuple[datetime, datetime]:
+    """The time window a register's totals are computed over.
+
+    A register opened explicitly via `open_register` (opened_at is set) is
+    scoped to its own period — from when it opened until now — so sales
+    taken under a *later* register are never folded into an earlier,
+    already-reconciled one. A register that predates the opening-register
+    feature (opened_at is NULL, e.g. the branch's very first-ever closing,
+    or historical rows from before this feature existed) keeps the original
+    whole-business-day window, preserving exact prior behavior for anyone
+    who never explicitly opens a register."""
+    if existing and existing.opened_at:
+        # opened_at comes back from a TIMESTAMPTZ column as tz-aware; every
+        # other timestamp compared against Sale.created_at in this codebase
+        # (including _utcnow() below) is naive-but-UTC by convention — strip
+        # tzinfo so both bounds are the same shape.
+        return existing.opened_at.replace(tzinfo=None), _utcnow()
+    return utc_range_for_business_date(business_date)
+
+
 class DailyClosingService:
     async def preview(
         self, db: AsyncSession, branch_id: UUID, business_date: date | None
@@ -54,16 +77,63 @@ class DailyClosingService:
             raise NotFoundException("Tawi")
 
         existing = await daily_closing_repo.get_by_branch_date(db, branch_id, business_date)
-        from_dt, to_dt = utc_range_for_business_date(business_date)
+        from_dt, to_dt = _window_for_register(existing, business_date)
         totals = await sale_repo.get_totals_by_payment_method(db, branch_id, from_dt, to_dt)
 
         return ClosingPreviewResponse(
             branch_id=branch_id, branch_name=branch.name, business_date=business_date,
             already_closed=bool(existing and existing.status == "closed"),
+            register_number=existing.register_number if existing else 1,
+            register_open=bool(existing and existing.status == "open"),
+            opened_by=existing.opener.full_name if existing and existing.opener else None,
+            opened_at=existing.opened_at if existing else None,
+            opening_cash=existing.opening_cash if existing else None,
             total_cash=totals["cash"], total_mobile_money=totals["mobile_money"],
             total_bank_transfer=totals["bank_transfer"],
             total_sales_count=totals["count"], total_revenue=totals["revenue"],
         )
+
+    async def open_register(self, db: AsyncSession, data: OpenRegisterRequest, user):
+        business_date = data.business_date or business_date_today()
+        branch = await db.get(Branch, data.branch_id)
+        if not branch:
+            raise NotFoundException("Tawi")
+        if not branch.is_active:
+            raise ValidationException("Tawi hili halifanyi kazi kwa sasa")
+
+        if await daily_closing_repo.get_open_register(db, data.branch_id):
+            raise ValidationException("Tawi hili tayari lina rejista iliyo wazi")
+
+        next_number = await daily_closing_repo.get_max_register_number(
+            db, data.branch_id, business_date
+        ) + 1
+
+        payload = {
+            "branch_id": data.branch_id, "business_date": business_date,
+            "register_number": next_number, "status": "open",
+            "opened_by": user.id, "opened_at": _utcnow(),
+            "opening_cash": data.opening_cash,
+        }
+        try:
+            async with db.begin_nested():
+                register = await daily_closing_repo.create(db, payload)
+        except IntegrityError as exc:
+            # Two concurrent open-register calls for the same branch: only
+            # one can win uq_daily_closing_one_open_per_branch — the loser
+            # lands here instead of a raw 500.
+            raise DuplicateException("Rejista iliyo wazi kwa tawi hili") from exc
+
+        await db.commit()
+        await audit_service.log(
+            db, action="REGISTER_OPENED", category="sales",
+            user_id=user.id, username=user.username, user_role=user.role.name,
+            branch_id=data.branch_id, entity_type="daily_closing", entity_id=str(register.id),
+            details={
+                "business_date": str(business_date), "register_number": next_number,
+                "opening_cash": float(data.opening_cash),
+            },
+        )
+        return register
 
     async def close_day(self, db: AsyncSession, data: CloseDayRequest, user):
         business_date = data.business_date or business_date_today()
@@ -75,7 +145,7 @@ class DailyClosingService:
         if existing and existing.status == "closed":
             raise ValidationException("Siku hii tayari imefungwa kwa tawi hili")
 
-        from_dt, to_dt = utc_range_for_business_date(business_date)
+        from_dt, to_dt = _window_for_register(existing, business_date)
         totals = await sale_repo.get_totals_by_payment_method(db, data.branch_id, from_dt, to_dt)
 
         # "Matumizi" entries explain a cash variance, in whichever direction it
@@ -152,11 +222,26 @@ class DailyClosingService:
         if closing.status != "closed":
             raise ValidationException("Siku hii haijafungwa")
 
+        # A branch may have at most one OPEN register at a time — if a
+        # newer register was already opened for this branch (the normal
+        # post-closing flow), reopening this older one would create a
+        # second simultaneously-open register, which uq_daily_closing_one_
+        # open_per_branch forbids at the DB level. Surface that clearly
+        # rather than letting it fail as a raw IntegrityError.
+        other_open = await daily_closing_repo.get_open_register(db, closing.branch_id)
+        if other_open and other_open.id != closing.id:
+            raise ValidationException(
+                "Tawi hili tayari lina rejista nyingine iliyo wazi. Ifunge kwanza."
+            )
+
         closing.status = "open"
         closing.reopened_by = user.id
         closing.reopened_at = _utcnow()
         closing.reopen_reason = reason
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError as exc:
+            raise DuplicateException("Rejista iliyo wazi kwa tawi hili") from exc
         await db.commit()
         await db.refresh(closing)
 
@@ -171,7 +256,9 @@ class DailyClosingService:
     def serialize(self, c) -> ClosingResponse:
         return ClosingResponse(
             id=c.id, branch_id=c.branch_id, branch_name=c.branch.name,
-            business_date=c.business_date, status=c.status,
+            business_date=c.business_date, register_number=c.register_number, status=c.status,
+            opened_by=c.opener.full_name if c.opener else None, opened_at=c.opened_at,
+            opening_cash=c.opening_cash,
             total_cash=c.total_cash, total_mobile_money=c.total_mobile_money,
             total_bank_transfer=c.total_bank_transfer,
             total_sales_count=c.total_sales_count, total_revenue=c.total_revenue,

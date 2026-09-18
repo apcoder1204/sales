@@ -1,10 +1,4 @@
-import os
 import uuid
-
-# Tests must never depend on reaching the external Redis instance configured
-# in .env for production rate limiting — force the in-process fallback before
-# app.config / app.main (and the slowapi Limiter it builds at import time) load.
-os.environ["REDIS_URL"] = ""
 
 import pytest
 import pytest_asyncio
@@ -30,10 +24,17 @@ from app.models.user import User
 
 DEFAULT_TEST_PASSWORD = "Test1234"
 
+# Every timestamp column in this schema is TIMESTAMPTZ; the app's naive
+# `_utcnow()` convention assumes the DB session interprets naive values as
+# UTC. The server's actual configured zone is Africa/Dar_es_Salaam (+3),
+# so any engine used in tests needs this same override as app/db/session.py
+# — otherwise naive-datetime comparisons/writes silently shift by 3 hours.
+UTC_CONNECT_ARGS = {"server_settings": {"timezone": "UTC"}}
+
 
 @pytest_asyncio.fixture
 async def db_session():
-    engine = create_async_engine(settings.DATABASE_URL)
+    engine = create_async_engine(settings.DATABASE_URL, connect_args=UTC_CONNECT_ARGS)
     conn = await engine.connect()
     outer_tx = await conn.begin()
     session = AsyncSession(

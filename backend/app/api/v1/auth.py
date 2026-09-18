@@ -53,6 +53,7 @@ async def me(current_user=Depends(get_current_user)):
         id=current_user.id,
         username=current_user.username,
         full_name=current_user.full_name,
+        email=current_user.email,
         role=current_user.role.name,
         branch_id=current_user.branch_id,
         branch=current_user.branch.name if current_user.branch else None,
@@ -64,32 +65,13 @@ async def update_me(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.core.security import verify_password, hash_password
-    updates = {}
-    if data.full_name is not None:
-        updates["full_name"] = data.full_name
-    if data.email is not None:
-        updates["email"] = data.email
-    if data.new_password:
-        if not data.current_password or not verify_password(data.current_password, current_user.password_hash):
-            from app.core.exceptions import ValidationException
-            raise ValidationException("Nenosiri la sasa si sahihi")
-        updates["password_hash"] = hash_password(data.new_password)
-    if updates:
-        await db.execute(
-            f"""
-            UPDATE users SET {', '.join([f'{k} = :{k}' for k in updates.keys()])}, updated_at = CURRENT_TIMESTAMP WHERE id = :id
-            """,
-            {**updates, "id": str(current_user.id)}
-        )
-        await db.commit()
-        for k, v in updates.items():
-            setattr(current_user, k, v)
+    user = await auth_service.update_profile(db, current_user, data)
     return UserProfile(
-        id=current_user.id,
-        username=current_user.username,
-        full_name=current_user.full_name,
-        role=current_user.role.name,
-        branch_id=current_user.branch_id,
-        branch=current_user.branch.name if current_user.branch else None,
+        id=user.id,
+        username=user.username,
+        full_name=user.full_name,
+        email=user.email,
+        role=user.role.name,
+        branch_id=user.branch_id,
+        branch=user.branch.name if user.branch else None,
     )

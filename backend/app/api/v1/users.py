@@ -89,3 +89,13 @@ async def deactivate_user(
 ):
     await user_service.deactivate_user(db, user_id, current_user)
     return {"message": "Mtumiaji amezimwa"}
+
+
+@router.delete("/{user_id}/permanent", response_model=MessageResponse)
+async def permanently_delete_user(
+    user_id: UUID,
+    current_user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await user_service.permanently_delete_user(db, user_id, current_user)
+    return {"message": "Mtumiaji amefutwa kabisa"}

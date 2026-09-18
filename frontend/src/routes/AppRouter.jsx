@@ -25,6 +25,7 @@ const ReportsPage = lazy(() => import('@features/reports/ReportsPage'))
 const ClosingPage = lazy(() => import('@features/closing/ClosingPage'))
 const AuditPage = lazy(() => import('@features/audit/AuditPage'))
 const UsersPage = lazy(() => import('@features/users/UsersPage'))
+const ProfilePage = lazy(() => import('@features/profile/ProfilePage'))
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-screen bg-bg">
@@ -109,6 +110,9 @@ function RoutedApp() {
                 <UsersPage />
               </RoleRoute>
             } />
+
+            {/* Self-service profile — every authenticated user, no permission gate */}
+            <Route path="/wasifu" element={<ProfilePage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashibodi" replace />} />

@@ -22,7 +22,11 @@ def get_client_ip(request: Request) -> str:
 
 limiter = Limiter(
     key_func=get_client_ip,
-    storage_uri=settings.REDIS_URL or "memory://",
+    # In-process only — no external Redis dependency. Each gunicorn worker
+    # keeps its own counters (not shared across workers, resets on
+    # restart), which is an accepted tradeoff until a real need for
+    # cross-worker rate limiting comes up.
+    storage_uri="memory://",
     default_limits=[settings.RATE_LIMIT_DEFAULT],
     key_prefix="dukani_rl",
 )

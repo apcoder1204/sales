@@ -5,7 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.user_repo import user_repo
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import hash_password
-from app.core.exceptions import NotFoundException, DuplicateException, InsufficientPermissionException
+from app.core.exceptions import (
+    NotFoundException, DuplicateException, InsufficientPermissionException, ValidationException,
+)
 from app.services.audit_service import audit_service
 from app.schemas.common import PaginatedResponse
 
@@ -161,6 +163,56 @@ class UserService:
             user_id=editor.id, username=editor.username, user_role=editor.role.name,
             entity_type="user", entity_id=str(user_id),
             details={"username": user.username}
+        )
+
+    async def permanently_delete_user(self, db: AsyncSession, user_id: UUID, editor):
+        """Hard-deletes the user row — only allowed when the account has no
+        business history at all (sales, stock requests/transfers, closings,
+        inventory transactions). Anyone with real activity can only ever be
+        deactivated, never hard-deleted, so the audit trail those records
+        depend on is never destroyed. Uses the exact same role-hierarchy
+        guards as deactivate_user."""
+        user = await user_repo.get_by_id(db, user_id)
+        if not user:
+            raise NotFoundException("Mtumiaji")
+        if str(editor.id) == str(user_id):
+            await audit_service.log(
+                db, action="PERMISSION_DENIED", category="system",
+                user_id=editor.id, username=editor.username, user_role=editor.role.name,
+                entity_type="user", entity_id=str(user_id),
+                details={"reason": "cannot_delete_self"},
+            )
+            raise InsufficientPermissionException("Huwezi kufuta akaunti yako mwenyewe")
+        if editor.role.name == "admin" and user.role.name in HIDDEN_FROM_ADMIN:
+            await audit_service.log(
+                db, action="PERMISSION_DENIED", category="system",
+                user_id=editor.id, username=editor.username, user_role=editor.role.name,
+                entity_type="user", entity_id=str(user_id),
+                details={"reason": "admin_cannot_delete_hidden_role"},
+            )
+            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi")
+
+        history = await user_repo.get_history_counts(db, user_id)
+        blocking = {k: v for k, v in history.items() if v > 0}
+        if blocking:
+            await audit_service.log(
+                db, action="PERMISSION_DENIED", category="system",
+                user_id=editor.id, username=editor.username, user_role=editor.role.name,
+                entity_type="user", entity_id=str(user_id),
+                details={"reason": "user_has_history", "history": blocking},
+            )
+            raise ValidationException(
+                "Mtumiaji huyu ana historia ya shughuli mfumoni (mauzo, ufungaji, uhamisho, n.k.) "
+                "na hawezi kufutwa kabisa. Mzima badala yake."
+            )
+
+        await user_repo.hard_delete(db, user_id)
+        await db.commit()
+        await audit_service.log(
+            db, action="USER_PERMANENTLY_DELETED", category="users",
+            user_id=editor.id, username=editor.username, user_role=editor.role.name,
+            entity_type="user", entity_id=str(user_id),
+            details={"username": user.username, "role": user.role.name},
         )
 
 

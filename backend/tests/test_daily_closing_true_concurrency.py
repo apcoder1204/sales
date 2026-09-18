@@ -11,6 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.config import settings
+from tests.conftest import UTC_CONNECT_ARGS
 from app.core.exceptions import DuplicateException
 from app.core.security import hash_password
 from app.models.audit_log import AuditLog
@@ -23,7 +24,7 @@ from app.services.daily_closing_service import daily_closing_service
 
 
 async def test_concurrent_close_day_does_not_500_on_race():
-    engine = create_async_engine(settings.DATABASE_URL)
+    engine = create_async_engine(settings.DATABASE_URL, connect_args=UTC_CONNECT_ARGS)
     setup = AsyncSession(bind=engine, expire_on_commit=False)
     ids = {}
     try:

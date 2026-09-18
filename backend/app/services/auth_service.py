@@ -10,12 +10,15 @@ from app.core.security import (
 from app.core.exceptions import (
     InvalidCredentialsException, AccountLockedException,
     InactiveUserException, InvalidTokenException, ValidationException,
+    DuplicateException,
 )
 from app.repositories.user_repo import user_repo
 from app.repositories.password_reset_repo import password_reset_repo
 from app.services.audit_service import audit_service
 from app.services.email_service import email_service
-from app.schemas.auth import TokenResponse, UserProfile, RefreshRequest, RefreshResponse
+from app.schemas.auth import (
+    TokenResponse, UserProfile, RefreshRequest, RefreshResponse, UserProfileUpdate,
+)
 
 UTC = timezone.utc
 
@@ -39,7 +42,10 @@ class AuthService:
             )
             raise InvalidCredentialsException()
 
-        if user.locked_until and user.locked_until > _utcnow():
+        # locked_until comes back tz-aware (TIMESTAMPTZ column); _utcnow()
+        # is naive-but-UTC by convention — normalize before comparing, or
+        # this raises TypeError instead of enforcing the lockout.
+        if user.locked_until and user.locked_until.replace(tzinfo=None) > _utcnow():
             raise AccountLockedException(user.locked_until)
 
         if not verify_password(password, user.password_hash):
@@ -183,6 +189,58 @@ class AuthService:
             db, action="PASSWORD_RESET_COMPLETED", category="authentication",
             user_id=user.id, username=user.username, user_role=user.role.name,
         )
+
+    async def update_profile(self, db: AsyncSession, user, data: UserProfileUpdate):
+        """Self-service profile edit — username/full_name/email/password for
+        the caller's own account only. Callers reach this exclusively via
+        PUT /auth/me; admin-driven edits of *other* accounts go through
+        UserService.update_user instead, which has its own role-hierarchy
+        checks that don't apply here."""
+        updates: dict = {}
+        changed_fields: list[str] = []
+
+        if data.username is not None and data.username != user.username:
+            existing = await user_repo.get_by_username(db, data.username)
+            if existing and existing.id != user.id:
+                raise DuplicateException("Jina la mtumiaji")
+            updates["username"] = data.username
+            changed_fields.append("username")
+
+        if data.full_name is not None:
+            updates["full_name"] = data.full_name
+            changed_fields.append("full_name")
+
+        if data.email is not None:
+            updates["email"] = data.email
+            changed_fields.append("email")
+
+        if data.new_password:
+            if not data.current_password or not verify_password(
+                data.current_password, user.password_hash
+            ):
+                raise ValidationException("Nenosiri la sasa si sahihi")
+            updates["password_hash"] = hash_password(data.new_password)
+            # Changing your own password must invalidate every existing
+            # session/token, exactly like logout and admin-triggered
+            # password reset — otherwise a token minted before this change
+            # keeps working even though the password it was issued under no
+            # longer applies.
+            updates["token_version"] = user.token_version + 1
+            updates["current_refresh_jti"] = None
+            changed_fields.append("password")
+
+        if not updates:
+            return user
+
+        updated = await user_repo.update(db, user.id, updates)
+        await db.commit()
+        await audit_service.log(
+            db, action="PROFILE_UPDATED", category="users",
+            user_id=user.id, username=updated.username, user_role=user.role.name,
+            entity_type="user", entity_id=str(user.id),
+            details={"updated_fields": changed_fields},
+        )
+        return updated
 
 
 auth_service = AuthService()

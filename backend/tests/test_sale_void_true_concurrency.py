@@ -9,6 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.config import settings
+from tests.conftest import UTC_CONNECT_ARGS
 from app.core.exceptions import ValidationException
 from app.core.security import hash_password
 from app.models.branch import Branch
@@ -25,7 +26,7 @@ from app.services.sale_service import sale_service
 
 
 async def test_concurrent_void_cannot_restore_inventory_twice():
-    engine = create_async_engine(settings.DATABASE_URL)
+    engine = create_async_engine(settings.DATABASE_URL, connect_args=UTC_CONNECT_ARGS)
     setup = AsyncSession(bind=engine, expire_on_commit=False)
     ids = {}
     try:

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import require_role
 from app.schemas.daily_closing import (
-    ClosingPreviewResponse, ClosingResponse, CloseDayRequest, ReopenRequest
+    ClosingPreviewResponse, ClosingResponse, CloseDayRequest, ReopenRequest, OpenRegisterRequest
 )
 from app.core.exceptions import InsufficientPermissionException
 from app.services.daily_closing_service import daily_closing_service
@@ -23,6 +23,18 @@ async def preview_closing(
     if current_user.role.name == "cashier" and str(current_user.branch_id) != str(branch_id):
         raise InsufficientPermissionException("Huwezi kuona ufungaji wa tawi lingine")
     return await daily_closing_service.preview(db, branch_id, business_date)
+
+
+@router.post("/open", response_model=ClosingResponse, status_code=201)
+async def open_register(
+    data: OpenRegisterRequest,
+    current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role.name == "cashier" and str(current_user.branch_id) != str(data.branch_id):
+        raise InsufficientPermissionException("Huwezi kufungua rejista ya tawi lingine")
+    register = await daily_closing_service.open_register(db, data, current_user)
+    return daily_closing_service.serialize(register)
 
 
 @router.post("/close", response_model=ClosingResponse, status_code=201)

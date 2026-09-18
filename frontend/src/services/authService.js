@@ -25,6 +25,11 @@ export const authService = {
     return data
   },
 
+  updateMe: async (payload) => {
+    const { data } = await api.put('/auth/me', payload)
+    return data
+  },
+
   forgotPassword: async (email) => {
     const { data } = await api.post('/auth/forgot-password', { email })
     return data

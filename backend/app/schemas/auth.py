@@ -37,6 +37,7 @@ class UserProfile(BaseModel):
     id: UUID
     username: str
     full_name: str
+    email: str | None = None
     role: str
     branch_id: UUID | None
     branch: str | None
@@ -44,6 +45,7 @@ class UserProfile(BaseModel):
     model_config = {"from_attributes": True}
 
 class UserProfileUpdate(BaseModel):
+    username: str | None = Field(None, min_length=3, max_length=50)
     full_name: str | None = None
     email: EmailStr | None = None
     current_password: str | None = None

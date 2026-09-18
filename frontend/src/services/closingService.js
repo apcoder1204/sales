@@ -13,6 +13,11 @@ export const closingService = {
     return data
   },
 
+  openRegister: async (payload) => {
+    const { data } = await api.post('/closings/open', payload)
+    return data
+  },
+
   reopen: async (id, reason) => {
     const { data } = await api.put(`/closings/${id}/reopen`, { reason })
     return data

@@ -9,11 +9,22 @@ class ClosingPreviewResponse(BaseModel):
     branch_name: str
     business_date: date
     already_closed: bool
+    register_number: int
+    register_open: bool
+    opened_by: str | None = None
+    opened_at: datetime | None = None
+    opening_cash: Decimal | None = None
     total_cash: float
     total_mobile_money: float
     total_bank_transfer: float
     total_sales_count: int
     total_revenue: float
+
+
+class OpenRegisterRequest(BaseModel):
+    branch_id: UUID
+    business_date: date | None = None
+    opening_cash: Decimal = Field(ge=0)
 
 
 class ExpenseEntry(BaseModel):
@@ -46,7 +57,11 @@ class ClosingResponse(BaseModel):
     branch_id: UUID
     branch_name: str
     business_date: date
+    register_number: int
     status: str
+    opened_by: str | None
+    opened_at: datetime | None
+    opening_cash: Decimal | None
     total_cash: Decimal
     total_mobile_money: Decimal
     total_bank_transfer: Decimal
