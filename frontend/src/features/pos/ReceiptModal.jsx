@@ -4,6 +4,7 @@ import Button from '@components/ui/Button'
 import Divider from '@components/ui/Divider'
 import { Printer, X } from 'lucide-react'
 import { formatCurrency, formatDateTime } from '@utils/formatters'
+import SW from '@constants/sw'
 
 export default function ReceiptModal({ open, onClose, receipt }) {
   const printRef = useRef(null)
@@ -12,7 +13,7 @@ export default function ReceiptModal({ open, onClose, receipt }) {
     const content = printRef.current?.innerHTML
     const win = window.open('', '_blank', 'width=400,height=600')
     win.document.write(`
-      <html><head><title>Receipt - ${receipt.transaction_no}</title>
+      <html><head><title>${SW.risiti.risiti} - ${receipt.transaction_no}</title>
       <style>
         body { font-family: monospace; font-size: 12px; margin: 20px; }
         .center { text-align: center; }
@@ -33,21 +34,21 @@ export default function ReceiptModal({ open, onClose, receipt }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Receipt"
+      title={SW.risiti.risiti}
       size="sm"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} leftIcon={<X size={16} />}>Close</Button>
-          <Button onClick={handlePrint} leftIcon={<Printer size={16} />}>Print Receipt</Button>
+          <Button variant="secondary" onClick={onClose} leftIcon={<X size={16} />}>{SW.risiti.funga}</Button>
+          <Button onClick={handlePrint} leftIcon={<Printer size={16} />}>{SW.risiti.chapishaRisiti}</Button>
         </>
       }
     >
       <div ref={printRef} className="font-mono text-xs text-text-primary space-y-2">
         <div className="text-center space-y-1">
-          <p className="font-bold text-sm">DUKANI POS</p>
+          <p className="font-bold text-sm">{SW.appName}</p>
           <p>{receipt.branch_name}</p>
           <p>{formatDateTime(receipt.created_at)}</p>
-          <p>Receipt No: {receipt.transaction_no}</p>
+          <p>{SW.risiti.namba}: {receipt.transaction_no}</p>
         </div>
 
         <Divider />
@@ -68,10 +69,10 @@ export default function ReceiptModal({ open, onClose, receipt }) {
 
         <div className="space-y-1">
           <div className="flex justify-between">
-            <span>Subtotal</span><span>{formatCurrency(receipt.subtotal)}</span>
+            <span>{SW.risiti.jumlaNdogo}</span><span>{formatCurrency(receipt.subtotal)}</span>
           </div>
           <div className="flex justify-between font-bold text-sm">
-            <span>TOTAL</span><span>{formatCurrency(receipt.total_amount)}</span>
+            <span>{SW.risiti.jumlaKuu}</span><span>{formatCurrency(receipt.total_amount)}</span>
           </div>
         </div>
 
@@ -79,21 +80,21 @@ export default function ReceiptModal({ open, onClose, receipt }) {
 
         <div className="space-y-1">
           <div className="flex justify-between">
-            <span>Payment</span><span>{receipt.payment_method?.replace('_', ' ').toUpperCase()}</span>
+            <span>{SW.risiti.malipo}</span><span>{receipt.payment_method?.replace('_', ' ').toUpperCase()}</span>
           </div>
           {receipt.payment_reference && (
             <div className="flex justify-between">
-              <span>Ref</span><span>{receipt.payment_reference}</span>
+              <span>{SW.risiti.kumbukumbu}</span><span>{receipt.payment_reference}</span>
             </div>
           )}
           <div className="flex justify-between">
-            <span>Cashier</span><span>{receipt.cashier_name}</span>
+            <span>{SW.risiti.mhusika}</span><span>{receipt.cashier_name}</span>
           </div>
         </div>
 
         <Divider />
-        <p className="text-center">Thank you for your business!</p>
-        <p className="text-center text-xs">Powered by DUKANI POS</p>
+        <p className="text-center">{SW.risiti.asante}</p>
+        <p className="text-center text-xs">{SW.risiti.naushindwaNa}</p>
       </div>
     </Modal>
   )

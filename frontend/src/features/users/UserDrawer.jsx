@@ -77,7 +77,7 @@ export default function UserDrawer({ open, onClose, user, onSaved }) {
           <>
             <Input label={SW.watumiaji.nenosiri} type="password" value={form.password} onChange={set('password')} required />
             <Input
-              label="Thibitisha Nenosiri" type="password"
+              label={SW.auth.thibitishaNenosiri} type="password"
               value={form.confirm_password} onChange={set('confirm_password')}
               required
             />
@@ -88,7 +88,7 @@ export default function UserDrawer({ open, onClose, user, onSaved }) {
           value={form.role_id}
           onChange={set('role_id')}
           options={visibleRoles.map((r) => ({ value: r.id, label: SW.majukumu[r.name] || r.name }))}
-          placeholder="Chagua jukumu..."
+          placeholder={SW.watumiaji.chaguaJukumuPlaceholder}
           required
         />
         {needsBranch && (
@@ -97,7 +97,7 @@ export default function UserDrawer({ open, onClose, user, onSaved }) {
             value={form.branch_id}
             onChange={set('branch_id')}
             options={branches}
-            placeholder="Chagua tawi..."
+            placeholder={SW.mauzo.chaguaTawiPlaceholder}
             required
           />
         )}

@@ -1,5 +1,6 @@
 import React from 'react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import SW from '@constants/sw'
 
 const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444']
 
@@ -8,7 +9,7 @@ const CustomTooltip = ({ active, payload }) => {
   return (
     <div className="glass-card px-3 py-2 text-xs">
       <p className="text-text-secondary">{payload[0].name}</p>
-      <p className="font-semibold text-text-primary">{payload[0].value} bidhaa</p>
+      <p className="font-semibold text-text-primary">{SW.bidhaa.idadiBidhaa(payload[0].value)}</p>
     </div>
   )
 }

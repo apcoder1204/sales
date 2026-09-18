@@ -54,13 +54,13 @@ export default function ProductCatalog() {
       selling_price: product.selling_price,
       cost_price: product.cost_price,
     })
-    toast.success(`${product.name} imeongezwa`)
+    toast.success(SW.mauzo.imeongezwaKwenyeKikapu(product.name))
   }
 
   return (
     <div className="flex flex-col h-full">
       <div className="mb-4">
-        <SearchInput value={search} onChange={setSearch} placeholder="Tafuta bidhaa..." />
+        <SearchInput value={search} onChange={setSearch} placeholder={SW.bidhaa.tafutaPlaceholder} />
       </div>
 
       {loading ? (
@@ -99,7 +99,7 @@ export default function ProductCatalog() {
                         : 'bg-accent-green-muted text-accent-green'
                     )}
                   >
-                    {outOfStock ? SW.mauzo.hisaImeisha : `${p.available_qty} pcs`}
+                    {outOfStock ? SW.mauzo.hisaImeisha : SW.mauzo.vipandeCount(p.available_qty)}
                   </span>
                 )}
 

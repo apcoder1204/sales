@@ -55,7 +55,7 @@ export default function SendToPosModal({ open, onClose, item, onSaved }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Tuma Bidhaa kwa Kioski cha POS"
+      title={SW.hifadhi.tumaBidhaaKwaKioski}
       size="sm"
       footer={
         <>
@@ -66,7 +66,7 @@ export default function SendToPosModal({ open, onClose, item, onSaved }) {
             disabled={!form.to_branch_id || qty <= 0 || overLimit}
             leftIcon={<ArrowRight size={15} />}
           >
-            Tuma Bidhaa
+            {SW.hifadhi.tumaBidhaaBtn}
           </Button>
         </>
       }
@@ -80,28 +80,28 @@ export default function SendToPosModal({ open, onClose, item, onSaved }) {
           </div>
           <div className="flex gap-6">
             <div>
-              <p className="text-xs text-text-muted">Chanzo</p>
+              <p className="text-xs text-text-muted">{SW.uhamisho.chanzo}</p>
               <p className="text-sm font-medium text-text-primary">{item.branch_name}</p>
             </div>
             <div>
-              <p className="text-xs text-text-muted">Inayopatikana</p>
+              <p className="text-xs text-text-muted">{SW.hifadhi.inayopatikana}</p>
               <p className="text-sm font-bold text-accent-green">{formatNumber(maxQty)}</p>
             </div>
           </div>
         </div>
 
         <Select
-          label="Tuma Kwenda"
+          label={SW.hifadhi.tumaKwenda}
           value={form.to_branch_id}
           onChange={set('to_branch_id')}
           options={posBranches}
-          placeholder="Chagua kioski..."
+          placeholder={SW.hifadhi.chaguaKioskiPlaceholder}
           required
         />
 
         <div>
           <Input
-            label="Idadi ya Kutuma"
+            label={SW.hifadhi.idadiYaKutuma}
             type="number"
             min="1"
             max={maxQty}
@@ -112,21 +112,21 @@ export default function SendToPosModal({ open, onClose, item, onSaved }) {
           />
           {overLimit && (
             <p className="text-xs text-accent-red mt-1">
-              Inazidi bidhaa inayopatikana ({formatNumber(maxQty)})
+              {SW.hifadhi.inazidiBidhaa(formatNumber(maxQty))}
             </p>
           )}
           {qty > 0 && !overLimit && (
             <p className="text-xs text-accent-green mt-1">
-              Duka Kuu itabaki na {formatNumber(maxQty - qty)} baada ya uhamisho
+              {SW.hifadhi.dukaKuuItabakiNa(formatNumber(maxQty - qty))}
             </p>
           )}
         </div>
 
         <Input
-          label="Maelezo (hiari)"
+          label={SW.ufungaji.maelezo}
           value={form.notes}
           onChange={set('notes')}
-          placeholder="Sababu ya uhamisho..."
+          placeholder={SW.hifadhi.sababuYaUhamishoPlaceholder}
         />
       </div>
     </Modal>

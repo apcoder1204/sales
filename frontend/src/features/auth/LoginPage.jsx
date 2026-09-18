@@ -66,7 +66,7 @@ export default function LoginPage() {
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               leftIcon={<User size={16} />}
-              placeholder="superadmin"
+              placeholder={SW.auth.jinalaMtumiajiPlaceholder}
               autoComplete="username"
               autoFocus
               required
@@ -128,7 +128,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-text-muted mt-6">
-          DUKANI POS &copy; {new Date().getFullYear()} — Haki zote zimehifadhiwa
+          {SW.appName} &copy; {new Date().getFullYear()} — {SW.auth.hakiZoteZimehifadhiwa}
         </p>
       </motion.div>
     </div>

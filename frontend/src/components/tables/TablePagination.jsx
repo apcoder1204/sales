@@ -1,6 +1,7 @@
 import React from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { clsx } from 'clsx'
+import SW from '@constants/sw'
 
 export default function TablePagination({ page, totalPages, total, pageSize, setPage, setPageSize }) {
   const from = (page - 1) * pageSize + 1
@@ -9,7 +10,7 @@ export default function TablePagination({ page, totalPages, total, pageSize, set
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-border">
       <p className="text-xs text-text-muted">
-        Inaonyesha {from}–{to} kati ya {total}
+        {SW.common.onyeshaKati(from, to, total)}
       </p>
       <div className="flex items-center gap-2">
         <button

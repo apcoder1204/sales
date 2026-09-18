@@ -3,7 +3,7 @@ import DataTable from '@components/tables/DataTable'
 import Badge from '@components/ui/Badge'
 import Button from '@components/ui/Button'
 import { formatDateTime } from '@utils/formatters'
-import { TRANSFER_STATUSES } from '@utils/constants'
+import { getTransferStatuses } from '@utils/constants'
 import { usePermission } from '@hooks/usePermission'
 import SW from '@constants/sw'
 
@@ -11,9 +11,9 @@ export default function RequestsTable({ requests, loading, onReview, pagination 
   const { can } = usePermission()
 
   const columns = [
-    { key: 'request_no', header: 'Namba', render: (v) => <span className="font-mono text-xs text-primary-light">{v}</span> },
+    { key: 'request_no', header: SW.uhamisho.namba, render: (v) => <span className="font-mono text-xs text-primary-light">{v}</span> },
     {
-      key: 'items', header: 'Bidhaa',
+      key: 'items', header: SW.uhamisho.bidhaa,
       render: (v, row) => {
         const first = v?.[0]
         const rest = (v?.length || 0) - 1
@@ -21,7 +21,7 @@ export default function RequestsTable({ requests, loading, onReview, pagination 
           <div>
             <p className="font-medium">{first ? first.product : '—'}</p>
             <p className="text-xs text-text-muted">
-              {first ? `Idadi: ${first.requested_qty}` : ''}
+              {first ? `${SW.common.idadi}: ${first.requested_qty}` : ''}
               {rest > 0 && ` · ${SW.uhamisho.naZaidi(rest)}`}
             </p>
           </div>
@@ -29,7 +29,7 @@ export default function RequestsTable({ requests, loading, onReview, pagination 
       },
     },
     {
-      key: 'from_branch', header: 'Chanzo → Lengo',
+      key: 'from_branch', header: SW.uhamisho.chanzoLengo,
       render: (v, row) => (
         <div className="text-sm">
           <span className="text-accent-yellow">{v}</span>
@@ -39,13 +39,13 @@ export default function RequestsTable({ requests, loading, onReview, pagination 
       ),
     },
     {
-      key: 'status', header: 'Hali',
+      key: 'status', header: SW.common.hali,
       render: (v) => {
-        const s = TRANSFER_STATUSES[v] || { label: v, color: 'gray' }
+        const s = getTransferStatuses()[v] || { label: v, color: 'gray' }
         return <Badge color={s.color}>{s.label}</Badge>
       },
     },
-    { key: 'created_at', header: 'Tarehe', render: (v) => formatDateTime(v) },
+    { key: 'created_at', header: SW.common.tarehe, render: (v) => formatDateTime(v) },
     {
       key: '_actions', header: '',
       render: (_, row) => (
@@ -62,7 +62,7 @@ export default function RequestsTable({ requests, loading, onReview, pagination 
       data={requests}
       loading={loading}
       pagination={pagination}
-      emptyTitle="Hakuna maombi yaliyopatikana"
+      emptyTitle={SW.uhamisho.hakunaMaombi}
     />
   )
 }

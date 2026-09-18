@@ -10,7 +10,7 @@ import { useApi } from '@hooks/useApi'
 import { saleService } from '@services/saleService'
 import { userService } from '@services/userService'
 import { formatCurrency } from '@utils/formatters'
-import { PAYMENT_METHODS } from '@utils/constants'
+import { getPaymentMethods } from '@utils/constants'
 import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
 
@@ -83,11 +83,11 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
         {/* Branch selector — only for global roles */}
         {isGlobal && (
           <Select
-            label="Tawi la Mauzo"
+            label={SW.mauzo.tawiLaMauzo}
             value={selectedBranchId}
             onChange={(e) => setSelectedBranchId(e.target.value)}
             options={branches}
-            placeholder="Chagua tawi..."
+            placeholder={SW.mauzo.chaguaTawiPlaceholder}
             required
           />
         )}
@@ -108,7 +108,7 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
           label={SW.mauzo.njiaYaLipa}
           value={payment.method}
           onChange={(e) => setPayment({ ...payment, method: e.target.value })}
-          options={PAYMENT_METHODS}
+          options={getPaymentMethods()}
         />
 
         {needsReference && (
@@ -116,14 +116,14 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
             label={SW.mauzo.kumbukumbuNamba}
             value={payment.reference}
             onChange={(e) => setPayment({ ...payment, reference: e.target.value })}
-            placeholder="M-Pesa au namba ya benki..."
+            placeholder={SW.mauzo.kumbukumbuPlaceholder}
             required
           />
         )}
 
         {/* Item summary */}
         <div>
-          <p className="text-xs text-text-muted mb-2">Bidhaa ({items.length})</p>
+          <p className="text-xs text-text-muted mb-2">{SW.mauzo.bidhaaIdadi(items.length)}</p>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {items.map((i) => (
               <div key={i.product_id} className="flex justify-between text-sm">

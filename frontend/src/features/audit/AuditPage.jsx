@@ -10,28 +10,9 @@ import { usePagination } from '@hooks/usePagination'
 import { formatDateTime } from '@utils/formatters'
 import SW from '@constants/sw'
 
-const CATEGORY_OPTIONS = [
-  { value: '', label: 'Vitengo Vyote' },
-  { value: 'auth', label: 'Uthibitishaji' },
-  { value: 'products', label: 'Bidhaa' },
-  { value: 'inventory', label: 'Inventory' },
-  { value: 'sales', label: 'Mauzo' },
-  { value: 'transfers', label: 'Uhamisho' },
-  { value: 'users', label: 'Watumiaji' },
-]
-
 const ACTION_COLORS = {
   create: 'green', update: 'blue', delete: 'red', login: 'purple',
   logout: 'gray', approve: 'green', reject: 'red', execute: 'yellow',
-}
-
-const ENTITY_LABELS = {
-  product: 'Bidhaa',
-  category: 'Aina ya Bidhaa',
-  inventory: 'Inventory',
-  sale: 'Uuzaji',
-  stock_request: 'Ombi la Bidhaa',
-  stock_transfer: 'Uhamisho',
 }
 
 export default function AuditPage() {
@@ -40,6 +21,25 @@ export default function AuditPage() {
   const [category, setCategory] = useState('')
   const [selected, setSelected] = useState(null)
   const pagination = usePagination()
+
+  const CATEGORY_OPTIONS = [
+    { value: '', label: SW.kumbukumbu.vitengoVyote },
+    { value: 'auth', label: SW.kumbukumbu.uthibitishaji },
+    { value: 'products', label: SW.bidhaa.bidhaa },
+    { value: 'inventory', label: SW.hifadhi.hifadhi },
+    { value: 'sales', label: SW.mauzo.mauzo },
+    { value: 'transfers', label: SW.kumbukumbu.uhamishoPekee },
+    { value: 'users', label: SW.watumiaji.watumiaji },
+  ]
+
+  const ENTITY_LABELS = {
+    product: SW.bidhaa.bidhaa,
+    category: SW.kumbukumbu.ainaYaBidhaaEntity,
+    inventory: SW.hifadhi.hifadhi,
+    sale: SW.kumbukumbu.uuzajiEntity,
+    stock_request: SW.uhamisho.ombi,
+    stock_transfer: SW.kumbukumbu.uhamishoEntity,
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -58,14 +58,14 @@ export default function AuditPage() {
   useEffect(() => { load() }, [load])
 
   const columns = [
-    { key: 'created_at', header: 'Wakati', render: (v) => formatDateTime(v) },
+    { key: 'created_at', header: SW.ufungaji.wakati, render: (v) => formatDateTime(v) },
     {
-      key: 'action', header: 'Kitendo',
+      key: 'action', header: SW.kumbukumbu.kitendo,
       render: (v) => <Badge color={ACTION_COLORS[v] || 'gray'}>{v}</Badge>,
     },
-    { key: 'category', header: 'Kitengo', render: (v) => <span className="text-text-secondary text-xs uppercase">{v}</span> },
+    { key: 'category', header: SW.kumbukumbu.kitengo, render: (v) => <span className="text-text-secondary text-xs uppercase">{v}</span> },
     {
-      key: 'username', header: 'Mtumiaji',
+      key: 'username', header: SW.kumbukumbu.mtumiaji,
       render: (v, row) => (
         <div>
           <p className="text-sm font-medium">{v}</p>
@@ -73,8 +73,8 @@ export default function AuditPage() {
         </div>
       ),
     },
-    { key: 'entity_type', header: 'Kilicho Athiriwa', render: (v) => <span className="text-text-secondary text-xs">{ENTITY_LABELS[v] || '-'}</span> },
-    { key: 'ip_address', header: 'IP', render: (v) => <span className="font-mono text-xs text-text-muted">{v}</span> },
+    { key: 'entity_type', header: SW.kumbukumbu.kilichoAthiriwa, render: (v) => <span className="text-text-secondary text-xs">{ENTITY_LABELS[v] || '-'}</span> },
+    { key: 'ip_address', header: SW.kumbukumbu.ip, render: (v) => <span className="font-mono text-xs text-text-muted">{v}</span> },
     {
       key: '_actions', header: '',
       render: (_, row) => row.details ? (
@@ -84,7 +84,7 @@ export default function AuditPage() {
   ]
 
   return (
-    <PageWrapper title={SW.nav.kumbukumbu} subtitle="Kumbukumbu za vitendo vyote vya mfumo">
+    <PageWrapper title={SW.nav.kumbukumbu} subtitle={SW.kumbukumbu.subtitle}>
       <div className="flex gap-3">
         <Select
           value={category}
@@ -99,7 +99,7 @@ export default function AuditPage() {
         data={logs}
         loading={loading}
         pagination={pagination}
-        emptyTitle="Hakuna kumbukumbu zilizopatikana"
+        emptyTitle={SW.kumbukumbu.hakunaKumbukumbu}
       />
 
       {selected && (

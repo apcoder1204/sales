@@ -54,7 +54,7 @@ export default function CategoryPage() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const handleSave = async () => {
-    if (!form.name) { toast.error('Jina la jamii linahitajika'); return }
+    if (!form.name) { toast.error(SW.bidhaa.jinaJamiiLinahitajika); return }
     const payload = {
       name: form.name,
       name_sw: form.name_sw || undefined,
@@ -86,11 +86,11 @@ export default function CategoryPage() {
 
   const columns = [
     {
-      key: 'category_code', header: 'ID / Msimbo', width: 110,
+      key: 'category_code', header: SW.bidhaa.idMsimbo, width: 110,
       render: (v) => <span className="font-mono text-xs text-text-muted">{v || '—'}</span>,
     },
     {
-      key: 'name', header: 'Jina la Jamii',
+      key: 'name', header: SW.bidhaa.jinaJamii,
       render: (v, row) => (
         <div>
           <p className="font-medium text-text-primary">{v}</p>
@@ -99,15 +99,15 @@ export default function CategoryPage() {
       ),
     },
     {
-      key: 'brand_name', header: 'Brand',
+      key: 'brand_name', header: SW.bidhaa.brand,
       render: (v) => <span className="text-text-secondary text-sm">{v || '—'}</span>,
     },
     {
-      key: 'family', header: 'Familia',
+      key: 'family', header: SW.bidhaa.familiaPekee,
       render: (v) => <span className="text-text-secondary text-sm">{v || '—'}</span>,
     },
     {
-      key: 'description', header: 'Maelezo',
+      key: 'description', header: SW.bidhaa.maelezo,
       render: (v) => <span className="text-text-muted text-xs truncate max-w-[200px] block">{v || '—'}</span>,
     },
     can('products.write') && {
@@ -129,7 +129,7 @@ export default function CategoryPage() {
   return (
     <PageWrapper
       title={SW.nav.jamiiYaBidhaa}
-      subtitle="Simamia jamii za bidhaa"
+      subtitle={SW.bidhaa.subtitleJamii}
       action={
         can('products.write') && (
           <Button onClick={openNew} leftIcon={<Plus size={16} />}>
@@ -142,7 +142,7 @@ export default function CategoryPage() {
         columns={columns}
         data={categories}
         loading={loading}
-        emptyTitle="Hakuna jamii zilizopatikana"
+        emptyTitle={SW.bidhaa.hakunaJamii}
         emptyIcon={FolderOpen}
       />
 
@@ -169,13 +169,13 @@ export default function CategoryPage() {
               label={SW.bidhaa.msimboJamii}
               value={form.category_code}
               onChange={set('category_code')}
-              placeholder="Mfano: CCTV-CAM"
+              placeholder={SW.bidhaa.msimboJamiiPlaceholder}
             />
             <Input
-              label="Brand / Mtengenezaji"
+              label={SW.bidhaa.brandMtengenezaji}
               value={form.brand_name}
               onChange={set('brand_name')}
-              placeholder="Mfano: Hikvision, Dahua"
+              placeholder={SW.bidhaa.brandPlaceholder}
             />
           </div>
           {/* Row 2: Jina (required) */}
@@ -183,22 +183,22 @@ export default function CategoryPage() {
             label={SW.bidhaa.jinaJamii}
             value={form.name}
             onChange={set('name')}
-            placeholder="Ingiza jina la jamii (Mfano: Cameras)"
+            placeholder={SW.bidhaa.jinaJamiiPlaceholder}
             required
           />
           {/* Row 3: Jina Kiswahili + Familia */}
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Jina kwa Kiswahili"
+              label={SW.bidhaa.jinaKiswahili}
               value={form.name_sw}
               onChange={set('name_sw')}
-              placeholder="Jina kwa Kiswahili (hiari)"
+              placeholder={SW.bidhaa.jinaKiswahiliPlaceholder}
             />
             <Input
               label={SW.bidhaa.familiaJamii}
               value={form.family}
               onChange={set('family')}
-              placeholder="Mfano: Vifaa vya Usalama"
+              placeholder={SW.bidhaa.familiaJamiiPlaceholder}
             />
           </div>
           {/* Maelezo */}
@@ -210,7 +210,7 @@ export default function CategoryPage() {
               value={form.description}
               onChange={set('description')}
               rows={3}
-              placeholder="Ingiza maelezo ya jamii hii"
+              placeholder={SW.bidhaa.maelezoJamiiPlaceholder}
               className="w-full rounded-lg bg-bg-panel border border-border text-text-primary placeholder-text-muted px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
             />
           </div>
@@ -221,7 +221,7 @@ export default function CategoryPage() {
       <Modal
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
-        title="Futa Jamii"
+        title={SW.bidhaa.futaJamiiKichwa}
         size="sm"
         footer={
           <>
@@ -234,10 +234,10 @@ export default function CategoryPage() {
       >
         <div className="space-y-2">
           <p className="text-sm font-medium text-text-primary">
-            Je, una uhakika wa kufuta jamii &quot;{deleteTarget?.name}&quot;?
+            {SW.bidhaa.thibitishaFutaJamii(deleteTarget?.name)}
           </p>
           <p className="text-sm text-text-secondary">
-            Jamii hii itafutwa kabisa. Bidhaa zinazotumia jamii hii hazitaweza kufutwa — unahitaji kuhamisha bidhaa kwanza.
+            {SW.bidhaa.futaJamiiMaelezo}
           </p>
         </div>
       </Modal>

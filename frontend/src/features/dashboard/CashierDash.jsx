@@ -16,8 +16,8 @@ export default function CashierDash() {
 
   return (
     <PageWrapper
-      title="Dashibodi ya Mhusika wa Fedha"
-      subtitle="Mauzo ya leo"
+      title={SW.dashibodi.mhusikaFedha}
+      subtitle={SW.dashibodi.subtitleCashier}
       action={
         <Button onClick={() => navigate('/mauzo')} leftIcon={<ShoppingBag size={16} />}>
           {SW.nav.mauzo}
@@ -25,17 +25,17 @@ export default function CashierDash() {
       }
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Mauzo Leo" value={formatCurrency(data?.today_revenue)} icon={TrendingUp} color="green" loading={loading} />
-        <KpiCard title="Muamala Leo" value={formatNumber(data?.today_transactions)} icon={Receipt} color="blue" loading={loading} />
-        <KpiCard title="Wastani wa Uuzaji" value={formatCurrency(data?.avg_sale_value)} icon={ShoppingBag} color="purple" loading={loading} />
-        <KpiCard title="Muamala wa Mwisho" value={data?.last_sale_time ? formatDateTime(data.last_sale_time) : '-'} icon={Clock} color="yellow" loading={loading} />
+        <KpiCard title={SW.dashibodi.mauzoLeo} value={formatCurrency(data?.today_revenue)} icon={TrendingUp} color="green" loading={loading} />
+        <KpiCard title={SW.dashibodi.muamalaLeo} value={formatNumber(data?.today_transactions)} icon={Receipt} color="blue" loading={loading} />
+        <KpiCard title={SW.ripoti.wastaniWaUuzaji} value={formatCurrency(data?.avg_sale_value)} icon={ShoppingBag} color="purple" loading={loading} />
+        <KpiCard title={SW.dashibodi.muamalaWaMwisho} value={data?.last_sale_time ? formatDateTime(data.last_sale_time) : '-'} icon={Clock} color="yellow" loading={loading} />
       </div>
 
-      <Card title="Mwelekeo wa Mauzo Leo">
+      <Card title={SW.dashibodi.mwelekeoMauzoLeo}>
         <SalesTrendChart data={data?.sales_trend || []} />
       </Card>
 
-      <Card title="Mauzo ya Hivi Karibuni">
+      <Card title={SW.dashibodi.mauzoHivKaribuni}>
         <div className="space-y-2">
           {(data?.recent_sales || []).map((sale) => (
             <div key={sale.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
@@ -45,7 +45,7 @@ export default function CashierDash() {
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold text-accent-green">{formatCurrency(sale.total_amount)}</p>
-                <p className="text-xs text-text-muted">{sale.items_count} bidhaa</p>
+                <p className="text-xs text-text-muted">{SW.bidhaa.idadiBidhaa(sale.items_count)}</p>
               </div>
             </div>
           ))}

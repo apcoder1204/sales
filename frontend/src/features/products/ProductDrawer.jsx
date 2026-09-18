@@ -62,7 +62,7 @@ export default function ProductDrawer({ open, onClose, product, onSaved }) {
           value={form.category_id}
           onChange={set('category_id')}
           options={categories}
-          placeholder="Chagua kitengo..."
+          placeholder={SW.bidhaa.chaguaKitenguPlaceholder}
           required
         />
         <div className="grid grid-cols-2 gap-3">

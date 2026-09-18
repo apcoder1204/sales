@@ -12,26 +12,27 @@ import TopProductsChart from '@components/charts/TopProductsChart'
 import { reportService } from '@services/reportService'
 import { usePermission } from '@hooks/usePermission'
 import { formatCurrency, formatDateTime, formatNumber } from '@utils/formatters'
-import { REPORT_PERIODS } from '@utils/constants'
+import { getReportPeriods } from '@utils/constants'
 import { downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
 import { useToast } from '@hooks/useToast'
 import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import SW from '@constants/sw'
 
-const REPORT_TYPES = [
-  { value: 'sales', label: SW.ripoti.mauzo, permission: 'reports.sales' },
-  { value: 'inventory', label: SW.ripoti.hifadhi, permission: 'reports.inventory' },
-  { value: 'stock_movements', label: SW.ripoti.harakati, permission: 'reports.inventory' },
-  { value: 'branch_performance', label: SW.ripoti.tawi, permission: 'reports.branch' },
-  { value: 'cashier_performance', label: SW.ripoti.mhusika, permission: 'reports.cashier' },
-  { value: 'low_stock', label: SW.ripoti.hisaChini, permission: 'reports.inventory' },
-  { value: 'closing', label: SW.ripoti.ufungaji, permission: 'reports.closing' },
-]
-
 export default function ReportsPage() {
   const { can } = usePermission()
   const toast = useToast()
   const branchFilter = useActiveBranchFilter()
+
+  const REPORT_TYPES = [
+    { value: 'sales', label: SW.ripoti.mauzo, permission: 'reports.sales' },
+    { value: 'inventory', label: SW.ripoti.hifadhi, permission: 'reports.inventory' },
+    { value: 'stock_movements', label: SW.ripoti.harakati, permission: 'reports.inventory' },
+    { value: 'branch_performance', label: SW.ripoti.tawi, permission: 'reports.branch' },
+    { value: 'cashier_performance', label: SW.ripoti.mhusika, permission: 'reports.cashier' },
+    { value: 'low_stock', label: SW.ripoti.hisaChini, permission: 'reports.inventory' },
+    { value: 'closing', label: SW.ripoti.ufungaji, permission: 'reports.closing' },
+  ]
+
   const [reportType, setReportType] = useState('sales')
   const [period, setPeriod] = useState('today')
   const [dateFrom, setDateFrom] = useState('')
@@ -59,7 +60,7 @@ export default function ReportsPage() {
       if (format === 'pdf') await downloadPDF('closing', exportData, closing.business_date)
       else await downloadExcel('closing', exportData, closing.business_date)
     } catch {
-      toast.error('Imeshindwa kupakua ripoti. Jaribu tena.')
+      toast.error(SW.ripoti.imeshindwaKupakua)
     } finally {
       setExporting(null)
     }
@@ -72,7 +73,7 @@ export default function ReportsPage() {
       if (format === 'pdf') await downloadPDF(activeReportType, data, period)
       else await downloadExcel(activeReportType, data, period)
     } catch {
-      toast.error('Imeshindwa kupakua ripoti. Jaribu tena.')
+      toast.error(SW.ripoti.imeshindwaKupakua)
     } finally {
       setExporting(null)
     }
@@ -108,12 +109,12 @@ export default function ReportsPage() {
   useEffect(() => { fetchReport() }, [fetchReport])
 
   return (
-    <PageWrapper title={SW.nav.ripoti} subtitle="Ripoti na uchambuzi wa biashara">
+    <PageWrapper title={SW.nav.ripoti} subtitle={SW.ripoti.subtitle}>
       {/* Filters */}
       <Card>
         <div className="flex flex-wrap gap-3 items-end">
           <Select
-            label="Aina ya Ripoti"
+            label={SW.ripoti.aina}
             value={reportType}
             onChange={(e) => setReportType(e.target.value)}
             options={availableTypes}
@@ -121,21 +122,21 @@ export default function ReportsPage() {
           />
           {activeReportType !== 'stock_movements' && activeReportType !== 'inventory' && activeReportType !== 'low_stock' && (
             <Select
-              label="Kipindi"
+              label={SW.ripoti.kipindiLabel}
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              options={REPORT_PERIODS}
+              options={getReportPeriods()}
               containerClassName="min-w-36"
             />
           )}
           {period === 'custom' && (
             <>
-              <Input label="Tarehe ya Kwanza" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              <Input label="Tarehe ya Mwisho" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <Input label={SW.ripoti.tareheKwanza} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <Input label={SW.ripoti.tareheMwisho} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </>
           )}
           <Button onClick={fetchReport} loading={loading} leftIcon={<BarChart3 size={16} />}>
-            Onyesha Ripoti
+            {SW.ripoti.onyeshaRipoti}
           </Button>
         </div>
       </Card>
@@ -172,13 +173,13 @@ export default function ReportsPage() {
 
       {data && !loading && activeReportType === 'closing' && (
         <p className="text-sm text-text-muted">
-          {availableTypes.find((t) => t.value === activeReportType)?.label} — pakua ripoti ya kila siku kutoka jedwali hapa chini
+          {availableTypes.find((t) => t.value === activeReportType)?.label} — {SW.ripoti.pakuaRipotiKilaSiku}
         </p>
       )}
 
       {loading && (
         <div className="glass-card p-8 text-center text-text-muted animate-pulse">
-          Inapakia ripoti...
+          {SW.ripoti.inapakiaRipoti}
         </div>
       )}
 
@@ -238,46 +239,46 @@ function SalesReport({ data }) {
   }))
 
   const paymentCols = [
-    { key: 'method', header: 'Njia ya Malipo' },
-    { key: 'count', header: 'Idadi', render: (v) => formatNumber(v) },
-    { key: 'total', header: 'Jumla', render: (v) => <span className="font-semibold text-accent-green">{formatCurrency(v)}</span> },
+    { key: 'method', header: SW.mauzo.njiaYaLipa },
+    { key: 'count', header: SW.common.idadi, render: (v) => formatNumber(v) },
+    { key: 'total', header: SW.common.jumla, render: (v) => <span className="font-semibold text-accent-green">{formatCurrency(v)}</span> },
   ]
 
   const topProductCols = [
-    { key: 'product_name', header: 'Bidhaa' },
-    { key: 'quantity_sold', header: 'Idadi Iliyouzwa', render: (v) => formatNumber(v) },
-    { key: 'revenue', header: 'Mapato', render: (v) => <span className="font-semibold text-accent-green">{formatCurrency(v)}</span> },
+    { key: 'product_name', header: SW.bidhaa.bidhaa },
+    { key: 'quantity_sold', header: SW.ripoti.idadiIliyouzwa, render: (v) => formatNumber(v) },
+    { key: 'revenue', header: SW.ripoti.mapato, render: (v) => <span className="font-semibold text-accent-green">{formatCurrency(v)}</span> },
   ]
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Mauzo Yote" value={<span className="text-accent-green">{formatCurrency(s.total_revenue)}</span>} />
-        <KpiCard label="Muamala" value={formatNumber(s.total_transactions)} />
-        <KpiCard label="Wastani wa Uuzaji" value={<span className="text-primary-light">{formatCurrency(s.avg_transaction)}</span>} />
+        <KpiCard label={SW.ripoti.mauzoYote} value={<span className="text-accent-green">{formatCurrency(s.total_revenue)}</span>} />
+        <KpiCard label={SW.ripoti.muamala} value={formatNumber(s.total_transactions)} />
+        <KpiCard label={SW.ripoti.wastaniWaUuzaji} value={<span className="text-primary-light">{formatCurrency(s.avg_transaction)}</span>} />
       </div>
 
       {trendData.length > 0 && (
-        <Card title="Mwelekeo wa Mauzo">
+        <Card title={SW.ripoti.mwelekeoWaMauzo}>
           <SalesTrendChart data={trendData} />
         </Card>
       )}
 
       {topData.length > 0 && (
-        <Card title="Bidhaa Zinazouzwa Zaidi">
+        <Card title={SW.ripoti.bidhaaZinazouzwaZaidi}>
           <TopProductsChart data={topData} />
-          <DataTable columns={topProductCols} data={topData} emptyTitle="Hakuna data" />
+          <DataTable columns={topProductCols} data={topData} emptyTitle={SW.common.hakuna} />
         </Card>
       )}
 
       {data.payment_breakdown && data.payment_breakdown.length > 0 && (
-        <Card title="Njia za Malipo">
-          <DataTable columns={paymentCols} data={data.payment_breakdown} emptyTitle="Hakuna data" />
+        <Card title={SW.ripoti.njiaZaMalipo}>
+          <DataTable columns={paymentCols} data={data.payment_breakdown} emptyTitle={SW.common.hakuna} />
         </Card>
       )}
 
       {!trendData.length && !topData.length && (
-        <div className="glass-card p-8 text-center text-text-muted">Hakuna data kwa kipindi hiki</div>
+        <div className="glass-card p-8 text-center text-text-muted">{SW.ripoti.hakunaDataKipindi}</div>
       )}
     </div>
   )
@@ -287,36 +288,36 @@ function InventoryReport({ data }) {
   const s = data.summary || {}
 
   const branchCols = [
-    { key: 'branch', header: 'Tawi' },
-    { key: 'total_quantity', header: 'Kiasi Chote', render: (v) => formatNumber(v) },
-    { key: 'total_value', header: 'Thamani', render: (v) => <span className="font-semibold">{formatCurrency(v)}</span> },
+    { key: 'branch', header: SW.ufungaji.tawi },
+    { key: 'total_quantity', header: SW.ripoti.kiasiChote, render: (v) => formatNumber(v) },
+    { key: 'total_value', header: SW.ripoti.thamani, render: (v) => <span className="font-semibold">{formatCurrency(v)}</span> },
   ]
 
   const lowStockCols = [
-    { key: 'product', header: 'Bidhaa' },
-    { key: 'product_code', header: 'Msimbo' },
-    { key: 'branch', header: 'Tawi' },
-    { key: 'current_stock', header: 'Bidhaa Iliyobaki', render: (v) => <span className="font-bold text-accent-red">{formatNumber(v)}</span> },
-    { key: 'minimum_stock', header: 'Kiwango cha Chini', render: (v) => formatNumber(v) },
-    { key: 'deficit', header: 'Upungufu', render: (v) => <span className="text-accent-red">{formatNumber(v)}</span> },
+    { key: 'product', header: SW.bidhaa.bidhaa },
+    { key: 'product_code', header: SW.ripoti.msimbo },
+    { key: 'branch', header: SW.ufungaji.tawi },
+    { key: 'current_stock', header: SW.ripoti.bidhaaIliyobaki, render: (v) => <span className="font-bold text-accent-red">{formatNumber(v)}</span> },
+    { key: 'minimum_stock', header: SW.ripoti.kiwangoChaChini, render: (v) => formatNumber(v) },
+    { key: 'deficit', header: SW.ripoti.upungufu, render: (v) => <span className="text-accent-red">{formatNumber(v)}</span> },
   ]
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <KpiCard label="Bidhaa Zote" value={formatNumber(s.total_products)} />
-        <KpiCard label="Kiasi Chote" value={formatNumber(s.total_quantity)} />
-        <KpiCard label="Thamani ya Inventory" value={<span className="text-text-primary">{formatCurrency(s.total_value)}</span>} />
-        <KpiCard label="Bidhaa za Hisaa Chini" value={<span className="text-accent-red">{formatNumber(s.low_stock_count)}</span>} />
+        <KpiCard label={SW.ripoti.bidhaaZote} value={formatNumber(s.total_products)} />
+        <KpiCard label={SW.ripoti.kiasiChote} value={formatNumber(s.total_quantity)} />
+        <KpiCard label={SW.ripoti.thamaniYaInventory} value={<span className="text-text-primary">{formatCurrency(s.total_value)}</span>} />
+        <KpiCard label={SW.ripoti.bidhaaZaHisaaChini} value={<span className="text-accent-red">{formatNumber(s.low_stock_count)}</span>} />
       </div>
 
-      <Card title="Inventory kwa Tawi">
-        <DataTable columns={branchCols} data={data.by_branch || []} emptyTitle="Hakuna data" />
+      <Card title={SW.ripoti.inventoryKwaTawi}>
+        <DataTable columns={branchCols} data={data.by_branch || []} emptyTitle={SW.common.hakuna} />
       </Card>
 
       {data.low_stock_items && data.low_stock_items.length > 0 && (
-        <Card title="Bidhaa za Hisaa Chini">
-          <DataTable columns={lowStockCols} data={data.low_stock_items} emptyTitle="Hakuna bidhaa" />
+        <Card title={SW.ripoti.bidhaaZaHisaaChini}>
+          <DataTable columns={lowStockCols} data={data.low_stock_items} emptyTitle={SW.ripoti.hakunaBidhaa} />
         </Card>
       )}
     </div>
@@ -324,48 +325,39 @@ function InventoryReport({ data }) {
 }
 
 function StockMovementsReport({ data }) {
-  const TX_LABELS = {
-    sale: 'Uuzaji',
-    adjustment: 'Marekebisho',
-    transfer_in: 'Uhamisho (Ndani)',
-    transfer_out: 'Uhamisho (Nje)',
-    purchase: 'Ununuzi',
-    return: 'Urejesho',
-  }
-
   const cols = [
-    { key: 'product', header: 'Bidhaa' },
-    { key: 'branch', header: 'Tawi' },
+    { key: 'product', header: SW.bidhaa.bidhaa },
+    { key: 'branch', header: SW.ufungaji.tawi },
     {
       key: 'transaction_type',
-      header: 'Aina',
+      header: SW.hifadhi.aina,
       render: (v) => (
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
           v === 'sale' ? 'bg-accent-red/10 text-accent-red' :
           v === 'transfer_in' || v === 'purchase' ? 'bg-accent-green/10 text-accent-green' :
           'bg-bg-hover text-text-muted'
         }`}>
-          {TX_LABELS[v] || v}
+          {SW.hali.harakati[v] || v}
         </span>
       ),
     },
     {
       key: 'quantity_change',
-      header: 'Mabadiliko',
+      header: SW.hifadhi.mabadiliko,
       render: (v) => (
         <span className={`font-semibold ${v > 0 ? 'text-accent-green' : 'text-accent-red'}`}>
           {v > 0 ? `+${formatNumber(v)}` : formatNumber(v)}
         </span>
       ),
     },
-    { key: 'quantity_after', header: 'Kiasi Kipya', render: (v) => formatNumber(v) },
-    { key: 'performed_by', header: 'Aliyefanya' },
-    { key: 'created_at', header: 'Tarehe', render: (v) => formatDateTime(v) },
+    { key: 'quantity_after', header: SW.ripoti.kiasiKipya, render: (v) => formatNumber(v) },
+    { key: 'performed_by', header: SW.ripoti.aliyefanya },
+    { key: 'created_at', header: SW.common.tarehe, render: (v) => formatDateTime(v) },
   ]
 
   return (
-    <Card title="Harakati za Bidhaa">
-      <DataTable columns={cols} data={data.items || []} emptyTitle="Hakuna harakati" />
+    <Card title={SW.hifadhi.harakati}>
+      <DataTable columns={cols} data={data.items || []} emptyTitle={SW.ripoti.hakunaHarakati} />
     </Card>
   )
 }
@@ -380,20 +372,20 @@ function BranchReport({ data }) {
   return (
     <div className="space-y-4">
       {chartData.length > 0 && (
-        <Card title="Mauzo kwa Tawi">
+        <Card title={SW.ripoti.mauzoKwaTawi}>
           <BranchSalesChart data={chartData} />
         </Card>
       )}
       <DataTable
         columns={[
-          { key: 'branch', header: 'Tawi' },
-          { key: 'total_revenue', header: 'Mauzo', render: (v) => <span className="font-semibold text-accent-green">{formatCurrency(v)}</span> },
-          { key: 'transaction_count', header: 'Muamala', render: (v) => formatNumber(v) },
-          { key: 'avg_transaction', header: 'Wastani', render: (v) => formatCurrency(v) },
-          { key: 'items_sold', header: 'Bidhaa Zilizouzwa', render: (v) => formatNumber(v) },
+          { key: 'branch', header: SW.ufungaji.tawi },
+          { key: 'total_revenue', header: SW.mauzo.mauzo, render: (v) => <span className="font-semibold text-accent-green">{formatCurrency(v)}</span> },
+          { key: 'transaction_count', header: SW.ripoti.muamala, render: (v) => formatNumber(v) },
+          { key: 'avg_transaction', header: SW.ripoti.wastani, render: (v) => formatCurrency(v) },
+          { key: 'items_sold', header: SW.ripoti.bidhaaZilizouzwa, render: (v) => formatNumber(v) },
         ]}
         data={data.branches || []}
-        emptyTitle="Hakuna data"
+        emptyTitle={SW.common.hakuna}
       />
     </div>
   )
@@ -403,15 +395,15 @@ function CashierReport({ data }) {
   return (
     <DataTable
       columns={[
-        { key: 'cashier', header: 'Mhusika' },
-        { key: 'branch', header: 'Tawi' },
-        { key: 'total_revenue', header: 'Mauzo', render: (v) => <span className="text-accent-green font-semibold">{formatCurrency(v)}</span> },
-        { key: 'transaction_count', header: 'Muamala', render: (v) => formatNumber(v) },
-        { key: 'avg_transaction', header: 'Wastani', render: (v) => formatCurrency(v) },
-        { key: 'items_sold', header: 'Bidhaa Zilizouzwa', render: (v) => formatNumber(v) },
+        { key: 'cashier', header: SW.ripoti.mhusikaHeader },
+        { key: 'branch', header: SW.ufungaji.tawi },
+        { key: 'total_revenue', header: SW.mauzo.mauzo, render: (v) => <span className="text-accent-green font-semibold">{formatCurrency(v)}</span> },
+        { key: 'transaction_count', header: SW.ripoti.muamala, render: (v) => formatNumber(v) },
+        { key: 'avg_transaction', header: SW.ripoti.wastani, render: (v) => formatCurrency(v) },
+        { key: 'items_sold', header: SW.ripoti.bidhaaZilizouzwa, render: (v) => formatNumber(v) },
       ]}
       data={data.cashiers || []}
-      emptyTitle="Hakuna data"
+      emptyTitle={SW.common.hakuna}
     />
   )
 }
@@ -498,7 +490,7 @@ function ClosingReport({ data, onExport, exporting, canDownload }) {
           },
         ]}
         data={data.closings || []}
-        emptyTitle="Hakuna ufungaji kwa kipindi hiki"
+        emptyTitle={SW.ripoti.hakunaUfungajiKipindi}
       />
     </div>
   )
@@ -508,15 +500,15 @@ function LowStockReport({ data }) {
   return (
     <DataTable
       columns={[
-        { key: 'product', header: 'Bidhaa' },
-        { key: 'product_code', header: 'Msimbo' },
-        { key: 'branch', header: 'Tawi' },
-        { key: 'current_stock', header: 'Bidhaa Iliyobaki', render: (v) => <span className="font-bold text-accent-red">{formatNumber(v)}</span> },
-        { key: 'minimum_stock', header: 'Kiwango cha Chini', render: (v) => formatNumber(v) },
-        { key: 'deficit', header: 'Upungufu', render: (v) => <span className="text-accent-red">{formatNumber(v)}</span> },
+        { key: 'product', header: SW.bidhaa.bidhaa },
+        { key: 'product_code', header: SW.ripoti.msimbo },
+        { key: 'branch', header: SW.ufungaji.tawi },
+        { key: 'current_stock', header: SW.ripoti.bidhaaIliyobaki, render: (v) => <span className="font-bold text-accent-red">{formatNumber(v)}</span> },
+        { key: 'minimum_stock', header: SW.ripoti.kiwangoChaChini, render: (v) => formatNumber(v) },
+        { key: 'deficit', header: SW.ripoti.upungufu, render: (v) => <span className="text-accent-red">{formatNumber(v)}</span> },
       ]}
       data={data.items || []}
-      emptyTitle="Hakuna bidhaa za idadi chini"
+      emptyTitle={SW.ripoti.hakunaBidhaaHisaChini}
     />
   )
 }

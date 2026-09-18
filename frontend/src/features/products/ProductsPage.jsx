@@ -17,15 +17,15 @@ import { useDebounce } from '@hooks/useDebounce'
 import { usePagination } from '@hooks/usePagination'
 import SW from '@constants/sw'
 
-const TABS = [
-  { key: 'bidhaa', label: 'Bidhaa' },
-  { key: 'hifadhi', label: 'Inventory' },
-]
-
 export default function ProductsPage() {
   const { can } = usePermission()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('bidhaa')
+
+  const TABS = [
+    { key: 'bidhaa', label: SW.bidhaa.bidhaa },
+    { key: 'hifadhi', label: SW.hifadhi.hifadhi },
+  ]
 
   // Products state
   const [products, setProducts] = useState([])
@@ -117,7 +117,7 @@ export default function ProductsPage() {
   return (
     <PageWrapper
       title={SW.nav.orodhaYaBidhaa}
-      subtitle="Dhibiti bidhaa na hifadhi ya duka"
+      subtitle={SW.bidhaa.subtitle}
       action={
         <div className="flex gap-2">
           <Button
@@ -125,7 +125,7 @@ export default function ProductsPage() {
             onClick={() => navigate('/hifadhi/harakati')}
             leftIcon={<Activity size={16} />}
           >
-            Harakati
+            {SW.nav.harakatiZaBidhaa}
           </Button>
           {can('products.write') && (
             <Button onClick={openAdd} leftIcon={<Plus size={16} />}>
@@ -157,7 +157,7 @@ export default function ProductsPage() {
           value={search}
           onChange={setSearch}
           className="max-w-xs"
-          placeholder="Tafuta bidhaa..."
+          placeholder={SW.bidhaa.tafutaPlaceholder}
         />
       </div>
 

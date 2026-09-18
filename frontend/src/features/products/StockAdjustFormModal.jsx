@@ -39,11 +39,11 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
 
   const handleSave = async () => {
     if (!form.product_id || !form.branch_id || !form.quantity) {
-      toast.error('Chagua bidhaa, stoo, na weka idadi')
+      toast.error(SW.bidhaa.chaguaBidhaaStooIdadi)
       return
     }
     const qty = parseInt(form.quantity)
-    if (isNaN(qty) || qty === 0) { toast.error('Weka idadi sahihi (si sifuri)'); return }
+    if (isNaN(qty) || qty === 0) { toast.error(SW.bidhaa.idadiSahihi); return }
 
     await call(
       () => inventoryService.adjust({
@@ -66,7 +66,7 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
     <Modal
       open={open}
       onClose={handleClose}
-      title="Marekebisho Ya Bidhaa"
+      title={SW.hifadhi.marekebisho}
       size="md"
       footer={
         <>
@@ -81,28 +81,28 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
     >
       <div className="space-y-5">
         <Select
-          label="Bidhaa"
+          label={SW.bidhaa.bidhaa}
           value={form.product_id}
           onChange={set('product_id')}
           options={products}
-          placeholder="Chagua bidhaa"
+          placeholder={SW.bidhaa.chaguaBidhaaPlaceholder}
           leftIcon={<Package size={16} />}
           required
         />
 
         <Select
-          label="Hifadhi Kuu (Duka Kuu)"
+          label={SW.bidhaa.hifadhiKuuDukaKuu}
           value={form.branch_id}
           onChange={set('branch_id')}
           options={branches}
-          placeholder="Hifadhi Kuu"
+          placeholder={SW.hali.tawi.main_store}
           leftIcon={<Warehouse size={16} />}
           required
         />
 
         <div className="relative">
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
-            Badiliko la Idadi (+/-) <span className="text-accent-red">*</span>
+            {SW.bidhaa.badilikoLaIdadi} <span className="text-accent-red">*</span>
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted flex items-center pointer-events-none">
@@ -112,7 +112,7 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
               type="number"
               value={form.quantity}
               onChange={set('quantity')}
-              placeholder="Mfano: -5 kupunguza, 5 kuongeza"
+              placeholder={SW.bidhaa.badilikoPlaceholder}
               className="input-base pl-9 w-full"
               required
             />
@@ -120,21 +120,21 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
           {form.quantity && parseInt(form.quantity) !== 0 && (
             <p className={`text-xs mt-1 ${parseInt(form.quantity) > 0 ? 'text-accent-green' : 'text-accent-red'}`}>
               {parseInt(form.quantity) > 0
-                ? `Itaongeza bidhaa kwa ${parseInt(form.quantity)}`
-                : `Itapunguza bidhaa kwa ${Math.abs(parseInt(form.quantity))}`}
+                ? SW.bidhaa.itaongezaBidhaaKwa(parseInt(form.quantity))
+                : SW.bidhaa.itapunguzaBidhaaKwa(Math.abs(parseInt(form.quantity)))}
             </p>
           )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
-            Sababu <span className="text-text-muted text-xs font-normal">(hiari)</span>
+            {SW.hifadhi.sababu} <span className="text-text-muted text-xs font-normal">(hiari)</span>
           </label>
           <textarea
             value={form.notes}
             onChange={set('notes')}
             rows={4}
-            placeholder="Eleza sababu ya marekebisho (mfano: Imeharibika, Imeibiwa, Hesabu mbaya)"
+            placeholder={SW.bidhaa.sababuMarekebishoPlaceholder}
             className="w-full rounded-lg bg-bg-panel border border-border text-text-primary placeholder-text-muted px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
           />
         </div>

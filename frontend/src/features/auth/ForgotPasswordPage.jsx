@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 leftIcon={<Mail size={16} />}
-                placeholder="jina@mfano.com"
+                placeholder={SW.auth.barua_pepePlaceholder}
                 autoComplete="email"
                 autoFocus
                 required

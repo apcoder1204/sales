@@ -13,13 +13,6 @@ import { useAuth } from '@hooks/useAuth'
 import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
 
-const UNIT_OPTIONS = Object.entries(SW.bidhaa.vipimo).map(([value, label]) => ({ value, label }))
-const STATUS_OPTIONS = [
-  { value: 'active', label: SW.bidhaa.hai },
-  { value: 'inactive', label: SW.bidhaa.imesimama },
-  { value: 'discontinued', label: SW.bidhaa.imekomeshwa },
-]
-
 const empty = {
   product_code: '', name: '', category_id: '', family_name: '',
   unit: 'Kipande', cost_price: '', selling_price: '',
@@ -31,6 +24,12 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
   const isEdit = Boolean(product)
   const { user } = useAuth()
   const isGlobal = isGlobalRole(user)
+  const UNIT_OPTIONS = Object.entries(SW.bidhaa.vipimo).map(([value, label]) => ({ value, label }))
+  const STATUS_OPTIONS = [
+    { value: 'active', label: SW.bidhaa.hai },
+    { value: 'inactive', label: SW.bidhaa.imesimama },
+    { value: 'discontinued', label: SW.bidhaa.imekomeshwa },
+  ]
   const [form, setForm] = useState(empty)
   const [categories, setCategories] = useState([])
   const [branches, setBranches] = useState([])
@@ -84,7 +83,7 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
 
   const handleSave = async () => {
     if (!form.name || !form.category_id || !form.selling_price) {
-      toast.error('Tafadhali jaza sehemu zote zinazohitajika')
+      toast.error(SW.makosa.jazaSehemuZote)
       return
     }
     const payload = {
@@ -114,10 +113,10 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
                 branch_id: selectedBranch,
                 type: 'stock_in',
                 quantity: qty,
-                notes: 'Idadi ya awali',
+                notes: SW.bidhaa.idadiYaAwaliNotes,
               })
             } catch {
-              toast.error('Bidhaa imehifadhiwa lakini idadi haikuongezwa — ongeza kwa Marekebisho ya Bidhaa')
+              toast.error(SW.bidhaa.errorInitialStock)
             }
           }
           onSaved()
@@ -150,11 +149,11 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {isGlobal ? (
             <Select
-              label="Hifadhi Kuu (Idadi ya Awali)"
+              label={SW.bidhaa.hifadhiKuuIdadiAwali}
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
               options={branches}
-              placeholder="Hifadhi Kuu"
+              placeholder={SW.hali.tawi.main_store}
             />
           ) : null}
           <Select
@@ -162,7 +161,7 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
             value={form.category_id}
             onChange={set('category_id')}
             options={categories}
-            placeholder="Chagua jamii ya bidhaa"
+            placeholder={SW.bidhaa.chaguaJamiiPlaceholder}
             required
             className={isGlobal ? '' : 'sm:col-span-2'}
           />
@@ -173,7 +172,7 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
             label={SW.bidhaa.jina}
             value={form.name}
             onChange={set('name')}
-            placeholder="Ingiza jina la bidhaa"
+            placeholder={SW.bidhaa.ingizaJinaPlaceholder}
             leftIcon={<Package size={16} />}
             required
           />
@@ -190,13 +189,13 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
             label={SW.bidhaa.msimbo}
             value={form.product_code}
             onChange={set('product_code')}
-            placeholder="Mfano: CCTV-001 (hiari, itatengenezwa kiotomatiki)"
+            placeholder={SW.bidhaa.msimboPlaceholder}
           />
           <Input
             label={SW.bidhaa.familia}
             value={form.family_name}
             onChange={set('family_name')}
-            placeholder="Mfano: Hikvision, Dahua, Reolink"
+            placeholder={SW.bidhaa.familiaPlaceholder}
           />
         </div>
 
@@ -207,7 +206,7 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
             min="0"
             value={form.cost_price}
             onChange={set('cost_price')}
-            placeholder="Ingiza bei ya ununuzi"
+            placeholder={SW.bidhaa.beiGhaliPlaceholder}
             leftIcon={<span className="text-xs font-bold">TSh</span>}
           />
           <Input
@@ -216,7 +215,7 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
             min="0"
             value={form.selling_price}
             onChange={set('selling_price')}
-            placeholder="Ingiza bei ya mauzo"
+            placeholder={SW.bidhaa.beiUzajiPlaceholder}
             leftIcon={<span className="text-xs font-bold">TSh</span>}
             required
           />
@@ -225,28 +224,30 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Input
-              label={isEdit ? SW.bidhaa.idadiKuanzia : `${SW.bidhaa.idadiKuanzia} (idadi unayoiingiza sasa)`}
+              label={isEdit ? SW.bidhaa.idadiKuanzia : `${SW.bidhaa.idadiKuanzia} (${SW.bidhaa.idadiKuanziaSuffix})`}
               type="number"
               min="0"
               value={isEdit ? '' : form.initial_qty}
               onChange={isEdit ? undefined : set('initial_qty')}
               disabled={isEdit}
-              placeholder={isEdit ? 'Tumia Marekebisho ya Bidhaa' : '0'}
+              placeholder={isEdit ? SW.bidhaa.tumiaMarekebishoPlaceholder : '0'}
               leftIcon={<span className="text-xs font-bold">#</span>}
             />
             {!isEdit && parseInt(form.initial_qty) > 0 && (
               <p className="text-xs text-accent-green mt-1">
-                Itaongeza {form.initial_qty} {isGlobal ? `kwenye tawi uliochagua` : 'kwenye tawi lako'}
+                {isGlobal
+                  ? SW.bidhaa.itaongezaKwenyeTawiChaguliwa(form.initial_qty)
+                  : SW.bidhaa.itaongezaKwenyeTawiLako(form.initial_qty)}
               </p>
             )}
           </div>
           <Input
-            label={`${SW.bidhaa.tahadhari} (kiwango cha chini cha tahadhari)`}
+            label={`${SW.bidhaa.tahadhari} (${SW.bidhaa.tahadhariSuffix})`}
             type="number"
             min="0"
             value={form.minimum_stock}
             onChange={set('minimum_stock')}
-            placeholder="Mfano: 5"
+            placeholder={SW.bidhaa.mfano5Placeholder}
             leftIcon={<span className="text-xs font-bold">#</span>}
           />
         </div>
@@ -265,7 +266,7 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
               label={SW.bidhaa.maelezo}
               value={form.description}
               onChange={set('description')}
-              placeholder="Maelezo ya ziada (hiari)"
+              placeholder={SW.bidhaa.maelezoZiadaPlaceholder}
             />
           </div>
         </div>

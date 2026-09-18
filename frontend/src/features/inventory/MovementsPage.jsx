@@ -9,7 +9,7 @@ import { inventoryService } from '@services/inventoryService'
 import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { usePagination } from '@hooks/usePagination'
 import { formatDateTime, formatNumber } from '@utils/formatters'
-import { TX_TYPES } from '@utils/constants'
+import { getTxTypes } from '@utils/constants'
 import SW from '@constants/sw'
 
 export default function MovementsPage() {
@@ -34,9 +34,9 @@ export default function MovementsPage() {
   useEffect(() => { pagination.reset() }, [branchFilter.branch_id])
 
   const columns = [
-    { key: 'created_at', header: 'Tarehe', render: (v) => formatDateTime(v) },
+    { key: 'created_at', header: SW.common.tarehe, render: (v) => formatDateTime(v) },
     {
-      key: 'product', header: 'Bidhaa',
+      key: 'product', header: SW.bidhaa.bidhaa,
       render: (v, row) => (
         <div>
           <p className="font-medium">{v}</p>
@@ -45,32 +45,32 @@ export default function MovementsPage() {
       ),
     },
     {
-      key: 'transaction_type', header: 'Aina',
+      key: 'transaction_type', header: SW.hifadhi.aina,
       render: (v) => {
-        const tx = TX_TYPES[v] || { label: v, color: 'gray' }
+        const tx = getTxTypes()[v] || { label: v, color: 'gray' }
         return <Badge color={tx.color}>{tx.label}</Badge>
       },
     },
     {
-      key: 'quantity_change', header: 'Mabadiliko',
+      key: 'quantity_change', header: SW.hifadhi.mabadiliko,
       render: (v) => (
         <span className={v > 0 ? 'text-accent-green font-semibold' : 'text-accent-red font-semibold'}>
           {v > 0 ? '+' : ''}{formatNumber(v)}
         </span>
       ),
     },
-    { key: 'quantity_before', header: 'Kabla', render: (v) => formatNumber(v) },
-    { key: 'quantity_after', header: 'Baada', render: (v) => <span className="font-medium">{formatNumber(v)}</span> },
-    { key: 'notes', header: 'Maelezo', render: (v) => <span className="text-text-muted text-xs">{v || '-'}</span> },
+    { key: 'quantity_before', header: SW.hifadhi.kabla, render: (v) => formatNumber(v) },
+    { key: 'quantity_after', header: SW.hifadhi.baada, render: (v) => <span className="font-medium">{formatNumber(v)}</span> },
+    { key: 'notes', header: SW.bidhaa.maelezo, render: (v) => <span className="text-text-muted text-xs">{v || '-'}</span> },
   ]
 
   return (
     <PageWrapper
       title={SW.hifadhi.harakati}
-      subtitle="Historia ya harakati zote za bidhaa"
+      subtitle={SW.hifadhi.historiaSubtitle}
       action={
         <Button variant="ghost" onClick={() => navigate('/hifadhi')} leftIcon={<ArrowLeft size={16} />}>
-          Rudi
+          {SW.common.rudi}
         </Button>
       }
     >
@@ -79,7 +79,7 @@ export default function MovementsPage() {
         data={items}
         loading={loading}
         pagination={pagination}
-        emptyTitle="Hakuna harakati zilizopatikana"
+        emptyTitle={SW.hifadhi.hakunaHarakati}
       />
     </PageWrapper>
   )

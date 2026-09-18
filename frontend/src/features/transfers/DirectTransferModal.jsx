@@ -52,7 +52,7 @@ export default function DirectTransferModal({ open, onClose, onSaved }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Uhamisho wa Moja kwa Moja"
+      title={SW.uhamisho.uhamishoWaKumoja}
       size="md"
       footer={
         <>
@@ -63,29 +63,29 @@ export default function DirectTransferModal({ open, onClose, onSaved }) {
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Chanzo (Hifadhi Kuu)" value={form.from_branch_id} onChange={set('from_branch_id')}
-            options={mainStoreOptions} placeholder="Chagua chanzo..." required />
-          <Select label="Lengo (Kioski cha POS)" value={form.to_branch_id} onChange={set('to_branch_id')}
-            options={posOptions} placeholder="Chagua kioski..." required />
+          <Select label={SW.uhamisho.chanzoHifadhiKuu} value={form.from_branch_id} onChange={set('from_branch_id')}
+            options={mainStoreOptions} placeholder={SW.uhamisho.chaguaChanzoPlaceholder} required />
+          <Select label={SW.uhamisho.lengoKioskiPos} value={form.to_branch_id} onChange={set('to_branch_id')}
+            options={posOptions} placeholder={SW.hifadhi.chaguaKioskiPlaceholder} required />
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium text-text-secondary">Bidhaa</p>
+          <p className="text-sm font-medium text-text-secondary">{SW.uhamisho.bidhaa}</p>
           {items.map((item, i) => (
             <div key={i} className="flex gap-2 items-end">
               <Select value={item.product_id} onChange={setItem(i, 'product_id')}
-                options={productOptions} placeholder="Bidhaa..." containerClassName="flex-1" />
+                options={productOptions} placeholder={SW.uhamisho.bidhaaPlaceholder} containerClassName="flex-1" />
               <Input type="number" min="1" value={item.quantity} onChange={setItem(i, 'quantity')}
-                placeholder="Idadi" containerClassName="w-24" />
+                placeholder={SW.common.idadi} containerClassName="w-24" />
               {items.length > 1 && (
                 <Button variant="danger" size="icon" onClick={() => removeItem(i)}>×</Button>
               )}
             </div>
           ))}
-          <Button variant="ghost" size="sm" onClick={addItem}>+ Ongeza Bidhaa</Button>
+          <Button variant="ghost" size="sm" onClick={addItem}>{SW.uhamisho.ongezaBidhaa}</Button>
         </div>
 
-        <Input label="Maelezo" value={form.notes} onChange={set('notes')} placeholder="Maelezo ya uhamisho..." />
+        <Input label={SW.bidhaa.maelezo} value={form.notes} onChange={set('notes')} placeholder={SW.uhamisho.maelezoYaUhamishoPlaceholder} />
       </div>
     </Modal>
   )

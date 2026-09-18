@@ -41,16 +41,16 @@ export default function InventoryPage() {
   return (
     <PageWrapper
       title={SW.nav.hifadhi}
-      subtitle="Hali ya bidhaa katika matawi yote"
+      subtitle={SW.hifadhi.subtitleHali}
       action={
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => navigate('/hifadhi/harakati')} leftIcon={<Activity size={16} />}>
-            Harakati
+            {SW.nav.harakatiZaBidhaa}
           </Button>
         </div>
       }
     >
-      <SearchInput value={search} onChange={setSearch} className="max-w-xs" placeholder="Tafuta bidhaa..." />
+      <SearchInput value={search} onChange={setSearch} className="max-w-xs" placeholder={SW.bidhaa.tafutaPlaceholder} />
 
       <InventoryGrid
         items={items}

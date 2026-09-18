@@ -13,15 +13,15 @@ import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { usePagination } from '@hooks/usePagination'
 import SW from '@constants/sw'
 
-const TABS = [
-  { key: 'requests', label: 'Maombi ya Bidhaa' },
-  { key: 'transfers', label: 'Uhamisho wa Moja kwa Moja' },
-]
-
 export default function TransfersPage() {
   const { can, role } = usePermission()
   const branchFilter = useActiveBranchFilter()
   const [tab, setTab] = useState('requests')
+
+  const TABS = [
+    { key: 'requests', label: SW.uhamisho.maombi },
+    { key: 'transfers', label: SW.uhamisho.uhamishoWaKumoja },
+  ]
   const [requests, setRequests] = useState([])
   const [transfers, setTransfers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -55,15 +55,15 @@ export default function TransfersPage() {
   return (
     <PageWrapper
       title={SW.nav.uhamisho}
-      subtitle="Simamia uhamisho wa bidhaa kati ya matawi"
+      subtitle={SW.uhamisho.subtitlePage}
       action={
         <div className="flex gap-2">
           <Button onClick={() => setCreateOpen(true)} leftIcon={<Plus size={16} />} variant="secondary">
-            Omba Bidhaa
+            {SW.uhamisho.ombaBidhaaBtn}
           </Button>
           {can('transfers.execute') && role !== 'cashier' && (
             <Button onClick={() => setDirectOpen(true)} leftIcon={<ArrowLeftRight size={16} />}>
-              Uhamisho wa Moja kwa Moja
+              {SW.uhamisho.uhamishoWaKumoja}
             </Button>
           )}
         </div>

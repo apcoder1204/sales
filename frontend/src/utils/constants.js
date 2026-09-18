@@ -1,49 +1,56 @@
-export const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Taslimu' },
-  { value: 'mobile_money', label: 'Malipo ya Simu' },
-  { value: 'bank_transfer', label: 'Benki' },
+import SW from '@constants/sw'
+
+// These are exported as functions (not pre-built objects/arrays) because SW is a
+// live object that LanguageContext repopulates in place on language switch — a
+// module-scope constant built from SW.* once at import time would freeze at
+// whichever language was active on first load and never update.
+
+export const getPaymentMethods = () => [
+  { value: 'cash', label: SW.hali.malipo.cash },
+  { value: 'mobile_money', label: SW.hali.malipo.mobile_money },
+  { value: 'bank_transfer', label: SW.hali.malipo.bank_transfer },
 ]
 
-export const TRANSFER_STATUSES = {
-  pending: { label: 'Inasubiri', color: 'yellow' },
-  approved: { label: 'Imekubaliwa', color: 'blue' },
-  rejected: { label: 'Imekataliwa', color: 'red' },
-  fulfilled: { label: 'Imetekelezwa', color: 'green' },
-  completed: { label: 'Imekamilika', color: 'green' },
-}
+export const getTransferStatuses = () => ({
+  pending: { label: SW.hali.uhamisho.pending, color: 'yellow' },
+  approved: { label: SW.hali.uhamisho.approved, color: 'blue' },
+  rejected: { label: SW.hali.uhamisho.rejected, color: 'red' },
+  fulfilled: { label: SW.hali.uhamisho.fulfilled, color: 'green' },
+  completed: { label: SW.hali.uhamisho.completed, color: 'green' },
+})
 
-export const PRODUCT_STATUSES = {
-  active: { label: 'Hai', color: 'green' },
-  inactive: { label: 'Imesimama', color: 'red' },
-}
+export const getProductStatuses = () => ({
+  active: { label: SW.hali.bidhaa.active, color: 'green' },
+  inactive: { label: SW.hali.bidhaa.inactive, color: 'red' },
+})
 
-export const SALE_STATUSES = {
-  completed: { label: 'Imekamilika', color: 'green' },
-  voided: { label: 'Imefutwa', color: 'red' },
-}
+export const getSaleStatuses = () => ({
+  completed: { label: SW.hali.mauzo.completed, color: 'green' },
+  voided: { label: SW.hali.mauzo.voided, color: 'red' },
+})
 
-export const TX_TYPES = {
-  sale: { label: 'Mauzo', color: 'red' },
-  transfer_in: { label: 'Uhamisho ndani', color: 'green' },
-  transfer_out: { label: 'Uhamisho nje', color: 'yellow' },
-  adjustment_in: { label: 'Marekebisho +', color: 'green' },
-  adjustment_out: { label: 'Marekebisho -', color: 'red' },
-  initial_stock: { label: 'Bidhaa ya Awali', color: 'blue' },
-  return: { label: 'Kurudisha', color: 'purple' },
-}
+export const getTxTypes = () => ({
+  sale: { label: SW.hali.harakati.sale, color: 'red' },
+  transfer_in: { label: SW.hali.harakati.transfer_in, color: 'green' },
+  transfer_out: { label: SW.hali.harakati.transfer_out, color: 'yellow' },
+  adjustment_in: { label: SW.hali.harakati.adjustment_in, color: 'green' },
+  adjustment_out: { label: SW.hali.harakati.adjustment_out, color: 'red' },
+  initial_stock: { label: SW.hali.harakati.initial_stock, color: 'blue' },
+  return: { label: SW.hali.harakati.return, color: 'purple' },
+})
 
-export const REPORT_PERIODS = [
-  { value: 'today', label: 'Leo' },
-  { value: 'week', label: 'Wiki Hii' },
-  { value: 'month', label: 'Mwezi Huu' },
-  { value: 'custom', label: 'Muda Maalum' },
+export const getReportPeriods = () => [
+  { value: 'today', label: SW.hali.kipindi.today },
+  { value: 'week', label: SW.hali.kipindi.week },
+  { value: 'month', label: SW.hali.kipindi.month },
+  { value: 'custom', label: SW.hali.kipindi.custom },
 ]
+
+export const getBranchTypes = () => ({
+  main_store: SW.hali.tawi.main_store,
+  pos_point: SW.hali.tawi.pos_point,
+})
 
 export const LOW_STOCK_THRESHOLD = 5
 
 export const PAGE_SIZES = [10, 25, 50, 100]
-
-export const BRANCH_TYPES = {
-  main_store: 'Hifadhi Kuu',
-  pos_point: 'Kioski cha POS',
-}

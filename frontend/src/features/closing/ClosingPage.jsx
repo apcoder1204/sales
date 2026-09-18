@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Lock, Unlock, Wallet, Smartphone, Landmark, Receipt, FileDown, FileSpreadsheet } from 'lucide-react'
+import { Lock, Unlock, Wallet, Smartphone, Landmark, Receipt, FileDown, FileSpreadsheet, DoorOpen } from 'lucide-react'
 import PageWrapper from '@components/layout/PageWrapper'
 import KpiCard from '@components/ui/KpiCard'
 import Select from '@components/ui/Select'
@@ -41,6 +41,7 @@ export default function ClosingPage() {
   const [preview, setPreview] = useState(null)
   const [countedCash, setCountedCash] = useState('')
   const [notes, setNotes] = useState('')
+  const [openingCash, setOpeningCash] = useState('')
   const [matumizi, setMatumizi] = useState([])
   const [history, setHistory] = useState([])
   const [reopenReason, setReopenReason] = useState({})
@@ -57,7 +58,7 @@ export default function ClosingPage() {
       if (format === 'pdf') await downloadPDF('closing', data, closing.business_date)
       else await downloadExcel('closing', data, closing.business_date)
     } catch {
-      toast.error('Imeshindwa kupakua ripoti. Jaribu tena.')
+      toast.error(SW.ripoti.imeshindwaKupakua)
     } finally {
       setExporting(null)
     }
@@ -117,15 +118,27 @@ export default function ClosingPage() {
         .map((m) => ({ description: m.description, amount: parseFloat(m.amount) })),
     }),
     {
-      successMsg: 'Siku imefungwa',
+      successMsg: SW.mafanikio.sikuImefungwa,
       onSuccess: () => { loadPreview(); loadHistory() },
+    }
+  )
+
+  const handleOpenRegister = () => call(
+    () => closingService.openRegister({
+      branch_id: branchId,
+      business_date: businessDate,
+      opening_cash: openingCash || 0,
+    }),
+    {
+      successMsg: SW.ufungaji.rejistaWazi,
+      onSuccess: () => { setOpeningCash(''); loadPreview(); loadHistory() },
     }
   )
 
   const handleReopen = (closing) => call(
     () => closingService.reopen(closing.id, reopenReason[closing.id] || ''),
     {
-      successMsg: 'Siku imefunguliwa tena',
+      successMsg: SW.mafanikio.sikuImefunguliwaTena,
       onSuccess: () => { loadPreview(); loadHistory() },
     }
   )
@@ -166,7 +179,7 @@ export default function ClosingPage() {
       render: (v) => Number(v) > 0 ? formatCurrency(v) : '—',
     },
     { key: 'closed_by', header: SW.ufungaji.aliyefunga, render: (v) => v || '—' },
-    { key: 'closed_at', header: 'Wakati', render: (v) => v ? formatDateTime(v) : '—' },
+    { key: 'closed_at', header: SW.ufungaji.wakati, render: (v) => v ? formatDateTime(v) : '—' },
     {
       key: '_actions', header: '',
       render: (_, row) => (
@@ -216,17 +229,51 @@ export default function ClosingPage() {
   ]
 
   return (
-    <PageWrapper title={SW.ufungaji.ufungaji} subtitle="Funga siku ya biashara na uangalie muhtasari wa malipo">
+    <PageWrapper title={SW.ufungaji.ufungaji} subtitle={SW.ufungaji.subtitle}>
       <div className="glass-card p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {isGlobal && (
-            <Select label={SW.ufungaji.tawi} value={branchId} onChange={(e) => setBranchId(e.target.value)} options={branchOptions} placeholder="Chagua tawi..." />
+            <Select label={SW.ufungaji.tawi} value={branchId} onChange={(e) => setBranchId(e.target.value)} options={branchOptions} placeholder={SW.mauzo.chaguaTawiPlaceholder} />
           )}
           <Input label={SW.ufungaji.tarehe} type="date" value={businessDate} onChange={(e) => setBusinessDate(e.target.value)} max={todayStr()} />
         </div>
 
         {preview && (
           <>
+            {preview.register_open && (
+              <div className="p-3 rounded-lg bg-accent-purple-muted space-y-1">
+                <div className="flex items-center gap-2 text-accent-purple text-sm font-medium">
+                  <DoorOpen size={16} /> {SW.ufungaji.rejistaNamba(preview.register_number)} — {SW.ufungaji.rejistaWazi}
+                </div>
+                {preview.opened_at && (
+                  <p className="text-xs text-text-muted">
+                    {SW.ufungaji.wakatiWaKufungua}: {formatDateTime(preview.opened_at)}
+                    {preview.opened_by && ` · ${SW.ufungaji.aliyefungua_rejista}: ${preview.opened_by}`}
+                    {preview.opening_cash != null && ` · ${SW.ufungaji.fedhaYaKuanzia}: ${formatCurrency(preview.opening_cash)}`}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {preview.already_closed && !preview.register_open && can('closing.close') && (
+              <div className="p-3 rounded-lg bg-bg-panel border border-border space-y-3">
+                <div className="flex items-center gap-2 text-text-secondary text-sm">
+                  <DoorOpen size={16} /> {SW.ufungaji.hakunaRejistaWazi}
+                </div>
+                <div className="flex items-end gap-2">
+                  <Input
+                    label={SW.ufungaji.fedhaYaKuanzia}
+                    type="number" min="0" value={openingCash}
+                    onChange={(e) => setOpeningCash(e.target.value)}
+                    containerClassName="flex-1"
+                  />
+                  <Button onClick={handleOpenRegister} loading={loading} leftIcon={<DoorOpen size={16} />}>
+                    {SW.ufungaji.funguaRejista}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {preview.already_closed && (
               <div className="p-3 rounded-lg bg-accent-green-muted space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -346,7 +393,7 @@ export default function ClosingPage() {
 
       <div className="glass-card p-4">
         <h3 className="text-sm font-semibold text-text-primary mb-3">{SW.ufungaji.historia}</h3>
-        <DataTable columns={historyColumns} data={history} loading={false} emptyTitle="Hakuna historia ya ufungaji" />
+        <DataTable columns={historyColumns} data={history} loading={false} emptyTitle={SW.ufungaji.hakunaHistoria} />
       </div>
     </PageWrapper>
   )

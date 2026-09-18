@@ -1,13 +1,14 @@
 import React from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { formatNumber } from '@utils/formatters'
+import SW from '@constants/sw'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   return (
     <div className="glass-card px-3 py-2 text-xs">
       <p className="text-text-secondary mb-1">{label}</p>
-      <p className="font-semibold text-accent-green">Idadi: {formatNumber(payload[0]?.value)}</p>
+      <p className="font-semibold text-accent-green">{SW.common.idadi}: {formatNumber(payload[0]?.value)}</p>
     </div>
   )
 }

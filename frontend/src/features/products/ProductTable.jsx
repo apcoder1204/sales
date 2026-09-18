@@ -16,30 +16,30 @@ export default function ProductTable({ products, loading, onEdit, pagination }) 
   const columns = [
     {
       key: 'product_code',
-      header: 'Msimbo',
+      header: SW.ripoti.msimbo,
       width: 110,
       render: (v) => <span className="font-mono text-xs text-primary-light">{v}</span>,
     },
     {
       key: 'name',
-      header: 'Jina la Bidhaa',
+      header: SW.bidhaa.jina,
       render: (v) => <span className="font-medium text-text-primary">{v}</span>,
     },
     {
       key: 'category',
-      header: 'Jamii',
+      header: SW.bidhaa.jamiiPekee,
       render: (v) => <span className="text-text-secondary text-sm">{v}</span>,
     },
     hasFamily && {
       key: 'family_name',
-      header: 'Familia / Brand',
+      header: SW.bidhaa.familiaBrand,
       render: (v) => <span className="text-text-secondary text-sm">{v || ''}</span>,
     },
     {
       key: 'unit',
-      header: 'Kipimo',
+      header: SW.bidhaa.kipimoPekee,
       width: 90,
-      render: (v) => <span className="text-text-secondary text-sm">{v || 'Kipande'}</span>,
+      render: (v) => <span className="text-text-secondary text-sm">{v || SW.bidhaa.vipimo.Kipande}</span>,
     },
     can('products.cost') && {
       key: 'cost_price',
@@ -53,20 +53,20 @@ export default function ProductTable({ products, loading, onEdit, pagination }) 
     },
     {
       key: 'minimum_stock',
-      header: 'Hisa Ndogo',
+      header: SW.bidhaa.hisaNdogo,
       width: 95,
       render: (v) => <span className="text-text-muted text-sm">{v ?? 5}</span>,
     },
     hasDescription && {
       key: 'description',
-      header: 'Maelezo',
+      header: SW.bidhaa.maelezo,
       render: (v) => (
         <span className="text-text-muted text-xs line-clamp-2 max-w-48 block">{v}</span>
       ),
     },
     {
       key: 'status',
-      header: 'Hali',
+      header: SW.bidhaa.hali,
       width: 90,
       render: (v) => (
         <Badge color={v === 'active' ? 'green' : v === 'discontinued' ? 'red' : 'yellow'}>
@@ -91,7 +91,7 @@ export default function ProductTable({ products, loading, onEdit, pagination }) 
       data={products}
       loading={loading}
       pagination={pagination}
-      emptyTitle="Hakuna bidhaa zilizopatikana"
+      emptyTitle={SW.bidhaa.hakunaBidhaaZilizopatikana}
     />
   )
 }

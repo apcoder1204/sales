@@ -9,7 +9,7 @@ import { usePermission } from '@hooks/usePermission'
 import { useAuth } from '@hooks/useAuth'
 import { useApi } from '@hooks/useApi'
 import { formatDateTime } from '@utils/formatters'
-import { TRANSFER_STATUSES } from '@utils/constants'
+import { getTransferStatuses } from '@utils/constants'
 import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
 
@@ -22,7 +22,7 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
   const [approvedQty, setApprovedQty] = useState({})
   const [approveNotes, setApproveNotes] = useState('')
 
-  const statusInfo = TRANSFER_STATUSES[request?.status] || { label: request?.status, color: 'gray' }
+  const statusInfo = getTransferStatuses()[request?.status] || { label: request?.status, color: 'gray' }
 
   useEffect(() => {
     if (!request) return
@@ -68,7 +68,7 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
     <Modal
       open={open}
       onClose={onClose}
-      title={`Ombi: ${request.request_no}`}
+      title={SW.uhamisho.ombiNamba(request.request_no)}
       size="md"
       footer={
         <div className="flex gap-2 flex-wrap w-full">
@@ -88,22 +88,22 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-text-muted text-xs">Hali</p>
+            <p className="text-text-muted text-xs">{SW.common.hali}</p>
             <div className="flex items-center gap-1.5 mt-1">
               <Badge color={statusInfo.color}>{statusInfo.label}</Badge>
-              {request.is_partial && <Badge color="yellow">Sehemu</Badge>}
+              {request.is_partial && <Badge color="yellow">{SW.uhamisho.sehemu}</Badge>}
             </div>
           </div>
           <div>
-            <p className="text-text-muted text-xs">Tarehe</p>
+            <p className="text-text-muted text-xs">{SW.common.tarehe}</p>
             <p className="text-text-primary mt-1">{formatDateTime(request.created_at)}</p>
           </div>
           <div>
-            <p className="text-text-muted text-xs">Chanzo</p>
+            <p className="text-text-muted text-xs">{SW.uhamisho.chanzo}</p>
             <p className="text-accent-yellow mt-1 font-medium">{request.from_branch}</p>
           </div>
           <div>
-            <p className="text-text-muted text-xs">Lengo</p>
+            <p className="text-text-muted text-xs">{SW.uhamisho.lengo}</p>
             <p className="text-accent-green mt-1 font-medium">{request.to_branch}</p>
           </div>
         </div>
@@ -114,7 +114,7 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
             <div key={item.id || item.product_id} className="flex justify-between items-start text-sm gap-3">
               <div className="min-w-0">
                 <p className="font-medium text-text-primary truncate">{item.product}</p>
-                <p className="text-xs text-text-muted">{item.product_code} · Ombi: {item.requested_qty}</p>
+                <p className="text-xs text-text-muted">{item.product_code} · {SW.uhamisho.ombiPrefix} {item.requested_qty}</p>
                 {item.main_store_had_stock === false && (
                   <p className="text-xs text-accent-yellow mt-0.5">{SW.uhamisho.chanzoNyingine}</p>
                 )}
@@ -130,7 +130,7 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
                 <div className="text-right flex-shrink-0">
                   <span className="text-text-primary font-medium">× {item.approved_qty ?? item.requested_qty}</span>
                   {item.approved_qty != null && item.approved_qty !== item.requested_qty && (
-                    <p className="text-xs text-accent-yellow">ya {item.requested_qty}</p>
+                    <p className="text-xs text-accent-yellow">{SW.uhamisho.ya} {item.requested_qty}</p>
                   )}
                 </div>
               )}
@@ -140,10 +140,10 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
 
         {isPending && can('transfers.approve') && (
           <Input
-            label="Maelezo ya Idhini (hiari)"
+            label={SW.uhamisho.maelezoYaIdhini}
             value={approveNotes}
             onChange={(e) => setApproveNotes(e.target.value)}
-            placeholder="Sababu ya kupunguza idadi, n.k..."
+            placeholder={SW.uhamisho.sababuKupunguzaPlaceholder}
           />
         )}
 
@@ -151,7 +151,7 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
           <>
             <Divider />
             <div>
-              <p className="text-xs text-text-muted mb-1">Sababu ya Ombi</p>
+              <p className="text-xs text-text-muted mb-1">{SW.uhamisho.sababuYaOmbi}</p>
               <p className="text-sm text-text-secondary">{request.reason}</p>
             </div>
           </>
@@ -161,14 +161,14 @@ export default function ReviewRequestModal({ open, request, onClose, onUpdated }
           <>
             <Divider />
             <Input
-              label="Sababu ya Kukataa"
+              label={SW.uhamisho.sababuYaKukataa}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Eleza sababu..."
+              placeholder={SW.uhamisho.elezaSababuPlaceholder}
               required
             />
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setShowReject(false)} className="flex-1">Ghairi</Button>
+              <Button variant="secondary" onClick={() => setShowReject(false)} className="flex-1">{SW.common.ghairi}</Button>
               <Button variant="danger" onClick={handleReject} loading={loading} disabled={!rejectReason} className="flex-1">
                 {SW.uhamisho.kataOmbi}
               </Button>

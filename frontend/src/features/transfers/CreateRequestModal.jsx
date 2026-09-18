@@ -44,12 +44,12 @@ export default function CreateRequestModal({ open, onClose, onSaved }) {
         () => transferService.createRequest({
           to_branch_id: toBranch,
           from_branch_id: form.from_branch_id,
-          reason: form.notes || 'Ombi la bidhaa',
+          reason: form.notes || SW.uhamisho.ombi,
           items: items
             .filter((i) => i.product_id && i.quantity)
             .map((i) => ({ product_id: i.product_id, quantity: parseInt(i.quantity) })),
         }),
-        { successMsg: 'Ombi limetumwa', onSuccess: onSaved }
+        { successMsg: SW.mafanikio.ombiLimetumwa, onSuccess: onSaved }
       )
     } catch (_) {
       // error already shown by useApi toast
@@ -68,7 +68,7 @@ export default function CreateRequestModal({ open, onClose, onSaved }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Ombi la Bidhaa"
+      title={SW.uhamisho.ombi}
       size="md"
       footer={
         <>
@@ -79,21 +79,21 @@ export default function CreateRequestModal({ open, onClose, onSaved }) {
     >
       <div className="space-y-4">
         {isGlobal && (
-          <Select label="Kioski Linalohitaji Bidhaa" value={form.to_branch_id} onChange={set('to_branch_id')}
-            options={posOptions} placeholder="Chagua kioski..." required />
+          <Select label={SW.uhamisho.kioskiLinalohitaji} value={form.to_branch_id} onChange={set('to_branch_id')}
+            options={posOptions} placeholder={SW.hifadhi.chaguaKioskiPlaceholder} required />
         )}
 
         <Select label={SW.uhamisho.chanzo} value={form.from_branch_id} onChange={set('from_branch_id')}
-          options={sourceOptions} placeholder="Chagua tawi la chanzo..." required />
+          options={sourceOptions} placeholder={SW.uhamisho.chaguaTawiChanzoPlaceholder} required />
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-text-secondary">{SW.uhamisho.bidhaa}</p>
           {items.map((item, i) => (
             <div key={i} className="flex gap-2 items-end">
               <Select value={item.product_id} onChange={setItem(i, 'product_id')}
-                options={productOptions} placeholder="Bidhaa..." containerClassName="flex-1" />
+                options={productOptions} placeholder={SW.uhamisho.bidhaaPlaceholder} containerClassName="flex-1" />
               <Input type="number" min="1" value={item.quantity} onChange={setItem(i, 'quantity')}
-                placeholder="Idadi" containerClassName="w-24" />
+                placeholder={SW.common.idadi} containerClassName="w-24" />
               {items.length > 1 && (
                 <Button variant="danger" size="icon" onClick={() => removeItem(i)}>×</Button>
               )}
@@ -102,7 +102,7 @@ export default function CreateRequestModal({ open, onClose, onSaved }) {
           <Button variant="ghost" size="sm" onClick={addItem}>{SW.uhamisho.ongezaBidhaa}</Button>
         </div>
 
-        <Input label="Maelezo (hiari)" value={form.notes} onChange={set('notes')} placeholder="Sababu ya ombi..." />
+        <Input label={SW.ufungaji.maelezo} value={form.notes} onChange={set('notes')} placeholder={SW.uhamisho.sababuYaOmbiPlaceholder} />
       </div>
     </Modal>
   )

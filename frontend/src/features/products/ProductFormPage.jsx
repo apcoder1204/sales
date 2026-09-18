@@ -11,13 +11,6 @@ import { useApi } from '@hooks/useApi'
 import { useToast } from '@hooks/useToast'
 import SW from '@constants/sw'
 
-const UNIT_OPTIONS = Object.entries(SW.bidhaa.vipimo).map(([value, label]) => ({ value, label }))
-const STATUS_OPTIONS = [
-  { value: 'active', label: SW.bidhaa.hai },
-  { value: 'inactive', label: SW.bidhaa.imesimama },
-  { value: 'discontinued', label: SW.bidhaa.imekomeshwa },
-]
-
 const empty = {
   product_code: '',
   name: '',
@@ -41,6 +34,12 @@ export default function ProductFormPage() {
   const [selectedBranch, setSelectedBranch] = useState('')
   const { loading, call } = useApi()
   const toast = useToast()
+  const UNIT_OPTIONS = Object.entries(SW.bidhaa.vipimo).map(([value, label]) => ({ value, label }))
+  const STATUS_OPTIONS = [
+    { value: 'active', label: SW.bidhaa.hai },
+    { value: 'inactive', label: SW.bidhaa.imesimama },
+    { value: 'discontinued', label: SW.bidhaa.imekomeshwa },
+  ]
 
   useEffect(() => {
     productService.categories()
@@ -70,7 +69,7 @@ export default function ProductFormPage() {
           status: p.status || 'active',
         })
       }).catch(() => {
-        toast.error('Bidhaa haipatikani')
+        toast.error(SW.bidhaa.bidhaaHaipatikani)
         navigate('/bidhaa')
       })
     }
@@ -80,7 +79,7 @@ export default function ProductFormPage() {
 
   const handleSave = async () => {
     if (!form.name || !form.category_id || !form.selling_price) {
-      toast.error('Tafadhali jaza sehemu zote zinazohitajika')
+      toast.error(SW.makosa.jazaSehemuZote)
       return
     }
     const payload = {
@@ -108,7 +107,7 @@ export default function ProductFormPage() {
   }
 
   const title = isEdit ? SW.bidhaa.kuhariryaBidhaa : SW.bidhaa.kuongezaBidhaa
-  const subtitle = isEdit ? 'Badilisha taarifa za bidhaa' : 'Ongeza bidhaa mpya kwenye mfumo'
+  const subtitle = isEdit ? SW.bidhaa.badilishaTaarifa : SW.bidhaa.ongezaBidhaaMpya
 
   return (
     <PageWrapper
@@ -134,14 +133,14 @@ export default function ProductFormPage() {
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
               options={branches}
-              placeholder="Chagua stoo"
+              placeholder={SW.bidhaa.chaguaStooPlaceholder}
             />
             <Select
               label={SW.bidhaa.jamii}
               value={form.category_id}
               onChange={set('category_id')}
               options={categories}
-              placeholder="Chagua jamii ya bidhaa"
+              placeholder={SW.bidhaa.chaguaJamiiPlaceholder}
               required
             />
           </div>
@@ -152,7 +151,7 @@ export default function ProductFormPage() {
               label={SW.bidhaa.jina}
               value={form.name}
               onChange={set('name')}
-              placeholder="Ingiza jina la bidhaa"
+              placeholder={SW.bidhaa.ingizaJinaPlaceholder}
               leftIcon={<Package size={16} />}
               required
             />
@@ -161,7 +160,7 @@ export default function ProductFormPage() {
               value={form.unit}
               onChange={set('unit')}
               options={UNIT_OPTIONS}
-              placeholder="Chagua kipimo"
+              placeholder={SW.bidhaa.chaguaKipimoPlaceholder}
             />
           </div>
 
@@ -171,13 +170,13 @@ export default function ProductFormPage() {
               label={SW.bidhaa.msimbo}
               value={form.product_code}
               onChange={set('product_code')}
-              placeholder="Mfano: CCTV-001 (hiari, itatengenezwa kiotomatiki)"
+              placeholder={SW.bidhaa.msimboPlaceholder}
             />
             <Input
               label={SW.bidhaa.familia}
               value={form.family_name}
               onChange={set('family_name')}
-              placeholder="Mfano: Hikvision, Dahua, Reolink"
+              placeholder={SW.bidhaa.familiaPlaceholder}
             />
           </div>
 
@@ -188,7 +187,7 @@ export default function ProductFormPage() {
               type="number"
               value={form.cost_price}
               onChange={set('cost_price')}
-              placeholder="Ingiza bei ya ununuzi"
+              placeholder={SW.bidhaa.beiGhaliPlaceholder}
               leftIcon={<span className="text-xs font-bold">TSh</span>}
             />
             <Input
@@ -196,7 +195,7 @@ export default function ProductFormPage() {
               type="number"
               value={form.selling_price}
               onChange={set('selling_price')}
-              placeholder="Ingiza bei ya mauzo"
+              placeholder={SW.bidhaa.beiUzajiPlaceholder}
               leftIcon={<span className="text-xs font-bold">TSh</span>}
               required
             />
@@ -209,7 +208,7 @@ export default function ProductFormPage() {
               type="number"
               value={isEdit ? '' : '0'}
               disabled={isEdit}
-              placeholder="Ingiza idadi ya sasa"
+              placeholder={SW.bidhaa.ingizaIdadiPlaceholder}
               leftIcon={<span className="text-xs font-bold">#</span>}
             />
             <Input
@@ -217,7 +216,7 @@ export default function ProductFormPage() {
               type="number"
               value={form.minimum_stock}
               onChange={set('minimum_stock')}
-              placeholder="Mfano: 5"
+              placeholder={SW.bidhaa.mfano5Placeholder}
               leftIcon={<span className="text-xs font-bold">#</span>}
             />
           </div>
@@ -237,7 +236,7 @@ export default function ProductFormPage() {
                 label={SW.bidhaa.maelezo}
                 value={form.description}
                 onChange={set('description')}
-                placeholder="Maelezo ya ziada (hiari)"
+                placeholder={SW.bidhaa.maelezoZiadaPlaceholder}
               />
             </div>
           </div>

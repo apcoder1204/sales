@@ -39,7 +39,7 @@ export default function TopBar({ onMenuClick }) {
       <div className="flex items-center gap-3">
         <button
           onClick={toggleLanguage}
-          title={language === 'sw' ? 'Switch to English' : 'Badilisha kwenda Kiswahili'}
+          title={language === 'sw' ? SW.common.badilishaKwendaKiingereza : SW.common.badilishaKwendaKiswahili}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-panel border border-border text-sm text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
         >
           <Languages size={14} />

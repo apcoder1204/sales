@@ -1,3 +1,6 @@
+import SW from '@constants/sw'
+
+// Brand name is intentionally not localized — same across both languages.
 const BRAND = 'DUKANI POS'
 
 function fmt(v) {
@@ -64,26 +67,26 @@ function normalise(type, data, period) {
     case 'sales': {
       const s = data.summary || {}
       return {
-        title: `Ripoti ya Mauzo${label}`,
+        title: `${SW.ripoti.mauzo}${label}`,
         sheets: [
           {
-            name: 'Muhtasari',
-            head: [['Kipimo', 'Thamani']],
+            name: SW.ripoti.muhtasariSheet,
+            head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]],
             rows: [
-              ['Mauzo Yote', fmtCurrency(s.total_revenue)],
-              ['Idadi ya Muamala', fmt(s.total_transactions)],
-              ['Wastani wa Uuzaji', fmtCurrency(s.avg_transaction)],
-              ['Bidhaa Zilizouzwa', fmt(s.total_items_sold)],
+              [SW.ripoti.mauzoYote, fmtCurrency(s.total_revenue)],
+              [SW.ripoti.idadiYaMuamala, fmt(s.total_transactions)],
+              [SW.ripoti.wastaniWaUuzaji, fmtCurrency(s.avg_transaction)],
+              [SW.ripoti.bidhaaZilizouzwa, fmt(s.total_items_sold)],
             ],
           },
           {
-            name: 'Bidhaa Bora',
-            head: [['Bidhaa', 'Idadi', 'Mapato']],
+            name: SW.ripoti.bidhaaBoraSheet,
+            head: [[SW.bidhaa.bidhaa, SW.common.idadi, SW.ripoti.mapato]],
             rows: (data.top_products || []).map((p) => [p.product, fmt(p.qty_sold), fmtCurrency(p.revenue)]),
           },
           {
-            name: 'Njia za Malipo',
-            head: [['Njia', 'Idadi', 'Jumla']],
+            name: SW.ripoti.njiaZaMalipo,
+            head: [[SW.ripoti.njia, SW.common.idadi, SW.common.jumla]],
             rows: (data.payment_breakdown || []).map((p) => [p.method, fmt(p.count), fmtCurrency(p.total)]),
           },
         ],
@@ -93,26 +96,26 @@ function normalise(type, data, period) {
     case 'inventory': {
       const s = data.summary || {}
       return {
-        title: 'Ripoti ya Inventory',
+        title: SW.ripoti.hifadhi,
         sheets: [
           {
-            name: 'Muhtasari',
-            head: [['Kipimo', 'Thamani']],
+            name: SW.ripoti.muhtasariSheet,
+            head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]],
             rows: [
-              ['Bidhaa Zote', fmt(s.total_products)],
-              ['Kiasi Chote', fmt(s.total_quantity)],
-              ['Thamani ya Inventory', fmtCurrency(s.total_value)],
-              ['Bidhaa za Hisaa Chini', fmt(s.low_stock_count)],
+              [SW.ripoti.bidhaaZote, fmt(s.total_products)],
+              [SW.ripoti.kiasiChote, fmt(s.total_quantity)],
+              [SW.ripoti.thamaniYaInventory, fmtCurrency(s.total_value)],
+              [SW.ripoti.bidhaaZaHisaaChini, fmt(s.low_stock_count)],
             ],
           },
           {
-            name: 'Kwa Tawi',
-            head: [['Tawi', 'Kiasi', 'Thamani']],
+            name: SW.ripoti.kwaTawiSheet,
+            head: [[SW.ufungaji.tawi, SW.ripoti.kiasi, SW.ripoti.thamani]],
             rows: (data.by_branch || []).map((b) => [b.branch, fmt(b.total_quantity), fmtCurrency(b.total_value)]),
           },
           {
-            name: 'Hisaa Chini',
-            head: [['Bidhaa', 'Msimbo', 'Tawi', 'Kilichobaki', 'Kiwango Chini', 'Upungufu']],
+            name: SW.ripoti.hisaaChiniSheet,
+            head: [[SW.bidhaa.bidhaa, SW.ripoti.msimbo, SW.ufungaji.tawi, SW.ripoti.kilichobaki, SW.ripoti.kiwangoChiniShort, SW.ripoti.upungufu]],
             rows: (data.low_stock_items || []).map((i) => [
               i.product, i.product_code, i.branch,
               fmt(i.current_stock), fmt(i.minimum_stock), fmt(i.deficit),
@@ -123,18 +126,13 @@ function normalise(type, data, period) {
     }
 
     case 'stock_movements': {
-      const TX = {
-        sale: 'Uuzaji', adjustment: 'Marekebisho',
-        transfer_in: 'Uhamisho (Ndani)', transfer_out: 'Uhamisho (Nje)',
-        purchase: 'Ununuzi', return: 'Urejesho',
-      }
       return {
-        title: `Harakati za Bidhaa${label}`,
+        title: `${SW.hifadhi.harakati}${label}`,
         sheets: [{
-          name: 'Harakati',
-          head: [['Bidhaa', 'Tawi', 'Aina', 'Mabadiliko', 'Kiasi Kipya', 'Aliyefanya', 'Tarehe']],
+          name: SW.hifadhi.harakati,
+          head: [[SW.bidhaa.bidhaa, SW.ufungaji.tawi, SW.hifadhi.aina, SW.hifadhi.mabadiliko, SW.ripoti.kiasiKipya, SW.ripoti.aliyefanya, SW.common.tarehe]],
           rows: (data.items || []).map((m) => [
-            m.product, m.branch, TX[m.transaction_type] || m.transaction_type,
+            m.product, m.branch, SW.hali.harakati[m.transaction_type] || m.transaction_type,
             (m.quantity_change > 0 ? '+' : '') + fmt(m.quantity_change),
             fmt(m.quantity_after), m.performed_by || '',
             m.created_at ? new Date(m.created_at).toLocaleString('en-TZ') : '',
@@ -145,10 +143,10 @@ function normalise(type, data, period) {
 
     case 'branch_performance':
       return {
-        title: `Utendaji wa Vituo vya POS${label}`,
+        title: `${SW.ripoti.tawi}${label}`,
         sheets: [{
-          name: 'Matawi',
-          head: [['Tawi', 'Mauzo', 'Muamala', 'Wastani', 'Bidhaa Zilizouzwa']],
+          name: SW.ripoti.matawiSheet,
+          head: [[SW.ufungaji.tawi, SW.mauzo.mauzo, SW.ripoti.muamala, SW.ripoti.wastani, SW.ripoti.bidhaaZilizouzwa]],
           rows: (data.branches || []).map((b) => [
             b.branch, fmtCurrency(b.total_revenue), fmt(b.transaction_count),
             fmtCurrency(b.avg_transaction), fmt(b.items_sold),
@@ -158,10 +156,10 @@ function normalise(type, data, period) {
 
     case 'cashier_performance':
       return {
-        title: `Utendaji wa Wahusika${label}`,
+        title: `${SW.ripoti.mhusika}${label}`,
         sheets: [{
-          name: 'Wahusika',
-          head: [['Mhusika', 'Tawi', 'Mauzo', 'Muamala', 'Wastani', 'Bidhaa Zilizouzwa']],
+          name: SW.ripoti.wahusikaSheet,
+          head: [[SW.ripoti.mhusikaHeader, SW.ufungaji.tawi, SW.mauzo.mauzo, SW.ripoti.muamala, SW.ripoti.wastani, SW.ripoti.bidhaaZilizouzwa]],
           rows: (data.cashiers || []).map((c) => [
             c.cashier, c.branch, fmtCurrency(c.total_revenue),
             fmt(c.transaction_count), fmtCurrency(c.avg_transaction), fmt(c.items_sold),
@@ -171,10 +169,10 @@ function normalise(type, data, period) {
 
     case 'low_stock':
       return {
-        title: 'Bidhaa za Hisaa Chini',
+        title: SW.ripoti.bidhaaZaHisaaChini,
         sheets: [{
-          name: 'Hisaa Chini',
-          head: [['Bidhaa', 'Msimbo', 'Tawi', 'Kilichobaki', 'Kiwango Chini', 'Upungufu']],
+          name: SW.ripoti.hisaaChiniSheet,
+          head: [[SW.bidhaa.bidhaa, SW.ripoti.msimbo, SW.ufungaji.tawi, SW.ripoti.kilichobaki, SW.ripoti.kiwangoChiniShort, SW.ripoti.upungufu]],
           rows: (data.items || []).map((i) => [
             i.product, i.product_code, i.branch,
             fmt(i.current_stock), fmt(i.minimum_stock), fmt(i.deficit),
@@ -185,32 +183,32 @@ function normalise(type, data, period) {
     case 'closing': {
       const s = data.summary || {}
       return {
-        title: `Ripoti ya Ufungaji wa Siku${label}`,
+        title: `${SW.ripoti.ufungaji}${label}`,
         sheets: [
           {
-            name: 'Muhtasari',
-            head: [['Kipimo', 'Thamani']],
+            name: SW.ripoti.muhtasariSheet,
+            head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]],
             rows: [
-              ['Taslimu', fmtCurrency(s.total_cash)],
-              ['Malipo ya Simu', fmtCurrency(s.total_mobile_money)],
-              ['Benki', fmtCurrency(s.total_bank_transfer)],
-              ['Jumla Kuu', fmtCurrency(s.total_revenue)],
-              ['Idadi ya Ufungaji', fmt(s.closings_count)],
+              [SW.ufungaji.taslimu, fmtCurrency(s.total_cash)],
+              [SW.ufungaji.simuLipa, fmtCurrency(s.total_mobile_money)],
+              [SW.ufungaji.benki, fmtCurrency(s.total_bank_transfer)],
+              [SW.ufungaji.jumlaKuu, fmtCurrency(s.total_revenue)],
+              [SW.ripoti.idadiYaUfungaji, fmt(s.closings_count)],
             ],
           },
           {
-            name: 'Ufungaji',
-            head: [['Tarehe', 'Tawi', 'Hali', 'Taslimu', 'Simu', 'Benki', 'Jumla', 'Tofauti', 'Matumizi', 'Aliyefunga']],
+            name: SW.ufungaji.ufungaji,
+            head: [[SW.common.tarehe, SW.ufungaji.tawi, SW.common.hali, SW.ufungaji.taslimu, SW.ripoti.simuShort, SW.ufungaji.benki, SW.common.jumla, SW.ufungaji.tofauti, SW.ufungaji.matumizi, SW.ufungaji.aliyefunga]],
             rows: (data.closings || []).map((c) => [
-              c.business_date, c.branch, c.status === 'closed' ? 'Imefungwa' : 'Wazi',
+              c.business_date, c.branch, c.status === 'closed' ? SW.ufungaji.imefungwa : SW.ufungaji.wazi,
               fmtCurrency(c.total_cash), fmtCurrency(c.total_mobile_money), fmtCurrency(c.total_bank_transfer),
               fmtCurrency(c.total_revenue), c.cash_variance != null ? fmtCurrency(c.cash_variance) : '',
               c.total_expenses > 0 ? fmtCurrency(c.total_expenses) : '', c.closed_by || '',
             ]),
           },
           {
-            name: 'Matumizi',
-            head: [['Tarehe', 'Tawi', 'Maelezo', 'Kiasi']],
+            name: SW.ufungaji.matumizi,
+            head: [[SW.common.tarehe, SW.ufungaji.tawi, SW.bidhaa.maelezo, SW.ripoti.kiasi]],
             rows: (data.closings || []).flatMap((c) =>
               (c.expenses || []).map((e) => [c.business_date, c.branch, e.description, fmtCurrency(e.amount)])
             ),
@@ -220,7 +218,7 @@ function normalise(type, data, period) {
     }
 
     default:
-      return { title: 'Ripoti', sheets: [] }
+      return { title: SW.ripoti.ripoti, sheets: [] }
   }
 }
 
@@ -248,7 +246,7 @@ export async function downloadPDF(type, data, period) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.text(title, 297 / 2, 11, { align: 'center' })
-    doc.text(`Imetolewa: ${timestamp()}`, 287, 11, { align: 'right' })
+    doc.text(SW.ripoti.imetolewa(timestamp()), 287, 11, { align: 'right' })
   }
 
   drawHeader()
@@ -270,7 +268,7 @@ export async function downloadPDF(type, data, period) {
     autoTable(doc, {
       startY: y,
       head: sheet.head,
-      body: sheet.rows.length ? sheet.rows : [['Hakuna data']],
+      body: sheet.rows.length ? sheet.rows : [[SW.common.hakuna]],
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2.5, textColor: [30, 30, 50] },
       headStyles: { fillColor: BLUE, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
@@ -286,7 +284,7 @@ export async function downloadPDF(type, data, period) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
-    doc.text(`Ukurasa ${i} / ${pageCount}`, 297 / 2, 205, { align: 'center' })
+    doc.text(SW.ripoti.ukurasa(i, pageCount), 297 / 2, 205, { align: 'center' })
   }
 
   doc.save(filename(type, 'pdf', period))
@@ -304,7 +302,7 @@ export async function downloadExcel(type, data, period) {
   sheets.forEach((sheet) => {
     const wsData = [
       [title],
-      [`Imetolewa: ${timestamp()}`],
+      [SW.ripoti.imetolewa(timestamp())],
       [],
       ...sheet.head,
       ...sheet.rows,

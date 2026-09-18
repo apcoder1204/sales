@@ -6,6 +6,7 @@ import CheckoutModal from './CheckoutModal'
 import ReceiptModal from './ReceiptModal'
 import { useCart } from '@hooks/useCart'
 import { formatCurrency } from '@utils/formatters'
+import SW from '@constants/sw'
 
 export default function PosPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -40,7 +41,7 @@ export default function PosPage() {
           className="md:hidden fixed bottom-5 right-4 z-40 flex items-center gap-2 bg-primary text-white px-4 py-3 rounded-2xl shadow-lg active:scale-95 transition-transform"
         >
           <ShoppingCart size={18} />
-          <span className="font-semibold text-sm">{itemCount} bidhaa</span>
+          <span className="font-semibold text-sm">{SW.bidhaa.idadiBidhaa(itemCount)}</span>
           <span className="font-bold text-sm">· {formatCurrency(total)}</span>
         </button>
       )}

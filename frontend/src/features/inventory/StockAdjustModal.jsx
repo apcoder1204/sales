@@ -8,16 +8,15 @@ import { useApi } from '@hooks/useApi'
 import SW from '@constants/sw'
 import { formatNumber } from '@utils/formatters'
 
-const ALL_TX_TYPES = [
-  { value: 'stock_in', label: 'Ongeza Bidhaa (Mapokezi)', mainOnly: true },
-  { value: 'stock_out', label: 'Punguza Bidhaa' },
-  { value: 'adjustment', label: 'Marekebisho ya Hesabu' },
-  { value: 'damaged', label: 'Imeharibika' },
-]
-
 export default function StockAdjustModal({ open, onClose, item, onSaved }) {
   // POS outlets cannot receive new stock directly — they get it via transfers from Main Store
   const isMainStore = item?.branch_type === 'main_store'
+  const ALL_TX_TYPES = [
+    { value: 'stock_in', label: SW.hali.marekebisho.stock_in, mainOnly: true },
+    { value: 'stock_out', label: SW.hali.marekebisho.stock_out },
+    { value: 'adjustment', label: SW.hali.marekebisho.adjustment },
+    { value: 'damaged', label: SW.hali.marekebisho.damaged },
+  ]
   const TX_TYPE_OPTIONS = ALL_TX_TYPES.filter((t) => !t.mainOnly || isMainStore)
   const [form, setForm] = useState({ type: isMainStore ? 'stock_in' : 'adjustment', quantity: '', notes: '' })
   const { loading, call } = useApi()
@@ -54,18 +53,18 @@ export default function StockAdjustModal({ open, onClose, item, onSaved }) {
         <div className="glass-card p-3">
           <p className="text-sm font-medium text-text-primary">{item.product_name}</p>
           <p className="text-xs text-text-muted mt-1">
-            {item.branch_name} — Bidhaa inayopatikana: <span className="text-accent-green font-semibold">{formatNumber(item.available_qty)}</span>
+            {item.branch_name} — {SW.hifadhi.bidhaaInayopatikana}: <span className="text-accent-green font-semibold">{formatNumber(item.available_qty)}</span>
           </p>
         </div>
 
         <Select
-          label="Aina ya Marekebisho"
+          label={SW.hifadhi.ainaYaMarekebisho}
           value={form.type}
           onChange={set('type')}
           options={TX_TYPE_OPTIONS}
         />
         <Input
-          label="Idadi"
+          label={SW.common.idadi}
           type="number"
           min="1"
           value={form.quantity}
@@ -73,10 +72,10 @@ export default function StockAdjustModal({ open, onClose, item, onSaved }) {
 
         />
         <Input
-          label="Sababu / Maelezo"
+          label={SW.hifadhi.sababuMaelezo}
           value={form.notes}
           onChange={set('notes')}
-          placeholder="Eleza sababu ya marekebisho..."
+          placeholder={SW.hifadhi.elezaSababuMarekebisho}
         />
       </div>
     </Modal>

@@ -36,11 +36,11 @@ export default function StockAdjustPage() {
 
   const columns = [
     {
-      key: 'created_at', header: 'Tarehe',
+      key: 'created_at', header: SW.common.tarehe,
       render: (v) => <span className="text-xs text-text-muted whitespace-nowrap">{formatDate(v, 'dd/MM/yyyy HH:mm')}</span>,
     },
     {
-      key: 'product', header: 'Bidhaa',
+      key: 'product', header: SW.bidhaa.bidhaa,
       render: (v, row) => (
         <div>
           <p className="font-medium text-text-primary text-sm">{v}</p>
@@ -49,7 +49,7 @@ export default function StockAdjustPage() {
       ),
     },
     {
-      key: 'quantity_change', header: 'Mabadiliko',
+      key: 'quantity_change', header: SW.hifadhi.mabadiliko,
       render: (v) => (
         <span className={clsx('font-bold text-sm', v > 0 ? 'text-accent-green' : 'text-accent-red')}>
           {v > 0 ? '+' : ''}{formatNumber(v)}
@@ -57,19 +57,19 @@ export default function StockAdjustPage() {
       ),
     },
     {
-      key: 'notes', header: 'Sababu',
+      key: 'notes', header: SW.hifadhi.sababu,
       render: (v) => <span className="text-xs text-text-secondary truncate max-w-[160px] block">{v || '—'}</span>,
     },
     {
-      key: 'transaction_type', header: 'Status',
+      key: 'transaction_type', header: SW.common.hali,
       render: (v) => (
         <Badge color={v === 'stock_in' || v === 'initial_stock' ? 'green' : 'red'}>
-          {v === 'stock_in' || v === 'initial_stock' ? 'Imeongezwa' : 'Imepunguzwa'}
+          {v === 'stock_in' || v === 'initial_stock' ? SW.bidhaa.imeongezwa : SW.bidhaa.imepunguzwa}
         </Badge>
       ),
     },
     {
-      key: 'performed_by', header: 'Imefanywa Na',
+      key: 'performed_by', header: SW.bidhaa.imefanywaNa,
       render: (v) => <span className="text-xs text-text-secondary">{v}</span>,
     },
   ]
@@ -77,11 +77,11 @@ export default function StockAdjustPage() {
   return (
     <PageWrapper
       title={SW.nav.marekebishoYaBidhaa}
-      subtitle="Historia ya marekebisho ya idadi ya bidhaa"
+      subtitle={SW.bidhaa.historiaMarekebisho}
       action={
         can('inventory.adjust') && (
           <Button onClick={() => setModalOpen(true)} leftIcon={<Settings size={16} />}>
-            Rekebisha Bidhaa
+            {SW.hifadhi.rekebisha}
           </Button>
         )
       }
@@ -91,7 +91,7 @@ export default function StockAdjustPage() {
         data={movements}
         loading={loading}
         pagination={pagination}
-        emptyTitle="Hakuna data iliyopatikana"
+        emptyTitle={SW.common.hakuna}
       />
 
       <StockAdjustFormModal

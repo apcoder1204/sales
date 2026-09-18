@@ -1,15 +1,16 @@
 import React from 'react'
 import { Search, X } from 'lucide-react'
 import { clsx } from 'clsx'
+import SW from '@constants/sw'
 
-export default function SearchInput({ value, onChange, placeholder = 'Tafuta...', className }) {
+export default function SearchInput({ value, onChange, placeholder, className }) {
   return (
     <div className={clsx('relative', className)}>
       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? SW.common.tafutaKiolezo}
         className="input-base pl-9 pr-8"
       />
       {value && (
