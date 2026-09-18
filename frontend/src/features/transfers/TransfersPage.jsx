@@ -9,6 +9,7 @@ import DirectTransferModal from './DirectTransferModal'
 import ReviewRequestModal from './ReviewRequestModal'
 import { transferService } from '@services/transferService'
 import { usePermission } from '@hooks/usePermission'
+import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { usePagination } from '@hooks/usePagination'
 import SW from '@constants/sw'
 
@@ -19,6 +20,7 @@ const TABS = [
 
 export default function TransfersPage() {
   const { can, role } = usePermission()
+  const branchFilter = useActiveBranchFilter()
   const [tab, setTab] = useState('requests')
   const [requests, setRequests] = useState([])
   const [transfers, setTransfers] = useState([])
@@ -32,21 +34,21 @@ export default function TransfersPage() {
     setLoading(true)
     try {
       if (tab === 'requests') {
-        const res = await transferService.listRequests(pagination.params)
+        const res = await transferService.listRequests({ ...branchFilter, ...pagination.params })
         setRequests(res.items || res)
         if (res.total !== undefined) pagination.setTotal(res.total)
       } else {
-        const res = await transferService.listTransfers(pagination.params)
+        const res = await transferService.listTransfers({ ...branchFilter, ...pagination.params })
         setTransfers(res.items || res)
         if (res.total !== undefined) pagination.setTotal(res.total)
       }
     } finally {
       setLoading(false)
     }
-  }, [tab, pagination.page])
+  }, [tab, branchFilter.branch_id, pagination.page])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { pagination.reset() }, [tab])
+  useEffect(() => { pagination.reset() }, [tab, branchFilter.branch_id])
 
   const onReviewed = () => { setReviewing(null); load() }
 

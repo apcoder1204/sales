@@ -257,6 +257,8 @@ export const EN = {
     mwezi: 'This Month',
     desturi: 'Custom Range',
     pakua: 'Download Report',
+    pakuaPdf: 'Download PDF',
+    pakuaExcel: 'Download Excel',
     chagua: 'Select Report Type',
   },
 

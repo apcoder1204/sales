@@ -258,6 +258,8 @@ export const SW = {
     mwezi: 'Mwezi Huu',
     desturi: 'Muda Maalum',
     pakua: 'Pakua Ripoti',
+    pakuaPdf: 'Pakua PDF',
+    pakuaExcel: 'Pakua Excel',
     chagua: 'Chagua Aina ya Ripoti',
   },
 

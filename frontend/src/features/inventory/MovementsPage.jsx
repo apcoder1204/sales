@@ -6,6 +6,7 @@ import Button from '@components/ui/Button'
 import DataTable from '@components/tables/DataTable'
 import Badge from '@components/ui/Badge'
 import { inventoryService } from '@services/inventoryService'
+import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { usePagination } from '@hooks/usePagination'
 import { formatDateTime, formatNumber } from '@utils/formatters'
 import { TX_TYPES } from '@utils/constants'
@@ -13,6 +14,7 @@ import SW from '@constants/sw'
 
 export default function MovementsPage() {
   const navigate = useNavigate()
+  const branchFilter = useActiveBranchFilter()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const pagination = usePagination()
@@ -20,15 +22,16 @@ export default function MovementsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await inventoryService.movements(pagination.params)
+      const res = await inventoryService.movements({ ...branchFilter, ...pagination.params })
       setItems(res.items || res)
       if (res.total !== undefined) pagination.setTotal(res.total)
     } finally {
       setLoading(false)
     }
-  }, [pagination.page])
+  }, [branchFilter.branch_id, pagination.page])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { pagination.reset() }, [branchFilter.branch_id])
 
   const columns = [
     { key: 'created_at', header: 'Tarehe', render: (v) => formatDateTime(v) },

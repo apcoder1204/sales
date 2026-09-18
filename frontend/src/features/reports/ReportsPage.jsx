@@ -13,7 +13,9 @@ import { reportService } from '@services/reportService'
 import { usePermission } from '@hooks/usePermission'
 import { formatCurrency, formatDateTime, formatNumber } from '@utils/formatters'
 import { REPORT_PERIODS } from '@utils/constants'
-import { downloadPDF, downloadExcel } from '@utils/reportExport'
+import { downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
+import { useToast } from '@hooks/useToast'
+import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import SW from '@constants/sw'
 
 const REPORT_TYPES = [
@@ -28,22 +30,66 @@ const REPORT_TYPES = [
 
 export default function ReportsPage() {
   const { can } = usePermission()
+  const toast = useToast()
+  const branchFilter = useActiveBranchFilter()
   const [reportType, setReportType] = useState('sales')
   const [period, setPeriod] = useState('today')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(null)
 
   const availableTypes = REPORT_TYPES.filter((t) => can(t.permission))
+  const activeReportType = availableTypes.some((t) => t.value === reportType)
+    ? reportType
+    : availableTypes[0]?.value
+
+  useEffect(() => {
+    if (activeReportType && activeReportType !== reportType) {
+      setReportType(activeReportType)
+    }
+  }, [activeReportType, reportType])
+
+  const handleClosingExport = async (format, closing) => {
+    const key = `${closing.business_date}-${format}`
+    setExporting(key)
+    try {
+      const exportData = toClosingExportData([closing])
+      if (format === 'pdf') await downloadPDF('closing', exportData, closing.business_date)
+      else await downloadExcel('closing', exportData, closing.business_date)
+    } catch {
+      toast.error('Imeshindwa kupakua ripoti. Jaribu tena.')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const handleExport = async (format) => {
+    if (!data) return
+    setExporting(format)
+    try {
+      if (format === 'pdf') await downloadPDF(activeReportType, data, period)
+      else await downloadExcel(activeReportType, data, period)
+    } catch {
+      toast.error('Imeshindwa kupakua ripoti. Jaribu tena.')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   const fetchReport = useCallback(async () => {
+    if (!activeReportType) return
+    if (period === 'custom' && (!dateFrom || !dateTo)) {
+      setData(null)
+      return
+    }
     setLoading(true)
     setData(null)
     try {
-      const params = { period, date_from: dateFrom || undefined, date_to: dateTo || undefined }
+      const params = { period, date_from: dateFrom || undefined, date_to: dateTo || undefined, ...branchFilter }
       let result
-      switch (reportType) {
+      switch (activeReportType) {
         case 'sales': result = await reportService.sales(params); break
         case 'inventory': result = await reportService.inventory(params); break
         case 'stock_movements': result = await reportService.stockMovements(params); break
@@ -57,7 +103,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
-  }, [reportType, period, dateFrom, dateTo])
+  }, [activeReportType, period, dateFrom, dateTo, branchFilter.branch_id])
 
   useEffect(() => { fetchReport() }, [fetchReport])
 
@@ -73,7 +119,7 @@ export default function ReportsPage() {
             options={availableTypes}
             containerClassName="min-w-48"
           />
-          {reportType !== 'stock_movements' && reportType !== 'inventory' && reportType !== 'low_stock' && (
+          {activeReportType !== 'stock_movements' && activeReportType !== 'inventory' && activeReportType !== 'low_stock' && (
             <Select
               label="Kipindi"
               value={period}
@@ -91,28 +137,44 @@ export default function ReportsPage() {
           <Button onClick={fetchReport} loading={loading} leftIcon={<BarChart3 size={16} />}>
             Onyesha Ripoti
           </Button>
-          {data && !loading && (
-            <div className="flex gap-2 ml-auto">
-              <Button
-                variant="secondary"
-                leftIcon={<FileDown size={15} />}
-                onClick={() => downloadPDF(reportType, data, period)}
-                title="Pakua PDF"
-              >
-                PDF
-              </Button>
-              <Button
-                variant="secondary"
-                leftIcon={<FileSpreadsheet size={15} />}
-                onClick={() => downloadExcel(reportType, data, period)}
-                title="Pakua Excel"
-              >
-                Excel
-              </Button>
-            </div>
-          )}
         </div>
       </Card>
+
+      {data && !loading && activeReportType !== 'closing' && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-text-muted">
+            {availableTypes.find((t) => t.value === activeReportType)?.label}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              leftIcon={<FileDown size={15} />}
+              onClick={() => handleExport('pdf')}
+              loading={exporting === 'pdf'}
+              disabled={!!exporting}
+              title={SW.ripoti.pakuaPdf}
+            >
+              {SW.ripoti.pakuaPdf}
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<FileSpreadsheet size={15} />}
+              onClick={() => handleExport('excel')}
+              loading={exporting === 'excel'}
+              disabled={!!exporting}
+              title={SW.ripoti.pakuaExcel}
+            >
+              {SW.ripoti.pakuaExcel}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {data && !loading && activeReportType === 'closing' && (
+        <p className="text-sm text-text-muted">
+          {availableTypes.find((t) => t.value === activeReportType)?.label} — pakua ripoti ya kila siku kutoka jedwali hapa chini
+        </p>
+      )}
 
       {loading && (
         <div className="glass-card p-8 text-center text-text-muted animate-pulse">
@@ -120,12 +182,20 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {data && !loading && <ReportContent type={reportType} data={data} />}
+      {data && !loading && (
+        <ReportContent
+          type={activeReportType}
+          data={data}
+          onClosingExport={handleClosingExport}
+          closingExporting={exporting}
+          canDownloadClosing={can('reports.closing')}
+        />
+      )}
     </PageWrapper>
   )
 }
 
-function ReportContent({ type, data }) {
+function ReportContent({ type, data, onClosingExport, closingExporting, canDownloadClosing }) {
   switch (type) {
     case 'sales': return <SalesReport data={data} />
     case 'inventory': return <InventoryReport data={data} />
@@ -133,7 +203,14 @@ function ReportContent({ type, data }) {
     case 'branch_performance': return <BranchReport data={data} />
     case 'cashier_performance': return <CashierReport data={data} />
     case 'low_stock': return <LowStockReport data={data} />
-    case 'closing': return <ClosingReport data={data} />
+    case 'closing': return (
+      <ClosingReport
+        data={data}
+        onExport={onClosingExport}
+        exporting={closingExporting}
+        canDownload={canDownloadClosing}
+      />
+    )
     default: return null
   }
 }
@@ -339,7 +416,7 @@ function CashierReport({ data }) {
   )
 }
 
-function ClosingReport({ data }) {
+function ClosingReport({ data, onExport, exporting, canDownload }) {
   const s = data.summary || {}
 
   return (
@@ -394,6 +471,31 @@ function ClosingReport({ data }) {
             ),
           },
           { key: 'closed_by', header: SW.ufungaji.aliyefunga, render: (v) => v || '—' },
+          {
+            key: '_download', header: '',
+            render: (_, row) => row.status === 'closed' && canDownload ? (
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<FileDown size={14} />}
+                  onClick={() => onExport('pdf', row)}
+                  loading={exporting === `${row.business_date}-pdf`}
+                  disabled={!!exporting}
+                  title={SW.ripoti.pakuaPdf}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<FileSpreadsheet size={14} />}
+                  onClick={() => onExport('excel', row)}
+                  loading={exporting === `${row.business_date}-excel`}
+                  disabled={!!exporting}
+                  title={SW.ripoti.pakuaExcel}
+                />
+              </div>
+            ) : null,
+          },
         ]}
         data={data.closings || []}
         emptyTitle="Hakuna ufungaji kwa kipindi hiki"

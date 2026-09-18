@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Lock, Unlock, Wallet, Smartphone, Landmark, Receipt } from 'lucide-react'
+import { Lock, Unlock, Wallet, Smartphone, Landmark, Receipt, FileDown, FileSpreadsheet } from 'lucide-react'
 import PageWrapper from '@components/layout/PageWrapper'
 import KpiCard from '@components/ui/KpiCard'
 import Select from '@components/ui/Select'
@@ -13,8 +13,10 @@ import { useAuth } from '@hooks/useAuth'
 import { usePermission } from '@hooks/usePermission'
 import { useApi } from '@hooks/useApi'
 import { useToast } from '@hooks/useToast'
+import { useBranch } from '@hooks/useBranch'
 import { isGlobalRole } from '@utils/permissions'
 import { formatCurrency, formatDateTime } from '@utils/formatters'
+import { downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
 import SW from '@constants/sw'
 
 // Use LOCAL date parts, not toISOString() (which is UTC) — otherwise the
@@ -31,6 +33,7 @@ export default function ClosingPage() {
   const { loading, call } = useApi()
   const toast = useToast()
   const isGlobal = isGlobalRole(user)
+  const { activeBranchId } = useBranch()
 
   const [branches, setBranches] = useState([])
   const [branchId, setBranchId] = useState('')
@@ -41,15 +44,41 @@ export default function ClosingPage() {
   const [matumizi, setMatumizi] = useState([])
   const [history, setHistory] = useState([])
   const [reopenReason, setReopenReason] = useState({})
+  const [exporting, setExporting] = useState(null)
+
+  const canDownload = can('reports.closing')
+
+  const handleExport = async (format, closing) => {
+    if (!closing) return
+    const key = `${closing.business_date}-${format}`
+    setExporting(key)
+    try {
+      const data = toClosingExportData([closing])
+      if (format === 'pdf') await downloadPDF('closing', data, closing.business_date)
+      else await downloadExcel('closing', data, closing.business_date)
+    } catch {
+      toast.error('Imeshindwa kupakua ripoti. Jaribu tena.')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   useEffect(() => {
     if (!isGlobal) { setBranchId(user?.branch_id || ''); return }
     userService.branches().then((b) => {
       const pos = b.filter((x) => x.branch_type === 'pos_point')
       setBranches(pos.map((x) => ({ value: x.id, label: x.name })))
-      if (pos.length > 0) setBranchId(pos[0].id)
+      if (activeBranchId) {
+        setBranchId(activeBranchId)
+      } else if (pos.length > 0 && !branchId) {
+        setBranchId(pos[0].id)
+      }
     }).catch(() => {})
-  }, [isGlobal, user])
+  }, [isGlobal, user, activeBranchId])
+
+  useEffect(() => {
+    if (isGlobal && activeBranchId) setBranchId(activeBranchId)
+  }, [isGlobal, activeBranchId])
 
   const loadPreview = useCallback(async () => {
     if (!branchId) return
@@ -141,23 +170,47 @@ export default function ClosingPage() {
     {
       key: '_actions', header: '',
       render: (_, row) => (
-        row.status === 'closed' && can('closing.reopen') ? (
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder={SW.ufungaji.sababuYaKufungua}
-              value={reopenReason[row.id] || ''}
-              onChange={(e) => setReopenReason((p) => ({ ...p, [row.id]: e.target.value }))}
-              containerClassName="w-40"
-            />
-            <Button
-              variant="secondary" size="sm" leftIcon={<Unlock size={14} />}
-              disabled={!reopenReason[row.id]}
-              onClick={() => handleReopen(row)}
-            >
-              {SW.ufungaji.fungua}
-            </Button>
-          </div>
-        ) : null
+        <div className="flex flex-wrap items-center gap-2">
+          {row.status === 'closed' && canDownload && (
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<FileDown size={14} />}
+                onClick={() => handleExport('pdf', row)}
+                loading={exporting === `${row.business_date}-pdf`}
+                disabled={!!exporting}
+                title={SW.ripoti.pakuaPdf}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<FileSpreadsheet size={14} />}
+                onClick={() => handleExport('excel', row)}
+                loading={exporting === `${row.business_date}-excel`}
+                disabled={!!exporting}
+                title={SW.ripoti.pakuaExcel}
+              />
+            </div>
+          )}
+          {row.status === 'closed' && can('closing.reopen') ? (
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder={SW.ufungaji.sababuYaKufungua}
+                value={reopenReason[row.id] || ''}
+                onChange={(e) => setReopenReason((p) => ({ ...p, [row.id]: e.target.value }))}
+                containerClassName="w-40"
+              />
+              <Button
+                variant="secondary" size="sm" leftIcon={<Unlock size={14} />}
+                disabled={!reopenReason[row.id]}
+                onClick={() => handleReopen(row)}
+              >
+                {SW.ufungaji.fungua}
+              </Button>
+            </div>
+          ) : null}
+        </div>
       ),
     },
   ]
@@ -176,8 +229,36 @@ export default function ClosingPage() {
           <>
             {preview.already_closed && (
               <div className="p-3 rounded-lg bg-accent-green-muted space-y-2">
-                <div className="flex items-center gap-2 text-accent-green text-sm">
-                  <Lock size={16} /> {SW.ufungaji.imefungwaTayari}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-accent-green text-sm">
+                    <Lock size={16} /> {SW.ufungaji.imefungwaTayari}
+                  </div>
+                  {canDownload && closedToday && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={<FileDown size={14} />}
+                        onClick={() => handleExport('pdf', closedToday)}
+                        loading={exporting === `${businessDate}-pdf`}
+                        disabled={!!exporting}
+                        title={SW.ripoti.pakuaPdf}
+                      >
+                        {SW.ripoti.pakuaPdf}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={<FileSpreadsheet size={14} />}
+                        onClick={() => handleExport('excel', closedToday)}
+                        loading={exporting === `${businessDate}-excel`}
+                        disabled={!!exporting}
+                        title={SW.ripoti.pakuaExcel}
+                      >
+                        {SW.ripoti.pakuaExcel}
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 {closedToday && closedToday.expenses.length > 0 && (
                   <div className="pt-2 border-t border-accent-green/20 space-y-1">

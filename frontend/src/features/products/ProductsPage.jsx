@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import PageWrapper from '@components/layout/PageWrapper'
 import Button from '@components/ui/Button'
 import SearchInput from '@components/ui/SearchInput'
-import Select from '@components/ui/Select'
 import ProductTable from './ProductTable'
 import ProductFormModal from './ProductFormModal'
 import InventoryGrid from '../inventory/InventoryGrid'
@@ -12,9 +11,8 @@ import StockAdjustModal from '../inventory/StockAdjustModal'
 import SendToPosModal from '../inventory/SendToPosModal'
 import { productService } from '@services/productService'
 import { inventoryService } from '@services/inventoryService'
-import { userService } from '@services/userService'
 import { usePermission } from '@hooks/usePermission'
-import { useAuth } from '@hooks/useAuth'
+import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { useDebounce } from '@hooks/useDebounce'
 import { usePagination } from '@hooks/usePagination'
 import SW from '@constants/sw'
@@ -26,7 +24,6 @@ const TABS = [
 
 export default function ProductsPage() {
   const { can } = usePermission()
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('bidhaa')
 
@@ -47,16 +44,7 @@ export default function ProductsPage() {
   const inventoryPagination = usePagination()
   const [adjustItem, setAdjustItem] = useState(null)
   const [sendItem, setSendItem] = useState(null)
-  const [branches, setBranches] = useState([])
-  const [branchFilter, setBranchFilter] = useState('')
-
-  const canFilterBranch = ['super_admin', 'admin', 'general_manager'].includes(user?.role)
-
-  useEffect(() => {
-    if (canFilterBranch) {
-      userService.branches().then(setBranches).catch(() => {})
-    }
-  }, [canFilterBranch])
+  const branchFilter = useActiveBranchFilter()
 
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true)
@@ -77,7 +65,7 @@ export default function ProductsPage() {
     try {
       const res = await inventoryService.list({
         search: debouncedInventorySearch || undefined,
-        branch_id: branchFilter || undefined,
+        ...branchFilter,
         ...inventoryPagination.params,
       })
       // Backend returns ProductWithInventory objects with nested inventory[].
@@ -114,10 +102,11 @@ export default function ProductsPage() {
     } finally {
       setLoadingInventory(false)
     }
-  }, [debouncedInventorySearch, branchFilter, inventoryPagination.page])
+  }, [debouncedInventorySearch, branchFilter.branch_id, inventoryPagination.page])
 
   useEffect(() => { loadProducts() }, [loadProducts])
   useEffect(() => { loadInventory() }, [loadInventory])
+  useEffect(() => { inventoryPagination.reset() }, [branchFilter.branch_id])
 
   const openAdd = () => { setEditingProduct(null); setModalOpen(true) }
   const openEdit = (p) => { setEditingProduct(p); setModalOpen(true) }
@@ -170,17 +159,6 @@ export default function ProductsPage() {
           className="max-w-xs"
           placeholder="Tafuta bidhaa..."
         />
-        {activeTab === 'hifadhi' && canFilterBranch && (
-          <Select
-            value={branchFilter}
-            onChange={(e) => { setBranchFilter(e.target.value); inventoryPagination.reset() }}
-            options={[
-              { value: '', label: 'Matawi Yote' },
-              ...branches.map((b) => ({ value: b.id, label: b.name })),
-            ]}
-            containerClassName="w-48"
-          />
-        )}
       </div>
 
       {activeTab === 'bidhaa' ? (

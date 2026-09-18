@@ -43,6 +43,24 @@ class UserProfile(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class UserProfileUpdate(BaseModel):
+    full_name: str | None = None
+    email: EmailStr | None = None
+    current_password: str | None = None
+    new_password: str | None = Field(None, min_length=8, max_length=72)
+    confirm_password: str | None = None
+
+    @field_validator("new_password")
+    @classmethod
+    def _password_strength(cls, v):
+        return validate_password_strength(v) if v is not None else v
+
+    @model_validator(mode="after")
+    def _passwords_match(self):
+        if self.new_password is not None and self.new_password != self.confirm_password:
+            raise ValueError("Nenosiri na uthibitisho hazifanani")
+        return self
+
 
 class TokenResponse(BaseModel):
     access_token: str

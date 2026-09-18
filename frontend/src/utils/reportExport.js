@@ -15,19 +15,56 @@ function timestamp() {
   return new Date().toLocaleString('en-TZ', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function filename(type, ext) {
-  const d = new Date().toISOString().slice(0, 10)
-  return `${BRAND}_${type}_${d}.${ext}`
+function filename(type, ext, label) {
+  const slug = label || new Date().toISOString().slice(0, 10)
+  return `${BRAND}_${type}_${slug}.${ext}`
+}
+
+function periodLabel(period) {
+  if (!period) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(period)) return ` — ${period}`
+  return ` — ${period.toUpperCase()}`
+}
+
+/** Map closing list/history rows into the shape expected by closing export. */
+export function toClosingExportData(closings) {
+  const rows = (closings || []).map((c) => ({
+    business_date: c.business_date,
+    branch: c.branch_name || c.branch || '',
+    status: c.status,
+    total_cash: Number(c.total_cash),
+    total_mobile_money: Number(c.total_mobile_money),
+    total_bank_transfer: Number(c.total_bank_transfer),
+    total_revenue: Number(c.total_revenue),
+    cash_variance: c.cash_variance != null ? Number(c.cash_variance) : null,
+    total_expenses: Number(c.total_expenses || 0),
+    expenses: (c.expenses || []).map((e) => ({
+      description: e.description,
+      amount: Number(e.amount),
+    })),
+    closed_by: c.closed_by || null,
+  }))
+
+  return {
+    summary: {
+      total_cash: rows.reduce((sum, c) => sum + c.total_cash, 0),
+      total_mobile_money: rows.reduce((sum, c) => sum + c.total_mobile_money, 0),
+      total_bank_transfer: rows.reduce((sum, c) => sum + c.total_bank_transfer, 0),
+      total_revenue: rows.reduce((sum, c) => sum + c.total_revenue, 0),
+      closings_count: rows.length,
+    },
+    closings: rows,
+  }
 }
 
 function normalise(type, data, period) {
-  const periodLabel = period ? ` — ${period.toUpperCase()}` : ''
+  const label = periodLabel(period)
 
   switch (type) {
     case 'sales': {
       const s = data.summary || {}
       return {
-        title: `Ripoti ya Mauzo${periodLabel}`,
+        title: `Ripoti ya Mauzo${label}`,
         sheets: [
           {
             name: 'Muhtasari',
@@ -92,7 +129,7 @@ function normalise(type, data, period) {
         purchase: 'Ununuzi', return: 'Urejesho',
       }
       return {
-        title: `Harakati za Bidhaa${periodLabel}`,
+        title: `Harakati za Bidhaa${label}`,
         sheets: [{
           name: 'Harakati',
           head: [['Bidhaa', 'Tawi', 'Aina', 'Mabadiliko', 'Kiasi Kipya', 'Aliyefanya', 'Tarehe']],
@@ -108,7 +145,7 @@ function normalise(type, data, period) {
 
     case 'branch_performance':
       return {
-        title: `Utendaji wa Matawi${periodLabel}`,
+        title: `Utendaji wa Vituo vya POS${label}`,
         sheets: [{
           name: 'Matawi',
           head: [['Tawi', 'Mauzo', 'Muamala', 'Wastani', 'Bidhaa Zilizouzwa']],
@@ -121,7 +158,7 @@ function normalise(type, data, period) {
 
     case 'cashier_performance':
       return {
-        title: `Utendaji wa Wahusika${periodLabel}`,
+        title: `Utendaji wa Wahusika${label}`,
         sheets: [{
           name: 'Wahusika',
           head: [['Mhusika', 'Tawi', 'Mauzo', 'Muamala', 'Wastani', 'Bidhaa Zilizouzwa']],
@@ -148,7 +185,7 @@ function normalise(type, data, period) {
     case 'closing': {
       const s = data.summary || {}
       return {
-        title: `Ripoti ya Ufungaji wa Siku${periodLabel}`,
+        title: `Ripoti ya Ufungaji wa Siku${label}`,
         sheets: [
           {
             name: 'Muhtasari',
@@ -252,7 +289,7 @@ export async function downloadPDF(type, data, period) {
     doc.text(`Ukurasa ${i} / ${pageCount}`, 297 / 2, 205, { align: 'center' })
   }
 
-  doc.save(filename(type, 'pdf'))
+  doc.save(filename(type, 'pdf', period))
 }
 
 // ── Excel — loaded lazily on first call ──────────────────────────────────────
@@ -282,5 +319,5 @@ export async function downloadExcel(type, data, period) {
     XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31))
   })
 
-  XLSX.writeFile(wb, filename(type, 'xlsx'))
+  XLSX.writeFile(wb, filename(type, 'xlsx', period))
 }

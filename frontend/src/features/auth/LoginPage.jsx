@@ -109,7 +109,7 @@ export default function LoginPage() {
             </Link>
           </form>
 
-          {/* Demo hint */}
+          {/* Demo hint
           <div className="mt-5 pt-4 border-t border-border">
             <p className="text-xs text-text-muted text-center mb-2">Akaunti za mazoezi (nenosiri: 1234)</p>
             <div className="grid grid-cols-2 gap-1 text-xs text-text-muted">
@@ -124,7 +124,7 @@ export default function LoginPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
 
         <p className="text-center text-xs text-text-muted mt-6">
