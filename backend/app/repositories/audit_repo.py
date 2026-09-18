@@ -16,11 +16,14 @@ class AuditRepository(BaseRepository[AuditLog]):
         action: str | None = None,
         from_date: date | None = None,
         to_date: date | None = None,
-        skip: int = 0, limit: int = 50
+        skip: int = 0, limit: int = 50,
+        branch_id: UUID | None = None,
     ) -> tuple[list[AuditLog], int]:
         q = select(AuditLog)
         if category:
             q = q.where(AuditLog.category == category)
+        if branch_id:
+            q = q.where(AuditLog.branch_id == branch_id)
         if user_id:
             q = q.where(AuditLog.user_id == user_id)
         if action:

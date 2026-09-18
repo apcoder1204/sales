@@ -71,11 +71,12 @@ async def execute_request(
 async def list_transfers(
     from_branch_id: UUID | None = None,
     to_branch_id: UUID | None = None,
+    branch_id: UUID | None = None,
     page: int = 1, per_page: int = 20,
     current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await transfer_service.list_transfers(db, from_branch_id, to_branch_id, page, per_page)
+    return await transfer_service.list_transfers(db, from_branch_id, to_branch_id, branch_id, page, per_page)
 
 
 @router.post("", status_code=201)

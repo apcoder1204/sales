@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
+from app.core.authorization import get_main_store_id
 from app.schemas.audit_log import AuditLogResponse, AuditLogFilter
 from app.repositories.audit_repo import audit_repo
 import math
@@ -23,14 +24,18 @@ async def list_audit_logs(
     db: AsyncSession = Depends(get_db),
 ):
     role = current_user.role.name
+    branch_id = None
     if role == "store_keeper":
         category = "inventory"
+        branch_id = await get_main_store_id(db)
     elif role == "general_manager":
-        category = category or "transfers"
+        # Client-supplied category must never override this — general_manager
+        # is restricted to transfers-category audit events.
+        category = "transfers"
 
     skip = (page - 1) * per_page
     rows, total = await audit_repo.list_logs(
-        db, category, user_id, action, from_date, to_date, skip, per_page
+        db, category, user_id, action, from_date, to_date, skip, per_page, branch_id
     )
     items = [
         AuditLogResponse(

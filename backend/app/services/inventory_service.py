@@ -4,6 +4,7 @@ from app.repositories.inventory_repo import inventory_repo
 from app.repositories.product_repo import product_repo
 from app.schemas.inventory import AvailableSourcesResponse, SourceBranch
 from app.core.exceptions import InsufficientStockException, NotFoundException
+from app.core.authorization import require_write_branch_access
 from app.services.audit_service import audit_service
 import math
 
@@ -15,6 +16,11 @@ class InventoryService:
         quantity: int, adj_type: str,
         notes: str | None, user
     ):
+        # Service-layer defense-in-depth: never trust branch_id from the
+        # request body — a store_keeper may only ever adjust the main store,
+        # a cashier (if ever granted this endpoint) only their own branch.
+        await require_write_branch_access(db, user, branch_id)
+
         product = await product_repo.get_by_id(db, product_id)
         if not product:
             raise NotFoundException("Bidhaa")

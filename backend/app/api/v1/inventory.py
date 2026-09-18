@@ -11,6 +11,8 @@ from app.schemas.inventory import (
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.inventory_service import inventory_service
 from app.repositories.inventory_repo import inventory_repo
+from app.core.authorization import resolve_read_branch_id
+from app.core.exceptions import InsufficientPermissionException
 
 router = APIRouter(prefix="/inventory", tags=["Hifadhi"])
 
@@ -87,9 +89,17 @@ async def get_available_sources(
     product_id: UUID,
     quantity: int,
     destination_branch_id: UUID,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role(
+        "super_admin", "admin", "general_manager", "store_keeper", "cashier"
+    )),
     db: AsyncSession = Depends(get_db),
 ):
+    # A cashier may only ask "what can supply MY branch" — not probe another
+    # branch's sourcing options. store_keeper/admin/general_manager/super_admin
+    # legitimately need to check sourcing for any destination while
+    # allocating/approving requests, so they're left unrestricted here.
+    if current_user.role.name == "cashier" and str(current_user.branch_id) != str(destination_branch_id):
+        raise InsufficientPermissionException("Huwezi kuona vyanzo vya tawi lingine")
     return await inventory_service.get_available_sources(db, product_id, quantity, destination_branch_id)
 
 
@@ -99,6 +109,5 @@ async def get_low_stock(
     current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role.name == "store_keeper" and not branch_id:
-        branch_id = current_user.branch_id
+    branch_id = await resolve_read_branch_id(db, current_user, branch_id)
     return await inventory_repo.get_low_stock(db, branch_id)

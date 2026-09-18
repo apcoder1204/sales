@@ -78,6 +78,20 @@ class UserService:
         if not user:
             raise NotFoundException("Mtumiaji")
 
+        # Nobody — including super_admin — may use the admin user-management
+        # surface to change their own role/branch/active-state. Self-service
+        # profile edits (name/email/password) go through PUT /auth/me
+        # instead; this endpoint is for managing *other* accounts only, so a
+        # self-target here is always a role/branch escalation or lockout risk.
+        if str(editor.id) == str(user_id):
+            await audit_service.log(
+                db, action="PERMISSION_DENIED", category="system",
+                user_id=editor.id, username=editor.username, user_role=editor.role.name,
+                entity_type="user", entity_id=str(user_id),
+                details={"reason": "cannot_edit_self_via_user_management"},
+            )
+            raise InsufficientPermissionException("Huwezi kuhariri akaunti yako mwenyewe hapa")
+
         if editor.role.name == "admin":
             if user.role.name in HIDDEN_FROM_ADMIN or (
                 data.role_id is not None
@@ -124,6 +138,14 @@ class UserService:
         user = await user_repo.get_by_id(db, user_id)
         if not user:
             raise NotFoundException("Mtumiaji")
+        if str(editor.id) == str(user_id):
+            await audit_service.log(
+                db, action="PERMISSION_DENIED", category="system",
+                user_id=editor.id, username=editor.username, user_role=editor.role.name,
+                entity_type="user", entity_id=str(user_id),
+                details={"reason": "cannot_deactivate_self"},
+            )
+            raise InsufficientPermissionException("Huwezi kuzima akaunti yako mwenyewe")
         if editor.role.name == "admin" and user.role.name in HIDDEN_FROM_ADMIN:
             await audit_service.log(
                 db, action="PERMISSION_DENIED", category="system",

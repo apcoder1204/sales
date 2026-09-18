@@ -6,10 +6,11 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.branch import Branch
+from sqlalchemy.exc import IntegrityError
 from app.repositories.daily_closing_repo import daily_closing_repo
 from app.repositories.sale_repo import sale_repo
 from app.schemas.daily_closing import CloseDayRequest, ClosingPreviewResponse, ClosingResponse, ExpenseResponse
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException, ValidationException, DuplicateException
 from app.services.audit_service import audit_service
 
 UTC = timezone.utc
@@ -101,18 +102,27 @@ class DailyClosingService:
             "closing_notes": data.notes,
             "closed_by": user.id, "closed_at": _utcnow(),
         }
-        if existing:
-            # Re-closing (e.g. after a reopen) replaces the prior reconciliation
-            # entirely — old matumizi rows no longer apply to this closing.
-            await daily_closing_repo.delete_expenses(db, existing.id)
-            closing = await daily_closing_repo.update(db, existing.id, payload)
-        else:
-            closing = await daily_closing_repo.create(db, payload)
+        try:
+            async with db.begin_nested():
+                if existing:
+                    # Re-closing (e.g. after a reopen) replaces the prior
+                    # reconciliation entirely — old matumizi rows no longer
+                    # apply to this closing.
+                    await daily_closing_repo.delete_expenses(db, existing.id)
+                    closing = await daily_closing_repo.update(db, existing.id, payload)
+                else:
+                    closing = await daily_closing_repo.create(db, payload)
 
-        for e in data.expenses:
-            await daily_closing_repo.create_expense(db, {
-                "closing_id": closing.id, "description": e.description, "amount": e.amount,
-            })
+                for e in data.expenses:
+                    await daily_closing_repo.create_expense(db, {
+                        "closing_id": closing.id, "description": e.description, "amount": e.amount,
+                    })
+        except IntegrityError as exc:
+            # Two concurrent close_day calls for the same (branch_id,
+            # business_date) with no existing row yet: both pass the
+            # `existing is None` check above, only one INSERT can win the
+            # unique constraint — the loser lands here instead of a raw 500.
+            raise DuplicateException("Kufunga kwa siku hii") from exc
 
         await db.commit()
         # This session uses expire_on_commit=False, so `closing.expenses` (already

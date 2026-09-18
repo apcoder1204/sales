@@ -29,3 +29,9 @@ id_ed25519*
 
 # Ad-hoc reference screenshots pasted during development
 Pasted image*.png
+
+# Local backup dumps / release build artifacts — never committed
+backups/
+release/
+*.tar.gz
+*.pre-security-upgrade

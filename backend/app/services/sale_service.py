@@ -142,30 +142,74 @@ class SaleService:
         )
 
     async def void_sale(self, db: AsyncSession, sale_id: UUID, reason: str, user):
-        sale = await sale_repo.get_by_id(db, sale_id)
-        if not sale:
-            raise NotFoundException("Muamala")
-        if sale.status == "voided":
-            raise ValidationException("Muamala huu tayari umebatilishwa")
+        async with db.begin_nested():
+            # Lock the sale row so two concurrent void requests for the same
+            # sale can't both pass the status check and both restore stock.
+            sale = await sale_repo.get_by_id_locked(db, sale_id)
+            if not sale:
+                raise NotFoundException("Muamala")
+            if sale.status != "completed":
+                raise ValidationException("Muamala huu tayari umebatilishwa")
 
-        closing = await daily_closing_repo.get_by_branch_date(
-            db, sale.branch_id, business_date_for(sale.created_at)
-        )
-        if closing and closing.status == "closed":
-            raise ValidationException("Siku ya muamala huu tayari imefungwa. Wasiliana na msimamizi kufungua tena.")
+            closing = await daily_closing_repo.get_by_branch_date(
+                db, sale.branch_id, business_date_for(sale.created_at)
+            )
+            if closing and closing.status == "closed":
+                raise ValidationException(
+                    "Siku ya muamala huu tayari imefungwa. Wasiliana na msimamizi kufungua tena."
+                )
 
-        await sale_repo.update(db, sale_id, {
-            "status": "voided",
-            "voided_by": user.id,
-            "voided_at": _utcnow(),
-            "void_reason": reason,
-        })
+            items = list(sale.items)
+            restored = []
+            # Lock inventory rows in a deterministic order (by product_id) —
+            # reduces deadlock risk against a concurrent sale/adjustment/void
+            # touching overlapping products at the same branch.
+            for item in sorted(items, key=lambda i: str(i.product_id)):
+                inv = await inventory_repo.get_by_product_branch_locked(
+                    db, item.product_id, sale.branch_id
+                )
+                if not inv:
+                    # A sold item must have had an inventory row at the time
+                    # of sale — a missing row here means the data is already
+                    # inconsistent. Surface it loudly rather than silently
+                    # fabricating a new row with a guessed quantity.
+                    raise ValidationException(
+                        "Hifadhi ya bidhaa haikupatikana kwa ajili ya kurejesha hisa"
+                    )
+                qty_before = inv.quantity
+                qty_after = qty_before + item.quantity
+                await inventory_repo.create_transaction(db, {
+                    "product_id": item.product_id,
+                    "branch_id": sale.branch_id,
+                    "transaction_type": "stock_in",
+                    "quantity_before": qty_before,
+                    "quantity_change": item.quantity,
+                    "quantity_after": qty_after,
+                    "reference_id": sale.id,
+                    "reference_type": "sale_void",
+                    "notes": f"Kurejesha hisa baada ya kubatilisha muamala: {reason}",
+                    "performed_by": user.id,
+                })
+                await inventory_repo.update(db, inv.id, {"quantity": qty_after})
+                restored.append({"product_id": str(item.product_id), "quantity": item.quantity})
+
+            await sale_repo.update(db, sale_id, {
+                "status": "voided",
+                "voided_by": user.id,
+                "voided_at": _utcnow(),
+                "void_reason": reason,
+            })
+            await db.flush()
+
         await db.commit()
         await audit_service.log(
             db, action="SALE_VOIDED", category="sales",
             user_id=user.id, username=user.username, user_role=user.role.name,
-            entity_type="sale", entity_id=str(sale_id),
-            details={"transaction_no": sale.transaction_no, "reason": reason},
+            branch_id=sale.branch_id, entity_type="sale", entity_id=str(sale_id),
+            details={
+                "transaction_no": sale.transaction_no, "reason": reason,
+                "items_restored": restored,
+            },
         )
 
 

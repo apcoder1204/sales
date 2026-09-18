@@ -41,6 +41,15 @@ class TransferRepository(BaseRepository[StockTransfer]):
         result = await db.execute(select(StockRequest).where(StockRequest.id == id))
         return result.scalar_one_or_none()
 
+    async def get_request_by_id_locked(self, db: AsyncSession, id: UUID) -> StockRequest | None:
+        """Locks the StockRequest row so a status-transition (approve/reject/
+        execute) can safely check-then-act without racing a concurrent call
+        on the same request."""
+        result = await db.execute(
+            select(StockRequest).where(StockRequest.id == id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def get_request_item_by_id(self, db: AsyncSession, id: UUID) -> StockRequestItem | None:
         result = await db.execute(select(StockRequestItem).where(StockRequestItem.id == id))
         return result.scalar_one_or_none()
@@ -69,13 +78,20 @@ class TransferRepository(BaseRepository[StockTransfer]):
         self, db: AsyncSession,
         from_branch_id: UUID | None = None,
         to_branch_id: UUID | None = None,
+        branch_id: UUID | None = None,
         skip: int = 0, limit: int = 20
     ) -> tuple[list[StockTransfer], int]:
         q = select(StockTransfer)
-        if from_branch_id:
-            q = q.where(StockTransfer.from_branch_id == from_branch_id)
-        if to_branch_id:
-            q = q.where(StockTransfer.to_branch_id == to_branch_id)
+        if branch_id:
+            q = q.where(
+                (StockTransfer.from_branch_id == branch_id) |
+                (StockTransfer.to_branch_id == branch_id)
+            )
+        else:
+            if from_branch_id:
+                q = q.where(StockTransfer.from_branch_id == from_branch_id)
+            if to_branch_id:
+                q = q.where(StockTransfer.to_branch_id == to_branch_id)
         count = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
         rows = (await db.execute(
             q.order_by(StockTransfer.created_at.desc()).offset(skip).limit(limit)

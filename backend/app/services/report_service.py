@@ -20,10 +20,11 @@ from app.schemas.report import (
     ClosingReportResponse, ClosingReportRow, ClosingReportSummary, ClosingReportExpense
 )
 from app.repositories.inventory_repo import inventory_repo
+from app.services.daily_closing_service import business_date_today
 
 
 def _get_date_range(period: str, from_date: date | None, to_date: date | None):
-    today = datetime.now().date()
+    today = business_date_today()
     if period == "today":
         return (
             datetime.combine(today, datetime.min.time()),
@@ -193,7 +194,8 @@ class ReportService:
 
     async def get_branch_performance(
         self, db: AsyncSession,
-        period: str, from_date: date | None, to_date: date | None
+        period: str, from_date: date | None, to_date: date | None,
+        branch_id: UUID | None = None,
     ) -> BranchPerformanceResponse:
         from_dt, to_dt = _get_date_range(period, from_date, to_date)
         q = select(
@@ -209,6 +211,8 @@ class ReportService:
             Sale.created_at >= from_dt,
             Sale.created_at <= to_dt,
         ).group_by(Branch.name).order_by(func.sum(Sale.total_amount).desc())
+        if branch_id:
+            q = q.where(Branch.id == branch_id)
         rows = (await db.execute(q)).all()
         branches = [
             BranchPerformance(

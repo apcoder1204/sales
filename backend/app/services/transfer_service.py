@@ -13,6 +13,9 @@ from app.core.exceptions import (
     InsufficientStockException, NotFoundException,
     TransferPermissionException, ValidationException
 )
+from app.core.authorization import (
+    require_stock_request_branches, require_direct_transfer_branches,
+)
 from app.services.audit_service import audit_service
 
 UTC = timezone.utc
@@ -26,6 +29,11 @@ class TransferService:
     async def create_request(
         self, db: AsyncSession, data: StockRequestCreate, user
     ):
+        # Object-relationship authorization: never trust the client's
+        # from/to branch_id pair — validate existence/active/different
+        # branches and who `user` is actually allowed to request between.
+        await require_stock_request_branches(db, user, data.from_branch_id, data.to_branch_id)
+
         main_branch = await inventory_repo.get_main_store(db)
 
         products = {}
@@ -78,53 +86,62 @@ class TransferService:
     async def approve_request(
         self, db: AsyncSession, request_id: UUID, data: StockRequestApprovalRequest, user
     ):
-        req = await transfer_repo.get_request_by_id(db, request_id)
-        if not req:
-            raise NotFoundException("Ombi")
-        if req.status != "pending":
-            raise ValidationException("Ombi hili haliwezi kuidhinishwa")
+        async with db.begin_nested():
+            # Lock the request row first so two concurrent approve calls for
+            # the same request can't both pass the status check below.
+            req = await transfer_repo.get_request_by_id_locked(db, request_id)
+            if not req:
+                raise NotFoundException("Ombi")
+            if req.status != "pending":
+                raise ValidationException("Ombi hili haliwezi kuidhinishwa")
 
-        items_by_id = {item.id: item for item in req.items}
-        approvals: dict = {}
-        for a in data.items:
-            item = items_by_id.get(a.item_id)
-            if not item:
-                raise NotFoundException("Kipengele cha ombi")
-            if a.approved_qty > item.requested_qty:
-                raise ValidationException("Idadi iliyoidhinishwa haiwezi kuzidi iliyoombwa")
-            approvals[a.item_id] = a.approved_qty
-        if set(approvals.keys()) != set(items_by_id.keys()):
-            raise ValidationException("Idhinisho la vipengele vyote vya ombi linahitajika")
+            items_by_id = {item.id: item for item in req.items}
+            approvals: dict = {}
+            for a in data.items:
+                item = items_by_id.get(a.item_id)
+                if not item:
+                    raise NotFoundException("Kipengele cha ombi")
+                if a.approved_qty > item.requested_qty:
+                    raise ValidationException("Idadi iliyoidhinishwa haiwezi kuzidi iliyoombwa")
+                approvals[a.item_id] = a.approved_qty
+            if set(approvals.keys()) != set(items_by_id.keys()):
+                raise ValidationException("Idhinisho la vipengele vyote vya ombi linahitajika")
 
-        # Validate stock sufficiency for every approved-qty item before reserving anything.
-        invs = {}
-        for item in req.items:
-            approved_qty = approvals[item.id]
-            if approved_qty <= 0:
-                continue
-            inv = await inventory_repo.get_by_product_branch(db, item.product_id, req.from_branch_id)
-            available = (inv.quantity - inv.reserved_qty) if inv else 0
-            if available < approved_qty:
-                raise InsufficientStockException(item.product.name, available, approved_qty)
-            invs[item.id] = inv
+            # Lock inventory rows in a deterministic order (by product_id) —
+            # reduces deadlock risk against a concurrent approval touching
+            # overlapping products at the same branch — then validate stock
+            # sufficiency for every approved-qty item before reserving anything.
+            invs = {}
+            for item in sorted(
+                (i for i in req.items if approvals[i.id] > 0), key=lambda i: str(i.product_id)
+            ):
+                approved_qty = approvals[item.id]
+                inv = await inventory_repo.get_by_product_branch_locked(
+                    db, item.product_id, req.from_branch_id
+                )
+                available = (inv.quantity - inv.reserved_qty) if inv else 0
+                if available < approved_qty:
+                    raise InsufficientStockException(item.product.name, available, approved_qty)
+                invs[item.id] = inv
 
-        for item in req.items:
-            approved_qty = approvals[item.id]
-            if approved_qty > 0:
-                inv = invs[item.id]
-                await inventory_repo.update(db, inv.id, {
-                    "reserved_qty": inv.reserved_qty + approved_qty
-                })
-            item.approved_qty = approved_qty
-            item.status = "approved" if approved_qty > 0 else "rejected"
-            item.reviewed_at = _utcnow()
-            item.review_notes = data.notes
+            for item in req.items:
+                approved_qty = approvals[item.id]
+                if approved_qty > 0:
+                    inv = invs[item.id]
+                    await inventory_repo.update(db, inv.id, {
+                        "reserved_qty": inv.reserved_qty + approved_qty
+                    })
+                item.approved_qty = approved_qty
+                item.status = "approved" if approved_qty > 0 else "rejected"
+                item.reviewed_at = _utcnow()
+                item.review_notes = data.notes
 
-        req.status = "rejected" if all(approvals[i.id] == 0 for i in req.items) else "approved"
-        req.reviewed_by = user.id
-        req.reviewed_at = _utcnow()
-        req.review_notes = data.notes
-        await db.flush()
+            req.status = "rejected" if all(approvals[i.id] == 0 for i in req.items) else "approved"
+            req.reviewed_by = user.id
+            req.reviewed_at = _utcnow()
+            req.review_notes = data.notes
+            await db.flush()
+
         await db.commit()
 
         await audit_service.log(
@@ -210,30 +227,33 @@ class TransferService:
     async def execute_request(
         self, db: AsyncSession, request_id: UUID, user
     ):
-        req = await transfer_repo.get_request_by_id(db, request_id)
-        if not req:
-            raise NotFoundException("Ombi")
-        if req.status != "approved":
-            raise ValidationException("Ombi hili halijaidhinishwa bado")
-
-        # Execution is a physical handover — only whoever holds the stock being
-        # sent may confirm it: a cashier for their own branch, a store keeper
-        # for Duka Kuu (main store). Managers approve/allocate but do not
-        # execute — mirrors the existing main-store flow (manager approves,
-        # store keeper executes) for POS-to-POS requests too.
-        if user.role.name == "cashier" and str(user.branch_id) != str(req.from_branch_id):
-            raise TransferPermissionException()
-        if user.role.name == "store_keeper":
-            from_branch = await db.get(Branch, req.from_branch_id)
-            if not from_branch or from_branch.branch_type != "main_store":
-                raise TransferPermissionException()
-
-        approved_items = [i for i in req.items if i.status == "approved" and (i.approved_qty or 0) > 0]
-        if not approved_items:
-            raise ValidationException("Hakuna bidhaa zilizoidhinishwa za kutekeleza")
-
         moved = []
         async with db.begin_nested():
+            # Lock the request row so two concurrent execute calls for the
+            # same request can't both pass the status check and each move
+            # stock / create a StockTransfer for it.
+            req = await transfer_repo.get_request_by_id_locked(db, request_id)
+            if not req:
+                raise NotFoundException("Ombi")
+            if req.status != "approved":
+                raise ValidationException("Ombi hili halijaidhinishwa bado")
+
+            # Execution is a physical handover — only whoever holds the stock being
+            # sent may confirm it: a cashier for their own branch, a store keeper
+            # for Duka Kuu (main store). Managers approve/allocate but do not
+            # execute — mirrors the existing main-store flow (manager approves,
+            # store keeper executes) for POS-to-POS requests too.
+            if user.role.name == "cashier" and str(user.branch_id) != str(req.from_branch_id):
+                raise TransferPermissionException()
+            if user.role.name == "store_keeper":
+                from_branch = await db.get(Branch, req.from_branch_id)
+                if not from_branch or from_branch.branch_type != "main_store":
+                    raise TransferPermissionException()
+
+            approved_items = [i for i in req.items if i.status == "approved" and (i.approved_qty or 0) > 0]
+            if not approved_items:
+                raise ValidationException("Hakuna bidhaa zilizoidhinishwa za kutekeleza")
+
             transfer_no = await transfer_repo.get_next_transfer_no(db)
             tf = await transfer_repo.create_transfer(db, {
                 "transfer_no": transfer_no,
@@ -246,7 +266,7 @@ class TransferService:
                 "notes": f"Utekelezaji wa {req.request_no}",
             })
 
-            for item in approved_items:
+            for item in sorted(approved_items, key=lambda i: str(i.product_id)):
                 product = await self._move_stock_item(
                     db, tf.id, item.product_id, item.approved_qty,
                     req.from_branch_id, req.to_branch_id, user.id,
@@ -278,17 +298,19 @@ class TransferService:
     async def reject_request(
         self, db: AsyncSession, request_id: UUID, notes: str | None, user
     ):
-        req = await transfer_repo.get_request_by_id(db, request_id)
-        if not req:
-            raise NotFoundException("Ombi")
-        if req.status != "pending":
-            raise ValidationException("Ombi hili haliwezi kukataliwa")
+        async with db.begin_nested():
+            req = await transfer_repo.get_request_by_id_locked(db, request_id)
+            if not req:
+                raise NotFoundException("Ombi")
+            if req.status != "pending":
+                raise ValidationException("Ombi hili haliwezi kukataliwa")
 
-        req.status = "rejected"
-        req.reviewed_by = user.id
-        req.reviewed_at = _utcnow()
-        req.review_notes = notes
-        await db.flush()
+            req.status = "rejected"
+            req.reviewed_by = user.id
+            req.reviewed_at = _utcnow()
+            req.review_notes = notes
+            await db.flush()
+
         await db.commit()
 
         await audit_service.log(
@@ -302,13 +324,9 @@ class TransferService:
     async def execute_transfer(
         self, db: AsyncSession, data: DirectTransferCreate, user
     ):
-        if user.role.name == "store_keeper":
-            from_branch = await db.get(
-                __import__("app.models.branch", fromlist=["Branch"]).Branch,
-                data.from_branch_id
-            )
-            if not from_branch or from_branch.branch_type != "main_store":
-                raise TransferPermissionException()
+        # Branch existence/active/different + store_keeper's main-store-only
+        # origin — never trust the client's branch pair as-is.
+        await require_direct_transfer_branches(db, user, data.from_branch_id, data.to_branch_id)
 
         async with db.begin_nested():
             transfer_no = await transfer_repo.get_next_transfer_no(db)
@@ -390,10 +408,13 @@ class TransferService:
 
     async def list_transfers(
         self, db: AsyncSession, from_branch_id: UUID | None,
-        to_branch_id: UUID | None, page: int, per_page: int
+        to_branch_id: UUID | None, branch_id: UUID | None,
+        page: int, per_page: int
     ):
         skip = (page - 1) * per_page
-        rows, total = await transfer_repo.list_transfers(db, from_branch_id, to_branch_id, skip, per_page)
+        rows, total = await transfer_repo.list_transfers(
+            db, from_branch_id, to_branch_id, branch_id, skip, per_page
+        )
         items = [
             {
                 "id": t.id,
