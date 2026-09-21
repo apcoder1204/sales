@@ -49,6 +49,9 @@ export default function CashierDash() {
               </div>
             </div>
           ))}
+          {(!data?.recent_sales || data.recent_sales.length === 0) && !loading && (
+            <p className="text-sm text-text-muted text-center py-4">{SW.common.hakuna}</p>
+          )}
         </div>
       </Card>
     </PageWrapper>

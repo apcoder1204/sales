@@ -24,16 +24,28 @@ export default function SuperAdminDash() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title={SW.dashibodi.mwelekeoWikiHii}>
-          <SalesTrendChart data={data?.sales_trend || []} />
+          {data?.sales_trend?.length > 0 || loading ? (
+            <SalesTrendChart data={data?.sales_trend || []} />
+          ) : (
+            <p className="text-sm text-text-muted text-center py-16">{SW.common.hakuna}</p>
+          )}
         </Card>
         <Card title={SW.ripoti.mauzoKwaTawi}>
-          <BranchSalesChart data={data?.branch_sales || []} />
+          {data?.branch_sales?.length > 0 || loading ? (
+            <BranchSalesChart data={data?.branch_sales || []} />
+          ) : (
+            <p className="text-sm text-text-muted text-center py-16">{SW.common.hakuna}</p>
+          )}
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title={SW.dashibodi.bidhaaTanoZaJuu}>
-          <TopProductsChart data={data?.top_products || []} />
+          {data?.top_products?.length > 0 || loading ? (
+            <TopProductsChart data={data?.top_products || []} />
+          ) : (
+            <p className="text-sm text-text-muted text-center py-16">{SW.common.hakuna}</p>
+          )}
         </Card>
         <Card title={SW.dashibodi.haliYaMatawi}>
           <div className="space-y-3">
@@ -54,6 +66,9 @@ export default function SuperAdminDash() {
                 </div>
               </div>
             ))}
+            {(!data?.branches || data.branches.length === 0) && !loading && (
+              <p className="text-sm text-text-muted text-center py-4">{SW.common.hakuna}</p>
+            )}
           </div>
         </Card>
       </div>

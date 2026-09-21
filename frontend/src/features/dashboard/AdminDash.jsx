@@ -22,10 +22,18 @@ export default function AdminDash() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title={SW.ripoti.mwelekeoWaMauzo}>
-          <SalesTrendChart data={data?.sales_trend || []} />
+          {data?.sales_trend?.length > 0 || loading ? (
+            <SalesTrendChart data={data?.sales_trend || []} />
+          ) : (
+            <p className="text-sm text-text-muted text-center py-16">{SW.common.hakuna}</p>
+          )}
         </Card>
         <Card title={SW.ripoti.mauzoKwaTawi}>
-          <BranchSalesChart data={data?.branch_sales || []} />
+          {data?.branch_sales?.length > 0 || loading ? (
+            <BranchSalesChart data={data?.branch_sales || []} />
+          ) : (
+            <p className="text-sm text-text-muted text-center py-16">{SW.common.hakuna}</p>
+          )}
         </Card>
       </div>
     </PageWrapper>

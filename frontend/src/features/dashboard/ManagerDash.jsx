@@ -20,7 +20,11 @@ export default function ManagerDash() {
         <KpiCard title={SW.hifadhi.hisaChini} value={formatNumber(data?.low_stock_count)} icon={AlertTriangle} color="red" loading={loading} />
       </div>
       <Card title={SW.ripoti.mauzoKwaTawi}>
-        <BranchSalesChart data={data?.branch_sales || []} />
+        {data?.branch_sales?.length > 0 || loading ? (
+          <BranchSalesChart data={data?.branch_sales || []} />
+        ) : (
+          <p className="text-sm text-text-muted text-center py-16">{SW.common.hakuna}</p>
+        )}
       </Card>
     </PageWrapper>
   )

@@ -38,7 +38,7 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest, db: Asy
     await auth_service.forgot_password(db, data.email)
     # Same response regardless of whether the email matched an account —
     # never reveal which case, to prevent account enumeration.
-    return {"me+ssage": "Kama barua pepe hii ipo kwenye mfumo, kiungo cha kuweka upya nenosiri kimetumwa."}
+    return {"message": "Kama barua pepe hii ipo kwenye mfumo, kiungo cha kuweka upya nenosiri kimetumwa."}
 
 
 @router.post("/reset-password", response_model=MessageResponse)
