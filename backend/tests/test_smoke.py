@@ -6,6 +6,9 @@ from tests.conftest import auth_headers, make_branch, make_user
 async def test_health(client):
     resp = await client.get("/health")
     assert resp.status_code == 200
+    body = resp.json()
+    assert body["database"]["status"] == "ok"
+    assert body["database"]["latency_ms"] is not None
 
 
 async def test_me_endpoint_returns_current_user(client, db_session):

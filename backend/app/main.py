@@ -1,16 +1,20 @@
+import asyncio
 import logging
+import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
 from app.config import settings
 import app.db.base  # noqa — registers all models in SQLAlchemy's mapper registry
 from app.api.v1.router import api_router
 from app.core.middleware import RequestIDMiddleware, AccessLogMiddleware, SecurityHeadersMiddleware
 from app.core.exceptions import AppException
 from app.core.rate_limit import limiter
+from app.db.session import engine
 
 logger = logging.getLogger("dukani.errors")
 
@@ -72,9 +76,34 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health", tags=["Health"])
 async def health():
-    return {
-        "status": "healthy",
+    # A 200 here previously only proved the FastAPI process was alive — the
+    # most likely real failure (DB unreachable, pool exhausted, disk full)
+    # was invisible to it. That gap let the NoNewPrivileges webhook bug ship
+    # unnoticed for two days: the old health check kept passing against a
+    # stale process the whole time. A short-timeout SELECT 1 catches that
+    # class of failure instead of just "the process didn't crash".
+    db_status = "ok"
+    db_latency_ms = None
+    start = time.monotonic()
+    try:
+        async with engine.connect() as conn:
+            await asyncio.wait_for(conn.execute(text("SELECT 1")), timeout=3)
+        db_latency_ms = round((time.monotonic() - start) * 1000, 1)
+    except Exception:
+        db_status = "unreachable"
+
+    pool = engine.pool
+    body = {
+        "status": "healthy" if db_status == "ok" else "unhealthy",
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
+        "database": {
+            "status": db_status,
+            "latency_ms": db_latency_ms,
+            "pool_size": pool.size(),
+            "pool_checked_out": pool.checkedout(),
+            "pool_overflow": pool.overflow(),
+        },
     }
+    return JSONResponse(status_code=200 if db_status == "ok" else 503, content=body)
