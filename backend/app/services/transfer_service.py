@@ -72,6 +72,7 @@ class TransferService:
         await audit_service.log(
             db, action="TRANSFER_REQUEST_CREATED", category="transfers",
             user_id=user.id, username=user.username, user_role=user.role.name,
+            branch_id=data.from_branch_id, to_branch_id=data.to_branch_id,
             entity_type="stock_request", entity_id=str(req.id),
             details={
                 "request_no": request_no,
@@ -147,6 +148,7 @@ class TransferService:
         await audit_service.log(
             db, action="TRANSFER_REQUEST_APPROVED", category="transfers",
             user_id=user.id, username=user.username, user_role=user.role.name,
+            branch_id=req.from_branch_id, to_branch_id=req.to_branch_id,
             entity_type="stock_request", entity_id=str(request_id),
             details={
                 "request_no": req.request_no, "notes": data.notes,
@@ -290,6 +292,7 @@ class TransferService:
         await audit_service.log(
             db, action="TRANSFER_REQUEST_FULFILLED", category="transfers",
             user_id=user.id, username=user.username, user_role=user.role.name,
+            branch_id=req.from_branch_id, to_branch_id=req.to_branch_id,
             entity_type="stock_request", entity_id=str(request_id),
             details={"request_no": req.request_no, "items": moved}
         )
@@ -316,6 +319,7 @@ class TransferService:
         await audit_service.log(
             db, action="TRANSFER_REQUEST_REJECTED", category="transfers",
             user_id=user.id, username=user.username, user_role=user.role.name,
+            branch_id=req.from_branch_id, to_branch_id=req.to_branch_id,
             entity_type="stock_request", entity_id=str(request_id),
             details={"request_no": req.request_no, "notes": notes}
         )
@@ -353,6 +357,7 @@ class TransferService:
         await audit_service.log(
             db, action="TRANSFER_COMPLETED", category="transfers",
             user_id=user.id, username=user.username, user_role=user.role.name,
+            branch_id=data.from_branch_id, to_branch_id=data.to_branch_id,
             entity_type="stock_transfer", entity_id=str(tf.id),
             details={"transfer_no": transfer_no, "items": len(data.items)}
         )

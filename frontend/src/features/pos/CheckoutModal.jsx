@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import Modal from '@components/ui/Modal'
 import Button from '@components/ui/Button'
 import Select from '@components/ui/Select'
@@ -9,7 +9,6 @@ import { useAuth } from '@hooks/useAuth'
 import { useApi } from '@hooks/useApi'
 import { useBranch } from '@hooks/useBranch'
 import { saleService } from '@services/saleService'
-import { userService } from '@services/userService'
 import { formatCurrency } from '@utils/formatters'
 import { getPaymentMethods } from '@utils/constants'
 import { isGlobalRole } from '@utils/permissions'
@@ -19,34 +18,23 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   const { items, subtotal, total, clear } = useCart()
   const { user } = useAuth()
   const { loading, call } = useApi()
-  const { activeBranchId } = useBranch()
+  const { activeBranchId, branches } = useBranch()
   const [payment, setPayment] = useState({ method: 'cash', reference: '' })
-  const [branches, setBranches] = useState([])
-  const [selectedBranchId, setSelectedBranchId] = useState('')
 
   const isGlobal = isGlobalRole(user)
   const needsReference = ['mobile_money', 'bank_transfer'].includes(payment.method)
 
-  // Load POS branches for global-role users (Main Store is a warehouse, not
-  // a POS sales point). Default to the shared branch-context selection when
-  // it's a valid, sellable-from (pos_point) branch — the sale should operate
-  // in that context per the global selector — otherwise fall back to the
-  // first available POS branch. The dropdown below still lets the user
-  // override for this one sale.
-  useEffect(() => {
-    if (!open || !isGlobal) return
-    userService.branches()
-      .then((b) => {
-        const pos = b.filter((x) => x.branch_type === 'pos_point')
-        setBranches(pos.map((x) => ({ value: x.id, label: x.name })))
-        const contextMatch = activeBranchId && pos.some((x) => x.id === activeBranchId)
-        if (contextMatch) setSelectedBranchId(activeBranchId)
-        else if (pos.length > 0) setSelectedBranchId(pos[0].id)
-      })
-      .catch(() => {})
-  }, [open, isGlobal, activeBranchId])
-
-  const effectiveBranchId = isGlobal ? selectedBranchId : user?.branch_id
+  // A sale always sells from wherever the global branch switcher (top bar)
+  // is currently pointed — there is no separate in-checkout branch choice,
+  // and it never silently falls back to "the first POS branch" if the
+  // switcher is on ALL or on a non-sellable branch (e.g. Main Store, a
+  // warehouse). If it isn't a valid pos_point branch, checkout is blocked
+  // with a message telling the cashier/admin to switch branch first — a
+  // wrong guess here means the sale (and its stock deduction) lands on the
+  // wrong branch, which is far worse than one extra click.
+  const activeBranch = isGlobal ? branches.find((b) => b.id === activeBranchId) : null
+  const globalBranchReady = !isGlobal || activeBranch?.branch_type === 'pos_point'
+  const effectiveBranchId = isGlobal ? activeBranchId : user?.branch_id
 
   const handleCheckout = async () => {
     if (needsReference && !payment.reference.trim()) return
@@ -72,6 +60,7 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   const canSubmit = items.length > 0
     && !(needsReference && !payment.reference)
     && Boolean(effectiveBranchId)
+    && globalBranchReady
 
   return (
     <Modal
@@ -89,16 +78,18 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
       }
     >
       <div className="space-y-4">
-        {/* Branch selector — only for global roles */}
+        {/* Branch context — read-only, driven entirely by the top branch
+            switcher. Global roles see which branch the sale will post to;
+            if the switcher isn't on a sellable branch, checkout is blocked
+            below rather than guessing one. */}
         {isGlobal && (
-          <Select
-            label={SW.mauzo.tawiLaMauzo}
-            value={selectedBranchId}
-            onChange={(e) => setSelectedBranchId(e.target.value)}
-            options={branches}
-            placeholder={SW.mauzo.chaguaTawiPlaceholder}
-            required
-          />
+          globalBranchReady ? (
+            <p className="text-sm text-text-secondary">
+              {SW.mauzo.tawiLaMauzo}: <span className="font-medium text-text-primary">{activeBranch.name}</span>
+            </p>
+          ) : (
+            <p className="text-sm text-accent-red">{SW.mauzo.chaguaTawiLaMauzoKwanza}</p>
+          )
         )}
 
         {/* Summary */}

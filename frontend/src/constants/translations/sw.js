@@ -296,6 +296,8 @@ export const SW = {
     hisaKidogo: 'Hisa Kidogo',
     tawiLaMauzo: 'Tawi la Mauzo',
     chaguaTawiPlaceholder: 'Chagua tawi...',
+    chaguaTawiLaMauzoKwanza: 'Chagua tawi mahususi la mauzo kwenye kibadilishi tawi juu kabla ya kulipia.',
+    kikapuKimefutwaTawiKubadilika: 'Kikapu kimefutwa — tawi la mauzo limebadilika',
     kumbukumbuPlaceholder: 'M-Pesa au namba ya benki...',
     bidhaaIdadi: (n) => `Bidhaa (${n})`,
     imeongezwaKwenyeKikapu: (jina) => `${jina} imeongezwa`,

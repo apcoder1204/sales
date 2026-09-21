@@ -164,6 +164,13 @@ async def test_concurrent_approval_cannot_over_reserve():
             if "user_id" in ids:
                 await cleanup.execute(delete(User).where(User.id == ids["user_id"]))
             if "branch_id" in ids:
+                from app.models.audit_log import AuditLog
+                await cleanup.execute(
+                    delete(AuditLog).where(
+                        (AuditLog.branch_id == ids["branch_id"])
+                        | (AuditLog.to_branch_id == ids["branch_id"])
+                    )
+                )
                 await cleanup.execute(delete(Branch).where(Branch.id == ids["branch_id"]))
             await cleanup.commit()
         finally:

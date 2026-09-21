@@ -1,10 +1,8 @@
 import math
 from uuid import UUID
-from datetime import datetime, date, time, timezone
+from datetime import datetime, date, timezone
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.config import settings
 from app.models.branch import Branch
 from sqlalchemy.exc import IntegrityError
 from app.repositories.daily_closing_repo import daily_closing_repo
@@ -14,37 +12,10 @@ from app.schemas.daily_closing import (
     OpenRegisterRequest,
 )
 from app.core.exceptions import NotFoundException, ValidationException, DuplicateException
+from app.core.business_time import utcnow as _utcnow, business_date_today, business_date_for, utc_range_for_business_date
 from app.services.audit_service import audit_service
 
 UTC = timezone.utc
-_TZ = ZoneInfo(settings.DEFAULT_TIMEZONE)
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
-def business_date_today() -> date:
-    return datetime.now(_TZ).date()
-
-
-def business_date_for(naive_utc_dt: datetime) -> date:
-    """Convert a naive-UTC timestamp (as stored on Sale.created_at) to the
-    local business date it falls on."""
-    return naive_utc_dt.replace(tzinfo=UTC).astimezone(_TZ).date()
-
-
-def utc_range_for_business_date(business_date: date) -> tuple[datetime, datetime]:
-    """Sale.created_at is stored as naive UTC, but a "business day" is defined
-    in the branch's local timezone — convert the local midnight-to-midnight
-    window to naive UTC bounds so late-night local sales aren't attributed to
-    the wrong calendar day."""
-    start_local = datetime.combine(business_date, time.min, tzinfo=_TZ)
-    end_local = datetime.combine(business_date, time.max, tzinfo=_TZ)
-    return (
-        start_local.astimezone(UTC).replace(tzinfo=None),
-        end_local.astimezone(UTC).replace(tzinfo=None),
-    )
 
 
 def _window_for_register(existing, business_date: date) -> tuple[datetime, datetime]:

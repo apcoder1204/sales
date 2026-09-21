@@ -5,6 +5,7 @@ from app.repositories.inventory_repo import inventory_repo
 from app.schemas.product import ProductCreate, ProductUpdate, ProductWithInventory, BranchStock
 from app.schemas.common import PaginatedResponse
 from app.core.exceptions import NotFoundException, DuplicateException
+from app.core.authorization import is_global_scope
 from app.services.audit_service import audit_service
 import math
 
@@ -59,11 +60,17 @@ class ProductService:
             raise NotFoundException("Bidhaa")
 
         from sqlalchemy import select as sa_select
-        result = await db.execute(
+        query = (
             sa_select(Inventory, Branch)
             .join(Branch, Inventory.branch_id == Branch.id)
             .where(Inventory.product_id == product_id, Branch.is_active == True)
         )
+        # Non-global roles (cashier/store_keeper) may only see their own
+        # branch's stock here — the cross-branch breakdown is a global-role
+        # privilege, same as everywhere else branch scoping is enforced.
+        if user and not is_global_scope(user):
+            query = query.where(Inventory.branch_id == user.branch_id)
+        result = await db.execute(query)
         inventory_rows = result.all()
         branch_stocks = [
             BranchStock(

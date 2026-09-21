@@ -20,33 +20,33 @@ from app.schemas.report import (
     ClosingReportResponse, ClosingReportRow, ClosingReportSummary, ClosingReportExpense
 )
 from app.repositories.inventory_repo import inventory_repo
-from app.services.daily_closing_service import business_date_today
+from app.core.business_time import business_date_today, utc_range_for_business_date
+from app.config import settings
 
 
 def _get_date_range(period: str, from_date: date | None, to_date: date | None):
+    # Sale.created_at is naive UTC; "today"/"week"/"month" are local (business)
+    # calendar boundaries, so each endpoint must go through
+    # utc_range_for_business_date rather than a raw UTC combine() — otherwise
+    # the range is off by the local UTC offset and mis-attributes sales made
+    # near local midnight, the same class of bug fixed in daily_closing_service.
     today = business_date_today()
     if period == "today":
-        return (
-            datetime.combine(today, datetime.min.time()),
-            datetime.combine(today, datetime.max.time()),
-        )
+        return utc_range_for_business_date(today)
     elif period == "week":
         start = today - timedelta(days=today.weekday())
-        return (
-            datetime.combine(start, datetime.min.time()),
-            datetime.combine(today, datetime.max.time()),
-        )
+        range_start, _ = utc_range_for_business_date(start)
+        _, range_end = utc_range_for_business_date(today)
+        return (range_start, range_end)
     elif period == "month":
         start = today.replace(day=1)
-        return (
-            datetime.combine(start, datetime.min.time()),
-            datetime.combine(today, datetime.max.time()),
-        )
+        range_start, _ = utc_range_for_business_date(start)
+        _, range_end = utc_range_for_business_date(today)
+        return (range_start, range_end)
     else:
-        return (
-            datetime.combine(from_date or today, datetime.min.time()),
-            datetime.combine(to_date or today, datetime.max.time()),
-        )
+        range_start, _ = utc_range_for_business_date(from_date or today)
+        _, range_end = utc_range_for_business_date(to_date or today)
+        return (range_start, range_end)
 
 
 class ReportService:
@@ -81,8 +81,13 @@ class ReportService:
             items_q = items_q.where(Sale.branch_id == branch_id)
         total_items = (await db.execute(items_q)).scalar_one()
 
+        # Group by local calendar day, not UTC calendar day: convert the
+        # naive-UTC timestamp through the branch timezone before truncating,
+        # so a sale just after local midnight isn't bucketed into the
+        # previous day's chart point.
+        local_created_at = func.timezone(settings.DEFAULT_TIMEZONE, func.timezone("UTC", Sale.created_at))
         chart_q = select(
-            func.date_trunc("day", Sale.created_at).label("day"),
+            func.date_trunc("day", local_created_at).label("day"),
             func.sum(Sale.total_amount).label("total"),
         ).where(
             Sale.status == "completed",

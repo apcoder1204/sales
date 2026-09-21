@@ -1,5 +1,8 @@
 import React, { createContext, useReducer, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@hooks/useAuth'
+import { useBranch } from '@hooks/useBranch'
+import { useToast } from '@hooks/useToast'
+import SW from '@constants/sw'
 
 export const CartContext = createContext(null)
 
@@ -69,7 +72,10 @@ export function CartProvider({ children }) {
   // different user's login on the same device.
   const [state, dispatch] = useReducer(reducer, undefined, () => ({ items: readStoredItems() }))
   const { user, isAuthenticated } = useAuth()
+  const { activeBranchId } = useBranch()
+  const toast = useToast()
   const lastUserId = useRef(user?.id ?? null)
+  const lastBranchId = useRef(activeBranchId)
 
   useEffect(() => {
     writeStoredItems(state.items)
@@ -94,6 +100,23 @@ export function CartProvider({ children }) {
       lastUserId.current = currentUserId
     }
   }, [isAuthenticated, user?.id])
+
+  // Clear the cart when the active branch context changes mid-sale (only
+  // possible for global roles, via the top branch switcher — a cashier's
+  // own branch never changes). Stock availability and the sale's eventual
+  // branch attribution both come from whatever branch is active at
+  // checkout time, so carrying items across a branch switch would silently
+  // risk selling against the wrong branch's stock. Only fires when there
+  // was actually something to lose, so it stays silent on login/logout.
+  useEffect(() => {
+    if (lastBranchId.current === activeBranchId) return
+    const hadItems = state.items.length > 0
+    lastBranchId.current = activeBranchId
+    if (hadItems) {
+      dispatch({ type: 'CLEAR' })
+      toast.warning(SW.mauzo.kikapuKimefutwaTawiKubadilika)
+    }
+  }, [activeBranchId])
 
   const addItem = useCallback((product) => {
     dispatch({ type: 'ADD_ITEM', payload: product })

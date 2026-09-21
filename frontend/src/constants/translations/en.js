@@ -295,6 +295,8 @@ export const EN = {
     hisaKidogo: 'Low Stock',
     tawiLaMauzo: 'Sales Branch',
     chaguaTawiPlaceholder: 'Select branch...',
+    chaguaTawiLaMauzoKwanza: 'Select a specific sales branch from the branch switcher above before checking out.',
+    kikapuKimefutwaTawiKubadilika: 'Cart cleared — sales branch changed',
     kumbukumbuPlaceholder: 'M-Pesa or bank reference number...',
     bidhaaIdadi: (n) => `Items (${n})`,
     imeongezwaKwenyeKikapu: (jina) => `${jina} added`,

@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from app.models.audit_log import AuditLog
 from app.repositories.base import BaseRepository
 
@@ -23,7 +23,10 @@ class AuditRepository(BaseRepository[AuditLog]):
         if category:
             q = q.where(AuditLog.category == category)
         if branch_id:
-            q = q.where(AuditLog.branch_id == branch_id)
+            # Transfer events are attributed to both branch_id (from) and
+            # to_branch_id — a branch-scoped view must see a transfer
+            # regardless of which side of it this branch was on.
+            q = q.where(or_(AuditLog.branch_id == branch_id, AuditLog.to_branch_id == branch_id))
         if user_id:
             q = q.where(AuditLog.user_id == user_id)
         if action:

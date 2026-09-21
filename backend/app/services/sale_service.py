@@ -10,7 +10,7 @@ from app.repositories.daily_closing_repo import daily_closing_repo
 from app.schemas.sale import SaleCreate, ReceiptData, SaleItemResponse
 from app.core.exceptions import InsufficientStockException, NotFoundException, ValidationException
 from app.services.audit_service import audit_service
-from app.services.daily_closing_service import business_date_today, business_date_for
+from app.core.business_time import business_date_today, business_date_for
 
 UTC = timezone.utc
 

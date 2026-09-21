@@ -7,6 +7,7 @@ from app.models.stock_request_item import StockRequestItem
 from app.models.stock_transfer import StockTransfer
 from app.models.stock_transfer_item import StockTransferItem
 from app.repositories.base import BaseRepository
+from app.core.business_time import business_date_today
 
 
 class TransferRepository(BaseRepository[StockTransfer]):
@@ -15,13 +16,13 @@ class TransferRepository(BaseRepository[StockTransfer]):
     async def get_next_request_no(self, db: AsyncSession) -> str:
         result = await db.execute(text("SELECT nextval('seq_request_number')"))
         seq = result.scalar()
-        today = datetime.now().strftime("%Y%m%d")
+        today = business_date_today().strftime("%Y%m%d")
         return f"REQ-{today}-{seq:04d}"
 
     async def get_next_transfer_no(self, db: AsyncSession) -> str:
         result = await db.execute(text("SELECT nextval('seq_transfer_number')"))
         seq = result.scalar()
-        today = datetime.now().strftime("%Y%m%d")
+        today = business_date_today().strftime("%Y%m%d")
         return f"TRF-{today}-{seq:04d}"
 
     async def create_request(self, db: AsyncSession, data: dict) -> StockRequest:

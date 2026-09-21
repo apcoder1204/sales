@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.core.dependencies import require_role
 from app.core.authorization import branch_context
 from app.services.report_service import report_service
+from app.core.business_time import business_date_today, utc_range_for_business_date
 from app.repositories.inventory_repo import inventory_repo
 
 UTC = timezone.utc
@@ -33,9 +34,13 @@ async def dashboard_summary(
     from app.models.stock_request import StockRequest
     from app.models.branch import Branch
 
-    now = _utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # "Today"/"this month" are local (business) calendar boundaries, not UTC
+    # calendar boundaries — Sale.created_at is naive UTC, so the local
+    # midnight-to-midnight window must be converted to UTC before filtering,
+    # the same way daily_closing_service does for closings.
+    today = business_date_today()
+    today_start, _ = utc_range_for_business_date(today)
+    month_start, _ = utc_range_for_business_date(today.replace(day=1))
 
     # branch_context already resolved this per-role (cashier -> own branch,
     # store_keeper -> live main store, global roles -> validated selection
@@ -97,9 +102,8 @@ async def dashboard_summary(
 
     trend = []
     for i in range(6, -1, -1):
-        day = _utcnow().date() - timedelta(days=i)
-        day_start = datetime.combine(day, datetime.min.time())
-        day_end = datetime.combine(day, datetime.max.time())
+        day = today - timedelta(days=i)
+        day_start, day_end = utc_range_for_business_date(day)
         rev = (await db.execute(
             select(func.coalesce(func.sum(Sale.total_amount), 0)).where(
                 Sale.status == "completed",

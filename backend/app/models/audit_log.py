@@ -15,6 +15,12 @@ class AuditLog(Base):
     username: Mapped[str] = mapped_column(String(50), nullable=False)
     user_role: Mapped[str] = mapped_column(String(50), nullable=False)
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    # Only set for transfer events (request/direct transfer), which move
+    # stock between two branches and so need attribution to both, not just
+    # the "from"/acting branch in branch_id — a branch-scoped audit view
+    # (e.g. general_manager's transfers-only view) must see a transfer
+    # regardless of which side of it that branch was on.
+    to_branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[str] = mapped_column(
         SAEnum("authentication", "products", "inventory", "sales",

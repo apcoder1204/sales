@@ -5,6 +5,7 @@ from sqlalchemy import select, func, text
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.repositories.base import BaseRepository
+from app.core.business_time import business_date_today
 
 
 class SaleRepository(BaseRepository[Sale]):
@@ -13,7 +14,7 @@ class SaleRepository(BaseRepository[Sale]):
     async def get_next_transaction_no(self, db: AsyncSession) -> str:
         result = await db.execute(text("SELECT nextval('seq_sale_number')"))
         seq = result.scalar()
-        today = datetime.now().strftime("%Y%m%d")
+        today = business_date_today().strftime("%Y%m%d")
         return f"TXN-{today}-{seq:04d}"
 
     async def create_sale(self, db: AsyncSession, data: dict) -> Sale:
