@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
+from app.core.authorization import branch_context
 from app.schemas.transfer import (
     StockRequestCreate, StockRequestReview, StockRequestApprovalRequest, DirectTransferCreate,
     StockRequestResponse, StockTransferResponse, TransferItemResponse
@@ -16,14 +17,11 @@ router = APIRouter(prefix="/transfers", tags=["Uhamisho wa Bidhaa"])
 @router.get("/requests")
 async def list_requests(
     status: str | None = None,
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     page: int = 1, per_page: int = 20,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Scope branch-level users to only their own branch's requests
-    if current_user.role.name in ("cashier", "store_keeper"):
-        branch_id = current_user.branch_id
     return await transfer_service.list_requests(db, status, branch_id, page, per_page)
 
 
@@ -71,11 +69,16 @@ async def execute_request(
 async def list_transfers(
     from_branch_id: UUID | None = None,
     to_branch_id: UUID | None = None,
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     page: int = 1, per_page: int = 20,
     current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
+    # store_keeper is branch-scoped (main store) — branch_context resolves
+    # their effective branch server-side regardless of what they pass, and
+    # once resolved it takes precedence over from/to in the repo query (see
+    # transfer_repo.list_transfers), so they can no longer list another
+    # branch's transfers via from_branch_id/to_branch_id either.
     return await transfer_service.list_transfers(db, from_branch_id, to_branch_id, branch_id, page, per_page)
 
 

@@ -7,10 +7,12 @@ import { transferService } from '@services/transferService'
 import { productService } from '@services/productService'
 import { userService } from '@services/userService'
 import { useApi } from '@hooks/useApi'
+import { useBranch } from '@hooks/useBranch'
 import SW from '@constants/sw'
 
 export default function DirectTransferModal({ open, onClose, onSaved }) {
   const { loading, call } = useApi()
+  const { activeBranchId } = useBranch()
   const [branches, setBranches] = useState([])
   const [products, setProducts] = useState([])
   const [items, setItems] = useState([{ product_id: '', quantity: '' }])
@@ -18,9 +20,15 @@ export default function DirectTransferModal({ open, onClose, onSaved }) {
 
   useEffect(() => {
     if (!open) return
-    userService.branches().then(setBranches).catch(() => {})
+    userService.branches().then((b) => {
+      setBranches(b)
+      // Default the destination to the shared branch context when it's a
+      // valid POS outlet — still editable via the dropdown.
+      const contextMatch = activeBranchId && b.some((br) => br.id === activeBranchId && br.branch_type === 'pos_point')
+      if (contextMatch) setForm((f) => ({ ...f, to_branch_id: activeBranchId }))
+    }).catch(() => {})
     productService.list({ status: 'active', page_size: 200 }).then((r) => setProducts(r.items || r)).catch(() => {})
-  }, [open])
+  }, [open, activeBranchId])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setItem = (i, k) => (e) => setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [k]: e.target.value } : item))

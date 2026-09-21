@@ -8,12 +8,14 @@ import { productService } from '@services/productService'
 import { userService } from '@services/userService'
 import { useApi } from '@hooks/useApi'
 import { useAuth } from '@hooks/useAuth'
+import { useBranch } from '@hooks/useBranch'
 import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
 
 export default function CreateRequestModal({ open, onClose, onSaved }) {
   const { user } = useAuth()
   const { loading, call } = useApi()
+  const { activeBranchId } = useBranch()
   const isGlobal = isGlobalRole(user)
 
   const [branches, setBranches] = useState([])
@@ -27,9 +29,14 @@ export default function CreateRequestModal({ open, onClose, onSaved }) {
       setBranches(b)
       const mainStore = b.find((br) => br.branch_type === 'main_store')
       if (mainStore) setForm((f) => ({ ...f, from_branch_id: mainStore.id }))
+      // Default the requesting (destination) branch to the shared branch
+      // context when it's a valid POS outlet — the request should operate
+      // in that context per the global selector — the field stays editable.
+      const contextMatch = activeBranchId && b.some((br) => br.id === activeBranchId && br.branch_type === 'pos_point')
+      if (contextMatch) setForm((f) => ({ ...f, to_branch_id: activeBranchId }))
     }).catch(() => {})
     productService.list({ status: 'active', page_size: 200 }).then((r) => setProducts(r.items || r)).catch(() => {})
-  }, [open])
+  }, [open, activeBranchId])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setItem = (i, k) => (e) => setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [k]: e.target.value } : item))

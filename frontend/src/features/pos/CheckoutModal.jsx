@@ -7,6 +7,7 @@ import Divider from '@components/ui/Divider'
 import { useCart } from '@hooks/useCart'
 import { useAuth } from '@hooks/useAuth'
 import { useApi } from '@hooks/useApi'
+import { useBranch } from '@hooks/useBranch'
 import { saleService } from '@services/saleService'
 import { userService } from '@services/userService'
 import { formatCurrency } from '@utils/formatters'
@@ -18,6 +19,7 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   const { items, subtotal, total, clear } = useCart()
   const { user } = useAuth()
   const { loading, call } = useApi()
+  const { activeBranchId } = useBranch()
   const [payment, setPayment] = useState({ method: 'cash', reference: '' })
   const [branches, setBranches] = useState([])
   const [selectedBranchId, setSelectedBranchId] = useState('')
@@ -25,17 +27,24 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   const isGlobal = isGlobalRole(user)
   const needsReference = ['mobile_money', 'bank_transfer'].includes(payment.method)
 
-  // Load POS branches for global-role users (Main Store is a warehouse, not a POS sales point)
+  // Load POS branches for global-role users (Main Store is a warehouse, not
+  // a POS sales point). Default to the shared branch-context selection when
+  // it's a valid, sellable-from (pos_point) branch — the sale should operate
+  // in that context per the global selector — otherwise fall back to the
+  // first available POS branch. The dropdown below still lets the user
+  // override for this one sale.
   useEffect(() => {
     if (!open || !isGlobal) return
     userService.branches()
       .then((b) => {
         const pos = b.filter((x) => x.branch_type === 'pos_point')
         setBranches(pos.map((x) => ({ value: x.id, label: x.name })))
-        if (pos.length > 0) setSelectedBranchId(pos[0].id)
+        const contextMatch = activeBranchId && pos.some((x) => x.id === activeBranchId)
+        if (contextMatch) setSelectedBranchId(activeBranchId)
+        else if (pos.length > 0) setSelectedBranchId(pos[0].id)
       })
       .catch(() => {})
-  }, [open, isGlobal])
+  }, [open, isGlobal, activeBranchId])
 
   const effectiveBranchId = isGlobal ? selectedBranchId : user?.branch_id
 

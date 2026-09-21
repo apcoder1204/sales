@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
+from app.core.authorization import branch_context, require_write_branch_access
 from app.schemas.sale import SaleCreate, SaleResponse, SaleCreateResponse, SaleVoidRequest
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.sale_service import sale_service
@@ -20,9 +21,7 @@ async def create_sale(
     current_user=Depends(require_role("super_admin", "admin", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role.name == "cashier":
-        if str(current_user.branch_id) != str(data.branch_id):
-            raise InsufficientPermissionException("Huwezi kuuza kutoka tawi lingine")
+    await require_write_branch_access(db, current_user, data.branch_id)
     sale, receipt = await sale_service.create_sale(db, data, current_user)
     return SaleCreateResponse(
         sale=SaleResponse(
@@ -48,7 +47,7 @@ async def create_sale(
 
 @router.get("")
 async def list_sales(
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     cashier_id: UUID | None = None,
     payment_method: str | None = None,
     from_date: date | None = None,
@@ -59,7 +58,6 @@ async def list_sales(
 ):
     if current_user.role.name == "cashier":
         cashier_id = current_user.id
-        branch_id = current_user.branch_id
     skip = (page - 1) * per_page
     rows, total = await sale_repo.list_sales(
         db, branch_id, cashier_id, payment_method, from_date, to_date, skip, per_page

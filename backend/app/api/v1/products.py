@@ -1,8 +1,9 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
+from app.core.authorization import branch_context
 from app.schemas.product import (
     ProductCreate, ProductUpdate, ProductResponse, ProductWithInventory,
     CategoryCreate, CategoryUpdate, CategoryResponse,
@@ -75,7 +76,7 @@ async def list_products(
     brand: str | None = None,
     status: str = "active",
     page: int = 1, per_page: int = 20,
-    branch_id: UUID | None = Query(None),
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

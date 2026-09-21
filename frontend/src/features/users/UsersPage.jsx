@@ -12,6 +12,7 @@ import { useApi } from '@hooks/useApi'
 import { usePagination } from '@hooks/usePagination'
 import { usePermission } from '@hooks/usePermission'
 import { useAuth } from '@hooks/useAuth'
+import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { formatDateTime } from '@utils/formatters'
 import SW from '@constants/sw'
 
@@ -29,6 +30,7 @@ export default function UsersPage() {
   const pagination = usePagination()
   const { can, role } = usePermission()
   const { user: currentUser } = useAuth()
+  const branchFilter = useActiveBranchFilter()
 
   // Backend already excludes super_admin/admin rows from admin's view — this
   // is defense in depth, not the real enforcement, in case a stale/cached
@@ -38,13 +40,13 @@ export default function UsersPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await userService.list(pagination.params)
+      const res = await userService.list({ ...branchFilter, ...pagination.params })
       setUsers(res.items || res)
       if (res.total !== undefined) pagination.setTotal(res.total)
     } finally {
       setLoading(false)
     }
-  }, [pagination.page])
+  }, [branchFilter.branch_id, pagination.page])
 
   useEffect(() => { load() }, [load])
 

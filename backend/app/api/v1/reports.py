@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import require_role
-from app.core.authorization import resolve_read_branch_id
+from app.core.authorization import branch_context
 from app.services.report_service import report_service
 from app.repositories.inventory_repo import inventory_repo
 
@@ -21,7 +21,7 @@ _financial_access = Depends(require_role("super_admin", "admin", "general_manage
 
 @router.get("/dashboard")
 async def dashboard_summary(
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "store_keeper", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -37,11 +37,10 @@ async def dashboard_summary(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    is_global = current_user.role.name in ("super_admin", "admin", "general_manager")
-    if not is_global:
-        scoped_branch_id = current_user.branch_id
-    else:
-        scoped_branch_id = branch_id
+    # branch_context already resolved this per-role (cashier -> own branch,
+    # store_keeper -> live main store, global roles -> validated selection
+    # or None for "all branches") — no need to re-derive it here.
+    scoped_branch_id = branch_id
 
     sale_branch_filter = [Sale.branch_id == scoped_branch_id] if scoped_branch_id else []
     inv_branch_filter = [Inventory.branch_id == scoped_branch_id] if scoped_branch_id else []
@@ -183,7 +182,7 @@ async def sales_report(
     period: str = "today",
     from_date: date | None = None,
     to_date: date | None = None,
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     db: AsyncSession = Depends(get_db),
 ):
     return await report_service.get_sales_report(db, period, from_date, to_date, branch_id)
@@ -191,11 +190,10 @@ async def sales_report(
 
 @router.get("/inventory")
 async def inventory_report(
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "store_keeper")),
     db: AsyncSession = Depends(get_db),
 ):
-    branch_id = await resolve_read_branch_id(db, current_user, branch_id)
     return await report_service.get_inventory_report(db, branch_id)
 
 
@@ -204,7 +202,7 @@ async def branch_performance(
     period: str = "month",
     from_date: date | None = None,
     to_date: date | None = None,
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     db: AsyncSession = Depends(get_db),
 ):
     return await report_service.get_branch_performance(db, period, from_date, to_date, branch_id)
@@ -212,7 +210,7 @@ async def branch_performance(
 
 @router.get("/cashier-performance", dependencies=[_financial_access])
 async def cashier_performance(
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     period: str = "month",
     from_date: date | None = None,
     to_date: date | None = None,
@@ -226,23 +224,18 @@ async def closing_report(
     period: str = "month",
     from_date: date | None = None,
     to_date: date | None = None,
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
-    # Cashiers (POS) can only pull their own branch's closing report — never
-    # someone else's, regardless of what branch_id they pass.
-    if current_user.role.name == "cashier":
-        branch_id = current_user.branch_id
     return await report_service.get_closing_report(db, period, from_date, to_date, branch_id)
 
 
 @router.get("/low-stock")
 async def low_stock_report(
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "store_keeper")),
     db: AsyncSession = Depends(get_db),
 ):
-    branch_id = await resolve_read_branch_id(db, current_user, branch_id)
     items = await inventory_repo.get_low_stock(db, branch_id)
     return {"items": items}

@@ -13,6 +13,7 @@ branch server-side instead of trusting the caller's input.
 """
 from uuid import UUID
 
+from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
@@ -20,6 +21,8 @@ from app.core.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from app.core.dependencies import get_current_user
+from app.db.session import get_db
 
 # admin/super_admin: full global scope. general_manager: existing cross-branch
 # operational scope (reports, transfer approval) — narrower category/action
@@ -49,13 +52,53 @@ async def resolve_read_branch_id(
 ) -> UUID | None:
     """The branch_id a *read* endpoint (listing/report/audit) should actually
     filter on for `user`. Ignores the client-supplied value entirely for a
-    branch-scoped role; passes it through unchanged for global-scope roles
-    (None means "no filter" there, by existing app convention)."""
+    branch-scoped role; for global-scope roles, None means "no filter" (the
+    ALL-branches context) and a specific value is validated against real,
+    active branches before being trusted — a global user can request any
+    branch context, but not a nonexistent or inactive one."""
     if user.role.name == "cashier":
         return user.branch_id
     if user.role.name == "store_keeper":
         return await get_main_store_id(db)
+    if requested_branch_id is not None:
+        await get_active_branch_or_error(db, requested_branch_id, "Tawi")
     return requested_branch_id
+
+
+async def branch_context(
+    branch_id: UUID | None = Query(None, description="Requested branch context; ALL branches when omitted (global roles only) — ignored/overridden for branch-scoped roles"),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UUID | None:
+    """FastAPI dependency wrapper around `resolve_read_branch_id`, so a route
+    gets validated, role-aware branch-context resolution for free by simply
+    declaring `branch_id: UUID | None = Depends(branch_context)` instead of
+    hand-rolling its own inline role check. Centralizes the "1. authenticate
+    2. determine role 3. determine authorized branches 4. determine
+    requested context 5. validate 6. apply filter" flow into one call site.
+    """
+    return await resolve_read_branch_id(db, current_user, branch_id)
+
+
+async def get_authorized_branches(db: AsyncSession, user) -> list:
+    """The branch list a user is allowed to see/select in a branch-context
+    switcher (e.g. GET /users/branches) — never the full unfiltered table.
+    Global-scope roles: every active branch. cashier: only their own.
+    store_keeper: only the live main store."""
+    from sqlalchemy import select
+    from app.models.branch import Branch
+
+    if user.role.name == "cashier":
+        branch = await db.get(Branch, user.branch_id) if user.branch_id else None
+        return [branch] if branch else []
+    if user.role.name == "store_keeper":
+        main_store_id = await get_main_store_id(db)
+        branch = await db.get(Branch, main_store_id)
+        return [branch] if branch else []
+    rows = (
+        await db.execute(select(Branch).where(Branch.is_active == True).order_by(Branch.name))
+    ).scalars().all()
+    return list(rows)
 
 
 async def require_write_branch_access(

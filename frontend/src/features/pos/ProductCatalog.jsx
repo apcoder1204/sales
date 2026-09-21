@@ -5,6 +5,7 @@ import SearchInput from '@components/ui/SearchInput'
 import { useCart } from '@hooks/useCart'
 import { useToast } from '@hooks/useToast'
 import { useAuth } from '@hooks/useAuth'
+import { useBranch } from '@hooks/useBranch'
 import { productService } from '@services/productService'
 import { useDebounce } from '@hooks/useDebounce'
 import { formatCurrency } from '@utils/formatters'
@@ -22,10 +23,13 @@ export default function ProductCatalog() {
   const { addItem, items } = useCart()
   const toast = useToast()
   const { user } = useAuth()
+  const { activeBranchId } = useBranch()
 
-  // Branch-scoped stock badges only for branch-scoped roles — global roles
-  // (admin/manager/super_admin) have no single active POS branch in this view.
-  const branchId = !isGlobalRole(user) ? user?.branch_id : null
+  // Branch-scoped roles always see their own branch's stock. Global roles
+  // follow the shared branch-context selector — a specific branch selected
+  // there filters stock badges to it; "All Branches" (null) shows the
+  // catalog unfiltered, same as before this was wired up.
+  const branchId = !isGlobalRole(user) ? user?.branch_id : activeBranchId
 
   const cartQty = (id) => items.find((i) => i.product_id === id)?.quantity || 0
 

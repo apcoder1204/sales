@@ -92,6 +92,7 @@ export const EN = {
     hali: 'Status',
     tena: 'Try again',
     ofisiYote: 'All Branches',
+    tawiHalipatikaniTena: 'Access to that branch is no longer available. You have been returned to All Branches.',
     chagua: 'Select',
     ndiyo: 'Yes',
     hapana: 'No',

@@ -69,8 +69,9 @@ class UserRepository(BaseRepository[User]):
     async def list_users(
         self, db: AsyncSession, skip: int = 0, limit: int = 20,
         exclude_roles: list[str] | None = None,
+        branch_id: UUID | None = None,
     ) -> tuple[list[User], int]:
-        from sqlalchemy import func
+        from sqlalchemy import func, or_
         from app.models.role import Role
 
         count_query = select(func.count()).select_from(User)
@@ -78,6 +79,14 @@ class UserRepository(BaseRepository[User]):
         if exclude_roles:
             count_query = count_query.join(Role, User.role_id == Role.id).where(Role.name.notin_(exclude_roles))
             query = query.join(Role, User.role_id == Role.id).where(Role.name.notin_(exclude_roles))
+
+        if branch_id:
+            # Branch filter narrows branch-scoped users to that branch, but
+            # never hides global-role users (branch_id IS NULL) — they aren't
+            # tied to any one branch, so a branch context shouldn't erase them.
+            branch_filter = or_(User.branch_id == branch_id, User.branch_id.is_(None))
+            count_query = count_query.where(branch_filter)
+            query = query.where(branch_filter)
 
         count = (await db.execute(count_query)).scalar_one()
         rows = (await db.execute(

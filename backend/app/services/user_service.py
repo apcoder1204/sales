@@ -24,10 +24,12 @@ async def _get_role_name(db: AsyncSession, role_id: int) -> str | None:
 
 
 class UserService:
-    async def list_users(self, db: AsyncSession, page: int, per_page: int, caller):
+    async def list_users(self, db: AsyncSession, page: int, per_page: int, caller, branch_id: UUID | None = None):
         skip = (page - 1) * per_page
         exclude_roles = list(HIDDEN_FROM_ADMIN) if caller.role.name == "admin" else None
-        users, total = await user_repo.list_users(db, skip, per_page, exclude_roles=exclude_roles)
+        users, total = await user_repo.list_users(
+            db, skip, per_page, exclude_roles=exclude_roles, branch_id=branch_id
+        )
         from app.schemas.user import UserResponse
         items = [
             UserResponse(

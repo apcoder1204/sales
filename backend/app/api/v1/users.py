@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
 from app.core.dependencies import require_admin, get_current_user
+from app.core.authorization import get_authorized_branches, branch_context
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, RoleResponse
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.user_service import user_service, HIDDEN_FROM_ADMIN
@@ -16,8 +17,10 @@ async def list_branches(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.models.branch import Branch
-    rows = (await db.execute(select(Branch).where(Branch.is_active == True).order_by(Branch.name))).scalars().all()
+    # Never the full unfiltered table — only the branches this user is
+    # authorized to view/select (all active branches for global-scope roles,
+    # just their own/main-store for branch-scoped roles).
+    rows = await get_authorized_branches(db, current_user)
     return [{"id": str(b.id), "name": b.name, "code": b.code, "branch_type": b.branch_type} for b in rows]
 
 
@@ -33,10 +36,11 @@ async def list_roles(current_user=Depends(require_admin), db: AsyncSession = Dep
 @router.get("", response_model=PaginatedResponse[UserResponse])
 async def list_users(
     page: int = 1, per_page: int = 20,
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    return await user_service.list_users(db, page, per_page, current_user)
+    return await user_service.list_users(db, page, per_page, current_user, branch_id=branch_id)
 
 
 @router.post("", response_model=UserResponse, status_code=201)

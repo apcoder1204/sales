@@ -7,6 +7,7 @@ import Select from '@components/ui/Select'
 import AuditDetailModal from './AuditDetailModal'
 import { auditService } from '@services/auditService'
 import { usePagination } from '@hooks/usePagination'
+import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { formatDateTime } from '@utils/formatters'
 import SW from '@constants/sw'
 
@@ -21,6 +22,7 @@ export default function AuditPage() {
   const [category, setCategory] = useState('')
   const [selected, setSelected] = useState(null)
   const pagination = usePagination()
+  const branchFilter = useActiveBranchFilter()
 
   const CATEGORY_OPTIONS = [
     { value: '', label: SW.kumbukumbu.vitengoVyote },
@@ -46,6 +48,7 @@ export default function AuditPage() {
     try {
       const res = await auditService.list({
         category: category || undefined,
+        ...branchFilter,
         ...pagination.params,
       })
       setLogs(res.items || res)
@@ -53,7 +56,7 @@ export default function AuditPage() {
     } finally {
       setLoading(false)
     }
-  }, [category, pagination.page])
+  }, [category, branchFilter.branch_id, pagination.page])
 
   useEffect(() => { load() }, [load])
 

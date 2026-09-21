@@ -92,6 +92,7 @@ export const SW = {
     hali: 'Hali',
     tena: 'Jaribu tena',
     ofisiYote: 'Matawi Yote',
+    tawiHalipatikaniTena: 'Ufikiaji wa tawi hilo haupo tena. Umerudishwa kwenye Matawi Yote.',
     chagua: 'Chagua',
     ndiyo: 'Ndiyo',
     hapana: 'Hapana',

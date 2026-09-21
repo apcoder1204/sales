@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import require_role
+from app.core.authorization import require_write_branch_access, branch_context
 from app.schemas.daily_closing import (
     ClosingPreviewResponse, ClosingResponse, CloseDayRequest, ReopenRequest, OpenRegisterRequest
 )
-from app.core.exceptions import InsufficientPermissionException
 from app.services.daily_closing_service import daily_closing_service
 
 router = APIRouter(prefix="/closings", tags=["Ufungaji wa Siku"])
@@ -20,8 +20,7 @@ async def preview_closing(
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role.name == "cashier" and str(current_user.branch_id) != str(branch_id):
-        raise InsufficientPermissionException("Huwezi kuona ufungaji wa tawi lingine")
+    await require_write_branch_access(db, current_user, branch_id)
     return await daily_closing_service.preview(db, branch_id, business_date)
 
 
@@ -31,8 +30,7 @@ async def open_register(
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role.name == "cashier" and str(current_user.branch_id) != str(data.branch_id):
-        raise InsufficientPermissionException("Huwezi kufungua rejista ya tawi lingine")
+    await require_write_branch_access(db, current_user, data.branch_id)
     register = await daily_closing_service.open_register(db, data, current_user)
     return daily_closing_service.serialize(register)
 
@@ -43,8 +41,7 @@ async def close_day(
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role.name == "cashier" and str(current_user.branch_id) != str(data.branch_id):
-        raise InsufficientPermissionException("Huwezi kufunga siku ya tawi lingine")
+    await require_write_branch_access(db, current_user, data.branch_id)
     closing = await daily_closing_service.close_day(db, data, current_user)
     return daily_closing_service.serialize(closing)
 
@@ -61,13 +58,11 @@ async def reopen_closing(
 
 @router.get("")
 async def list_closings(
-    branch_id: UUID | None = None,
+    branch_id: UUID | None = Depends(branch_context),
     from_date: date | None = None,
     to_date: date | None = None,
     page: int = 1, per_page: int = 20,
     current_user=Depends(require_role("super_admin", "admin", "general_manager", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role.name == "cashier":
-        branch_id = current_user.branch_id
     return await daily_closing_service.list_closings(db, branch_id, from_date, to_date, page, per_page)

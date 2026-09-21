@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
-from app.core.authorization import get_main_store_id
+from app.core.authorization import get_main_store_id, get_active_branch_or_error, is_global_scope
 from app.schemas.audit_log import AuditLogResponse, AuditLogFilter
 from app.repositories.audit_repo import audit_repo
 import math
@@ -19,12 +19,12 @@ async def list_audit_logs(
     action: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
+    branch_id: UUID | None = None,
     page: int = 1, per_page: int = 50,
     current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):
     role = current_user.role.name
-    branch_id = None
     if role == "store_keeper":
         category = "inventory"
         branch_id = await get_main_store_id(db)
@@ -32,6 +32,16 @@ async def list_audit_logs(
         # Client-supplied category must never override this — general_manager
         # is restricted to transfers-category audit events.
         category = "transfers"
+        if branch_id is not None:
+            await get_active_branch_or_error(db, branch_id, "Tawi")
+    elif is_global_scope(current_user):
+        # super_admin/admin: an explicit branch-context selection is
+        # honored (validated against real branches) so their audit view can
+        # follow the global branch switcher; omitted/None still means the
+        # unrestricted ALL-branches view, including genuinely global/
+        # system-level events that were never tied to one branch.
+        if branch_id is not None:
+            await get_active_branch_or_error(db, branch_id, "Tawi")
 
     skip = (page - 1) * per_page
     rows, total = await audit_repo.list_logs(

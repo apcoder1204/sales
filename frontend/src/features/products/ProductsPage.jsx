@@ -51,6 +51,7 @@ export default function ProductsPage() {
     try {
       const res = await productService.list({
         search: debouncedProductSearch || undefined,
+        ...branchFilter,
         ...productPagination.params,
       })
       setProducts(res.items || res)
@@ -58,7 +59,7 @@ export default function ProductsPage() {
     } finally {
       setLoadingProducts(false)
     }
-  }, [debouncedProductSearch, productPagination.page, productPagination.pageSize])
+  }, [debouncedProductSearch, branchFilter.branch_id, productPagination.page, productPagination.pageSize])
 
   const loadInventory = useCallback(async () => {
     setLoadingInventory(true)
