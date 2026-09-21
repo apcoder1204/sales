@@ -39,7 +39,7 @@ export default function ProductCatalog() {
       const res = await productService.list({
         search: debouncedSearch || undefined,
         status: 'active',
-        page_size: 50,
+        per_page: 50,
         branch_id: branchId || undefined,
       })
       setProducts(res.items || res)

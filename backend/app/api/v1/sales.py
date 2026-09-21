@@ -7,7 +7,9 @@ from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
 from app.core.authorization import branch_context, require_write_branch_access
 from app.core.idempotency import get_cached_response, store_response
-from app.schemas.sale import SaleCreate, SaleResponse, SaleCreateResponse, SaleVoidRequest
+from app.schemas.sale import (
+    SaleCreate, SaleResponse, SaleCreateResponse, SaleVoidRequest, ReceiptData, SaleItemResponse,
+)
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.sale_service import sale_service
 from app.repositories.sale_repo import sale_repo
@@ -17,6 +19,28 @@ import math
 router = APIRouter(prefix="/sales", tags=["Mauzo"])
 
 _IDEMPOTENCY_ENDPOINT = "POST /sales"
+
+
+def _sale_response(s) -> SaleResponse:
+    return SaleResponse(
+        id=s.id, transaction_no=s.transaction_no,
+        branch=s.branch.name, branch_id=s.branch_id,
+        cashier=s.cashier.full_name, cashier_id=s.cashier_id,
+        subtotal=s.subtotal, total_amount=s.total_amount,
+        payment_method=s.payment_method, payment_reference=s.payment_reference,
+        status=s.status,
+        items=[
+            SaleItemResponse(
+                id=i.id, product_id=i.product_id, product=i.product.name,
+                quantity=i.quantity, unit_price=i.unit_price,
+                cost_price=i.cost_price, line_total=i.line_total,
+            ) for i in s.items
+        ],
+        created_at=s.created_at,
+        voided_by=s.voider.full_name if s.voider else None,
+        voided_at=s.voided_at,
+        void_reason=s.void_reason,
+    )
 
 
 @router.post("", response_model=SaleCreateResponse, status_code=201)
@@ -33,29 +57,7 @@ async def create_sale(
 
     await require_write_branch_access(db, current_user, data.branch_id)
     sale, receipt = await sale_service.create_sale(db, data, current_user)
-    response = SaleCreateResponse(
-        sale=SaleResponse(
-            id=sale.id, transaction_no=sale.transaction_no,
-            branch=sale.branch.name, branch_id=sale.branch_id,
-            cashier=sale.cashier.full_name, cashier_id=sale.cashier_id,
-            subtotal=sale.subtotal, total_amount=sale.total_amount,
-            payment_method=sale.payment_method,
-            payment_reference=sale.payment_reference,
-            status=sale.status,
-            items=[
-                __import__("app.schemas.sale", fromlist=["SaleItemResponse"]).SaleItemResponse(
-                    id=i.id, product_id=i.product_id, product=i.product.name,
-                    quantity=i.quantity, unit_price=i.unit_price,
-                    cost_price=i.cost_price, line_total=i.line_total,
-                ) for i in sale.items
-            ],
-            created_at=sale.created_at,
-            voided_by=sale.voider.full_name if sale.voider else None,
-            voided_at=sale.voided_at,
-            void_reason=sale.void_reason,
-        ),
-        receipt=receipt,
-    )
+    response = SaleCreateResponse(sale=_sale_response(sale), receipt=receipt)
     body = response.model_dump(mode="json")
     await store_response(db, current_user.id, _IDEMPOTENCY_ENDPOINT, idempotency_key, 201, body)
     return body
@@ -78,29 +80,29 @@ async def list_sales(
     rows, total = await sale_repo.list_sales(
         db, branch_id, cashier_id, payment_method, from_date, to_date, skip, per_page
     )
-    items = [
-        SaleResponse(
-            id=s.id, transaction_no=s.transaction_no,
-            branch=s.branch.name, branch_id=s.branch_id,
-            cashier=s.cashier.full_name, cashier_id=s.cashier_id,
-            subtotal=s.subtotal, total_amount=s.total_amount,
-            payment_method=s.payment_method, payment_reference=s.payment_reference,
-            status=s.status,
-            items=[
-                __import__("app.schemas.sale", fromlist=["SaleItemResponse"]).SaleItemResponse(
-                    id=i.id, product_id=i.product_id, product=i.product.name,
-                    quantity=i.quantity, unit_price=i.unit_price,
-                    cost_price=i.cost_price, line_total=i.line_total,
-                ) for i in s.items
-            ],
-            created_at=s.created_at,
-            voided_by=s.voider.full_name if s.voider else None,
-            voided_at=s.voided_at,
-            void_reason=s.void_reason,
-        ) for s in rows
-    ]
+    items = [_sale_response(s) for s in rows]
     return {"items": items, "total": total, "page": page, "per_page": per_page,
             "pages": math.ceil(total / per_page) if total else 1}
+
+
+@router.get("/{sale_id}", response_model=SaleResponse)
+async def get_sale(
+    sale_id: UUID,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    sale = await sale_service.get_sale_for_viewing(db, sale_id, current_user)
+    return _sale_response(sale)
+
+
+@router.get("/{sale_id}/receipt", response_model=ReceiptData)
+async def get_receipt(
+    sale_id: UUID,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    sale = await sale_service.get_sale_for_viewing(db, sale_id, current_user)
+    return sale_service.get_receipt(sale)
 
 
 @router.post("/{sale_id}/void", response_model=MessageResponse)

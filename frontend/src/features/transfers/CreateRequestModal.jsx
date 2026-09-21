@@ -35,7 +35,7 @@ export default function CreateRequestModal({ open, onClose, onSaved }) {
       const contextMatch = activeBranchId && b.some((br) => br.id === activeBranchId && br.branch_type === 'pos_point')
       if (contextMatch) setForm((f) => ({ ...f, to_branch_id: activeBranchId }))
     }).catch(() => {})
-    productService.list({ status: 'active', page_size: 200 }).then((r) => setProducts(r.items || r)).catch(() => {})
+    productService.list({ status: 'active', per_page: 200 }).then((r) => setProducts(r.items || r)).catch(() => {})
   }, [open, activeBranchId])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))

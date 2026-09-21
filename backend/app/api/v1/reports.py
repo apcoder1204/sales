@@ -177,6 +177,7 @@ async def dashboard_summary(
         trend.append({"label": day.strftime("%d/%m"), "total": float(rev)})
 
     recent_sales = []
+    last_sale_time = None
     if current_user.role.name == "cashier":
         rows = (await db.execute(
             select(Sale).where(Sale.status == "completed", Sale.branch_id == current_user.branch_id)
@@ -192,6 +193,8 @@ async def dashboard_summary(
             }
             for s in rows
         ]
+        if rows:
+            last_sale_time = rows[0].created_at.isoformat()
 
     low_items_q = (
         select(Inventory, Product, Branch.name.label("branch_name"))
@@ -241,6 +244,7 @@ async def dashboard_summary(
         "branch_sales": [{"branch_name": r.branch_name, "total_revenue": float(r.total_revenue)} for r in branch_sales],
         "low_stock_items": low_stock_items,
         "recent_sales": recent_sales,
+        "last_sale_time": last_sale_time,
         "today_payment_breakdown": today_payment_breakdown,
         "month_payment_breakdown": month_payment_breakdown,
         "pending_requests_list": pending_requests_list,

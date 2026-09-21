@@ -116,6 +116,22 @@ class SaleService:
         receipt = self._build_receipt(sale, cashier)
         return sale, receipt
 
+    async def get_sale_for_viewing(self, db: AsyncSession, sale_id: UUID, user):
+        """Shared authorization for both GET /sales/{id} and its /receipt
+        sibling — a cashier may only look up their own sales, everyone else
+        follows the same unrestricted-by-role convention list_sales already
+        uses (branch scoping there comes from branch_context, not a role
+        check)."""
+        sale = await sale_repo.get_by_id(db, sale_id)
+        if not sale:
+            raise NotFoundException("Muamala")
+        if user.role.name == "cashier" and sale.cashier_id != user.id:
+            raise NotFoundException("Muamala")
+        return sale
+
+    def get_receipt(self, sale) -> ReceiptData:
+        return self._build_receipt(sale, sale.cashier)
+
     def _build_receipt(self, sale, cashier) -> ReceiptData:
         items = [
             SaleItemResponse(

@@ -19,6 +19,6 @@ export function usePagination(defaultSize = 25) {
     setTotal,
     reset,
     offset: (page - 1) * pageSize,
-    params: { page, page_size: pageSize },
+    params: { page, per_page: pageSize },
   }
 }
