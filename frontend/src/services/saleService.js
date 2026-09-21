@@ -11,8 +11,13 @@ export const saleService = {
     return data
   },
 
-  create: async (payload) => {
-    const { data } = await api.post('/sales', payload)
+  // idempotencyKey: pass the same value across retries of one checkout
+  // attempt (network timeout, a re-click before the button disables) so the
+  // backend replays the first response instead of creating a second sale.
+  create: async (payload, idempotencyKey) => {
+    const { data } = await api.post('/sales', payload, {
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    })
     return data
   },
 

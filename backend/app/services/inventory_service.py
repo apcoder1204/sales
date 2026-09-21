@@ -26,14 +26,10 @@ class InventoryService:
             raise NotFoundException("Bidhaa")
 
         async with db.begin_nested():
-            inv = await inventory_repo.get_by_product_branch_locked(db, product_id, branch_id)
-            if not inv:
-                inv = await inventory_repo.create(db, {
-                    "product_id": product_id,
-                    "branch_id": branch_id,
-                    "quantity": 0,
-                    "reserved_qty": 0,
-                })
+            # get_or_create handles the brand-new-(product,branch) race
+            # itself (two concurrent adjustments both finding no row to
+            # lock, both trying to insert) — see its own docstring/comment.
+            inv = await inventory_repo.get_or_create(db, product_id, branch_id)
 
             qty_before = inv.quantity
             multiplier = -1 if adj_type in ("stock_out", "damaged") else 1

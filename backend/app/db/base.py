@@ -18,3 +18,4 @@ from app.models.audit_log import AuditLog  # noqa
 from app.models.daily_closing import DailyClosing  # noqa
 from app.models.daily_closing_expense import DailyClosingExpense  # noqa
 from app.models.password_reset_token import PasswordResetToken  # noqa
+from app.models.idempotency_key import IdempotencyKey  # noqa

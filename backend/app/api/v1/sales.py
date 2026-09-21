@@ -1,10 +1,12 @@
 from uuid import UUID
 from datetime import date
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
 from app.core.authorization import branch_context, require_write_branch_access
+from app.core.idempotency import get_cached_response, store_response
 from app.schemas.sale import SaleCreate, SaleResponse, SaleCreateResponse, SaleVoidRequest
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.sale_service import sale_service
@@ -14,16 +16,24 @@ import math
 
 router = APIRouter(prefix="/sales", tags=["Mauzo"])
 
+_IDEMPOTENCY_ENDPOINT = "POST /sales"
+
 
 @router.post("", response_model=SaleCreateResponse, status_code=201)
 async def create_sale(
     data: SaleCreate,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     current_user=Depends(require_role("super_admin", "admin", "cashier")),
     db: AsyncSession = Depends(get_db),
 ):
+    cached = await get_cached_response(db, current_user.id, _IDEMPOTENCY_ENDPOINT, idempotency_key)
+    if cached is not None:
+        status_code, body = cached
+        return JSONResponse(status_code=status_code, content=body)
+
     await require_write_branch_access(db, current_user, data.branch_id)
     sale, receipt = await sale_service.create_sale(db, data, current_user)
-    return SaleCreateResponse(
+    response = SaleCreateResponse(
         sale=SaleResponse(
             id=sale.id, transaction_no=sale.transaction_no,
             branch=sale.branch.name, branch_id=sale.branch_id,
@@ -43,6 +53,9 @@ async def create_sale(
         ),
         receipt=receipt,
     )
+    body = response.model_dump(mode="json")
+    await store_response(db, current_user.id, _IDEMPOTENCY_ENDPOINT, idempotency_key, 201, body)
+    return body
 
 
 @router.get("")

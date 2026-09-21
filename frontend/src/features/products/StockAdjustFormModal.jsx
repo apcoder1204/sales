@@ -44,6 +44,10 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
     }
     const qty = parseInt(form.quantity)
     if (isNaN(qty) || qty === 0) { toast.error(SW.bidhaa.idadiSahihi); return }
+    // A reduction needs a reason on the backend (write-offs are exactly what
+    // an audit trail must explain) — checked here too so the cashier/keeper
+    // gets an immediate, specific message instead of a round-trip 422.
+    if (qty < 0 && !form.notes.trim()) { toast.error(SW.hifadhi.sababuInahitajikaKwaKupunguza); return }
 
     await call(
       () => inventoryService.adjust({
@@ -128,7 +132,12 @@ export default function StockAdjustFormModal({ open, onClose, onSaved }) {
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
-            {SW.hifadhi.sababu} <span className="text-text-muted text-xs font-normal">(hiari)</span>
+            {SW.hifadhi.sababu}{' '}
+            {parseInt(form.quantity) < 0 ? (
+              <span className="text-accent-red">*</span>
+            ) : (
+              <span className="text-text-muted text-xs font-normal">({SW.common.hiari})</span>
+            )}
           </label>
           <textarea
             value={form.notes}

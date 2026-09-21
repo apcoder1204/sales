@@ -1,10 +1,12 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from app.config import settings
 from app.db.session import get_db
 from app.core.dependencies import require_admin, get_current_user
 from app.core.authorization import get_authorized_branches, branch_context
+from app.core.rate_limit import limiter
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, RoleResponse
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.user_service import user_service, HIDDEN_FROM_ADMIN
@@ -76,7 +78,9 @@ async def update_user(
 
 
 @router.post("/{user_id}/unlock", response_model=MessageResponse)
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
 async def unlock_user(
+    request: Request,
     user_id: UUID,
     current_user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),

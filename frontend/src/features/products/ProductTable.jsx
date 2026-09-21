@@ -39,7 +39,11 @@ export default function ProductTable({ products, loading, onEdit, pagination }) 
       key: 'unit',
       header: SW.bidhaa.kipimoPekee,
       width: 90,
-      render: (v) => <span className="text-text-secondary text-sm">{v || SW.bidhaa.vipimo.Kipande}</span>,
+      // `unit` is stored as a fixed key (e.g. "Kipande", "Seti") shared by
+      // both languages — it must be looked up through vipimo to show the
+      // active language's label, not rendered as raw stored text (which
+      // showed the Swahili key verbatim even in the English UI).
+      render: (v) => <span className="text-text-secondary text-sm">{SW.bidhaa.vipimo[v] || SW.bidhaa.vipimo.Kipande}</span>,
     },
     can('products.cost') && {
       key: 'cost_price',

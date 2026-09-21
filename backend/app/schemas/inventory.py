@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class StockAdjustRequest(BaseModel):
@@ -10,6 +10,16 @@ class StockAdjustRequest(BaseModel):
     quantity: int = Field(gt=0)
     type: Literal["stock_in", "stock_out", "adjustment", "damaged"]
     notes: str | None = Field(None, max_length=500)
+
+    @model_validator(mode="after")
+    def _reason_required_for_writeoffs(self):
+        # stock_in (receiving) is routine and self-explanatory. Anything that
+        # removes or overrides stock outside the normal sale/transfer flow —
+        # stock_out, damaged, adjustment — is exactly what an audit trail
+        # needs explained, so it can't be submitted with no reason at all.
+        if self.type in ("stock_out", "damaged", "adjustment") and not (self.notes and self.notes.strip()):
+            raise ValueError("Sababu inahitajika kwa aina hii ya marekebisho")
+        return self
 
 
 class InventoryMovementResponse(BaseModel):

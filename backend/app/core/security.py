@@ -17,6 +17,18 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
+# A password matching one of these (case-insensitive, ignoring trailing
+# digits/punctuation people tack on to satisfy a strength meter) is rejected
+# outright regardless of otherwise passing the character-class checks below
+# — "Password123" and "Admin123!" both pass every rule above but are still
+# among the first guesses in any real attack.
+_DENYLISTED_PASSWORDS = {
+    "password", "password1", "password123", "admin", "admin123",
+    "letmein", "letmein1", "welcome", "welcome1", "qwerty", "qwerty123",
+    "12345678", "123456789", "changeme", "changeme1",
+}
+
+
 def validate_password_strength(password: str) -> str:
     """Shared by every schema that accepts a new password (user create/update,
     password reset) so the policy can't drift between call sites."""
@@ -24,10 +36,15 @@ def validate_password_strength(password: str) -> str:
         raise ValueError("Nenosiri lazima liwe na herufi angalau 8")
     if len(password.encode("utf-8")) > 72:
         raise ValueError("Nenosiri ni refu mno")
-    if not re.search(r"[A-Za-z]", password):
-        raise ValueError("Nenosiri lazima liwe na angalau herufi moja")
+    if not re.search(r"[a-z]", password):
+        raise ValueError("Nenosiri lazima liwe na angalau herufi ndogo moja")
+    if not re.search(r"[A-Z]", password):
+        raise ValueError("Nenosiri lazima liwe na angalau herufi kubwa moja")
     if not re.search(r"\d", password):
         raise ValueError("Nenosiri lazima liwe na angalau namba moja")
+    normalized = re.sub(r"[\d\W]+$", "", password.strip().lower())
+    if normalized in _DENYLISTED_PASSWORDS:
+        raise ValueError("Nenosiri hili ni rahisi kubashiri sana, chagua lingine")
     return password
 
 

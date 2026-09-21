@@ -22,7 +22,8 @@ async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-async def refresh(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def refresh(request: Request, data: RefreshRequest, db: AsyncSession = Depends(get_db)):
     return await auth_service.refresh_token(db, data.refresh_token)
 
 
@@ -42,7 +43,8 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest, db: Asy
 
 
 @router.post("/reset-password", response_model=MessageResponse)
-async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def reset_password(request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     await auth_service.reset_password(db, data.token, data.new_password)
     return {"message": "Nenosiri limebadilishwa. Tafadhali ingia tena."}
 

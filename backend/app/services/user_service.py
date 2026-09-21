@@ -1,6 +1,7 @@
 from uuid import UUID
 import math
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.user_repo import user_repo
 from app.schemas.user import UserCreate, UserUpdate
@@ -16,11 +17,28 @@ from app.schemas.common import PaginatedResponse
 # cashier only), per the tiered user-management business rule.
 HIDDEN_FROM_ADMIN = ("admin", "super_admin")
 
+# cashier is the only role whose own scoping (sales, dashboard, write
+# access) reads user.branch_id directly — store_keeper is always resolved
+# to the live main store regardless of its stored branch_id, and the other
+# roles are global-scope. Creating/promoting a cashier without a branch
+# doesn't fail loudly; every branch-scoped action they take is silently
+# rejected (branch_id None never equals a real branch), which looks like a
+# broken account rather than a validation error.
+BRANCH_REQUIRED_ROLES = ("cashier",)
+
 
 async def _get_role_name(db: AsyncSession, role_id: int) -> str | None:
     from app.models.role import Role
     role = (await db.execute(select(Role).where(Role.id == role_id))).scalar_one_or_none()
     return role.name if role else None
+
+
+async def _validate_branch_assignment(db: AsyncSession, role_name: str | None, branch_id) -> None:
+    from app.core.authorization import get_active_branch_or_error
+    if role_name in BRANCH_REQUIRED_ROLES and branch_id is None:
+        raise ValidationException("Mhusika wa fedha (cashier) lazima apewe tawi")
+    if branch_id is not None:
+        await get_active_branch_or_error(db, branch_id, "Tawi")
 
 
 class UserService:
@@ -46,8 +64,8 @@ class UserService:
         )
 
     async def create_user(self, db: AsyncSession, data: UserCreate, creator):
+        target_role_name = await _get_role_name(db, data.role_id)
         if creator.role.name == "admin":
-            target_role_name = await _get_role_name(db, data.role_id)
             if target_role_name in HIDDEN_FROM_ADMIN:
                 await audit_service.log(
                     db, action="PERMISSION_DENIED", category="system",
@@ -56,18 +74,27 @@ class UserService:
                 )
                 raise InsufficientPermissionException("Huna ruhusa ya kuunda mtumiaji wa aina hii")
 
+        await _validate_branch_assignment(db, target_role_name, data.branch_id)
+
         existing = await user_repo.get_by_username(db, data.username)
         if existing:
             raise DuplicateException("Jina la mtumiaji")
 
-        user = await user_repo.create(db, {
-            "username": data.username,
-            "full_name": data.full_name,
-            "email": data.email,
-            "password_hash": hash_password(data.password),
-            "role_id": data.role_id,
-            "branch_id": data.branch_id,
-        })
+        try:
+            async with db.begin_nested():
+                user = await user_repo.create(db, {
+                    "username": data.username,
+                    "full_name": data.full_name,
+                    "email": data.email,
+                    "password_hash": hash_password(data.password),
+                    "role_id": data.role_id,
+                    "branch_id": data.branch_id,
+                })
+        except IntegrityError as exc:
+            # The pre-check above closes the common case; this catches the
+            # narrow race of two concurrent creates for the same username,
+            # so the loser gets a clean 400 instead of a raw 500.
+            raise DuplicateException("Jina la mtumiaji") from exc
         await db.commit()
         await audit_service.log(
             db, action="USER_CREATED", category="users",
@@ -108,6 +135,12 @@ class UserService:
                     details={"reason": "admin_cannot_edit_hidden_role"},
                 )
                 raise InsufficientPermissionException("Huna ruhusa ya kuhariri mtumiaji huyu")
+
+        final_role_name = (
+            await _get_role_name(db, data.role_id) if data.role_id is not None else user.role.name
+        )
+        final_branch_id = data.branch_id if data.branch_id is not None else user.branch_id
+        await _validate_branch_assignment(db, final_role_name, final_branch_id)
 
         updates = data.model_dump(exclude_none=True, exclude={"confirm_password"})
         if "password" in updates:

@@ -75,7 +75,20 @@ async def dashboard_summary(
         .where(Sale.status == "completed", Sale.created_at >= today_start, *sale_branch_filter)
     )).scalar_one()
 
-    total_products = (await db.execute(select(func.count(Product.id)).where(Product.status == "active"))).scalar_one()
+    # ALL-branches view: the whole active catalog. A specific-branch view:
+    # only products actually stocked (an inventory row exists) at that
+    # branch — otherwise "Total Products" silently showed the same
+    # catalog-wide number regardless of which branch was selected, while
+    # every other KPI on this same dashboard was branch-scoped.
+    if scoped_branch_id:
+        total_products_q = (
+            select(func.count(func.distinct(Product.id)))
+            .join(Inventory, Inventory.product_id == Product.id)
+            .where(Product.status == "active", Inventory.branch_id == scoped_branch_id)
+        )
+    else:
+        total_products_q = select(func.count(Product.id)).where(Product.status == "active")
+    total_products = (await db.execute(total_products_q)).scalar_one()
 
     low_stock_q = select(func.count()).select_from(Inventory).where(Inventory.quantity - Inventory.reserved_qty <= 5)
     if inv_branch_filter:

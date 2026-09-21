@@ -2,6 +2,7 @@ from uuid import UUID
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from app.models.inventory import Inventory
 from app.models.inventory_transaction import InventoryTransaction
@@ -38,14 +39,27 @@ class InventoryRepository(BaseRepository[Inventory]):
         self, db: AsyncSession, product_id: UUID, branch_id: UUID
     ) -> Inventory:
         inv = await self.get_by_product_branch_locked(db, product_id, branch_id)
-        if not inv:
-            inv = await self.create(db, {
-                "product_id": product_id,
-                "branch_id": branch_id,
-                "quantity": 0,
-                "reserved_qty": 0,
-            })
-        return inv
+        if inv:
+            return inv
+        # No row yet — SELECT ... FOR UPDATE has nothing to lock against a
+        # row that doesn't exist, so two transfers landing on the same
+        # brand-new (product, branch) pair at once can both reach here.
+        # The unique constraint lets only one INSERT win; the loser falls
+        # back to the now-existing row instead of surfacing a raw 500.
+        try:
+            async with db.begin_nested():
+                inv = await self.create(db, {
+                    "product_id": product_id,
+                    "branch_id": branch_id,
+                    "quantity": 0,
+                    "reserved_qty": 0,
+                })
+            return inv
+        except IntegrityError:
+            inv = await self.get_by_product_branch_locked(db, product_id, branch_id)
+            if not inv:
+                raise
+            return inv
 
     async def get_main_store(self, db: AsyncSession) -> Branch:
         result = await db.execute(

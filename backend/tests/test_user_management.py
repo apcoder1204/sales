@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from app.models.audit_log import AuditLog
 from app.models.role import Role
-from tests.conftest import auth_headers, make_user
+from tests.conftest import auth_headers, make_branch, make_user
 
 
 async def _role_id(db_session, name: str) -> int:
@@ -159,7 +159,8 @@ async def test_super_admin_cannot_change_own_role_via_user_management(client, db
 
 async def test_admin_can_manage_cashier(client, db_session):
     admin = await make_user(db_session, "admin")
-    cashier = await make_user(db_session, "cashier")
+    branch = await make_branch(db_session)
+    cashier = await make_user(db_session, "cashier", branch=branch)
 
     resp = await client.put(
         f"/api/v1/users/{cashier.id}",
@@ -304,7 +305,8 @@ async def test_admin_can_reactivate_lower_role_user(client, db_session):
     from app.models.user import User
 
     admin = await make_user(db_session, "admin")
-    cashier = await make_user(db_session, "cashier", is_active=False)
+    branch = await make_branch(db_session)
+    cashier = await make_user(db_session, "cashier", branch=branch, is_active=False)
 
     resp = await client.put(
         f"/api/v1/users/{cashier.id}", headers=auth_headers(admin), json={"is_active": True}

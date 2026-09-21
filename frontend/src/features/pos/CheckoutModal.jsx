@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Modal from '@components/ui/Modal'
 import Button from '@components/ui/Button'
 import Select from '@components/ui/Select'
@@ -20,6 +20,16 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   const { loading, call } = useApi()
   const { activeBranchId, branches } = useBranch()
   const [payment, setPayment] = useState({ method: 'cash', reference: '' })
+
+  // One key per checkout attempt, reused across retries (a slow/ambiguous
+  // network response the cashier retries by clicking Sell again, or a
+  // double-tap before the button's disabled state takes effect) so the
+  // backend replays the first sale instead of creating a second one.
+  // Regenerated each time the modal opens — a fresh open is a new attempt.
+  const idempotencyKeyRef = useRef(null)
+  useEffect(() => {
+    if (open) idempotencyKeyRef.current = crypto.randomUUID()
+  }, [open])
 
   const isGlobal = isGlobalRole(user)
   const needsReference = ['mobile_money', 'bank_transfer'].includes(payment.method)
@@ -47,7 +57,7 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
       items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
     }
 
-    const receipt = await call(() => saleService.create(payload), {
+    const receipt = await call(() => saleService.create(payload, idempotencyKeyRef.current), {
       successMsg: SW.mauzo.mauzoYamefanikiwa,
     })
 
