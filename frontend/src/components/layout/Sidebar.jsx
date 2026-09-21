@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, ArrowLeftRight,
   BarChart3, ScrollText, Users, LogOut, ChevronLeft, ChevronDown, Zap,
-  List, Tag, RefreshCw, Activity, Lock,
+  List, Tag, RefreshCw, Activity, Lock, Receipt,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '@hooks/useAuth'
@@ -33,6 +33,7 @@ export default function Sidebar({ open, onToggle }) {
   ]
   const bottomNavItems = [
     { to: '/mauzo', icon: ShoppingCart, label: SW.nav.mauzo, permission: 'sales.create' },
+    { to: '/mauzo/historia', icon: Receipt, label: SW.nav.historiaMauzo, permission: 'sales.read' },
     { to: '/uhamisho', icon: ArrowLeftRight, label: SW.nav.uhamisho, permission: 'transfers.read' },
     { to: '/ufungaji', icon: Lock, label: SW.nav.ufungaji, permission: 'closing.view' },
     { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },

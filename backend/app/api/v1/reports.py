@@ -68,6 +68,32 @@ async def dashboard_summary(
         )
     )).scalar_one()
 
+    month_tx = (await db.execute(
+        select(func.count(Sale.id)).where(
+            Sale.status == "completed", Sale.created_at >= month_start, *sale_branch_filter
+        )
+    )).scalar_one()
+
+    # Drill-down data for the revenue KPI cards — "why does this number
+    # exist" for today's/this month's revenue is the payment-method split.
+    def _payment_breakdown_query(since):
+        return select(
+            Sale.payment_method, func.coalesce(func.sum(Sale.total_amount), 0).label("total")
+        ).where(
+            Sale.status == "completed", Sale.created_at >= since, *sale_branch_filter
+        ).group_by(Sale.payment_method)
+
+    def _breakdown_dict(rows):
+        breakdown = {"cash": 0.0, "mobile_money": 0.0, "bank_transfer": 0.0}
+        for r in rows:
+            breakdown[r.payment_method] = float(r.total or 0)
+        return breakdown
+
+    today_payment_rows = (await db.execute(_payment_breakdown_query(today_start))).all()
+    today_payment_breakdown = _breakdown_dict(today_payment_rows)
+    month_payment_rows = (await db.execute(_payment_breakdown_query(month_start))).all()
+    month_payment_breakdown = _breakdown_dict(month_payment_rows)
+
     from app.models.sale_item import SaleItem
     today_items_sold = (await db.execute(
         select(func.coalesce(func.sum(SaleItem.quantity), 0))
@@ -104,6 +130,29 @@ async def dashboard_summary(
             )
         )
     pending_requests = (await db.execute(pending_q)).scalar_one()
+
+    pending_list_q = select(StockRequest).where(StockRequest.status == "pending")
+    if scoped_branch_id:
+        pending_list_q = pending_list_q.where(
+            or_(
+                StockRequest.from_branch_id == scoped_branch_id,
+                StockRequest.to_branch_id == scoped_branch_id,
+            )
+        )
+    pending_rows = (
+        await db.execute(pending_list_q.order_by(StockRequest.created_at.desc()).limit(10))
+    ).scalars().all()
+    pending_requests_list = [
+        {
+            "id": str(r.id),
+            "request_no": r.request_no,
+            "from_branch": r.from_branch.name,
+            "to_branch": r.to_branch.name,
+            "requested_by": r.requester.full_name,
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in pending_rows
+    ]
 
     inv_value_q = (
         select(func.coalesce(func.sum(Inventory.quantity * Product.cost_price), 0))
@@ -181,6 +230,7 @@ async def dashboard_summary(
         "today_revenue": float(today_rev),
         "month_revenue": float(month_rev),
         "today_transactions": today_tx,
+        "month_transactions": month_tx,
         "today_items_sold": int(today_items_sold),
         "total_products": total_products,
         "low_stock_count": low_stock_count,
@@ -191,6 +241,9 @@ async def dashboard_summary(
         "branch_sales": [{"branch_name": r.branch_name, "total_revenue": float(r.total_revenue)} for r in branch_sales],
         "low_stock_items": low_stock_items,
         "recent_sales": recent_sales,
+        "today_payment_breakdown": today_payment_breakdown,
+        "month_payment_breakdown": month_payment_breakdown,
+        "pending_requests_list": pending_requests_list,
     }
 
 

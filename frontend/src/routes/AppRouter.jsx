@@ -20,6 +20,7 @@ const CategoryPage = lazy(() => import('@features/products/CategoryPage'))
 const StockAdjustPage = lazy(() => import('@features/products/StockAdjustPage'))
 const MovementsPage = lazy(() => import('@features/inventory/MovementsPage'))
 const PosPage = lazy(() => import('@features/pos/PosPage'))
+const SalesPage = lazy(() => import('@features/sales/SalesPage'))
 const TransfersPage = lazy(() => import('@features/transfers/TransfersPage'))
 const ReportsPage = lazy(() => import('@features/reports/ReportsPage'))
 const ClosingPage = lazy(() => import('@features/closing/ClosingPage'))
@@ -78,6 +79,11 @@ function RoutedApp() {
             <Route path="/mauzo" element={
               <RoleRoute permissions={['sales.create']}>
                 <PosPage />
+              </RoleRoute>
+            } />
+            <Route path="/mauzo/historia" element={
+              <RoleRoute permissions={['sales.read']}>
+                <SalesPage />
               </RoleRoute>
             } />
 

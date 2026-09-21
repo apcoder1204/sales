@@ -22,7 +22,7 @@ export const saleService = {
   },
 
   void: async (id, reason) => {
-    const { data } = await api.post(`/sales/${id}/void`, { void_reason: reason })
+    const { data } = await api.post(`/sales/${id}/void`, { reason })
     return data
   },
 

@@ -22,6 +22,7 @@ export const SW = {
     wasifu: 'Wasifu Wangu',
     toka: 'Toka',
     harakatiZaBidhaa: 'Harakati',
+    historiaMauzo: 'Historia ya Mauzo',
   },
 
   // Auth
@@ -304,6 +305,16 @@ export const SW = {
     bidhaaIdadi: (n) => `Bidhaa (${n})`,
     imeongezwaKwenyeKikapu: (jina) => `${jina} imeongezwa`,
     vipandeCount: (n) => `${n} vipande`,
+    subtitleHistoria: 'Mauzo yote kwa muktadha wa tawi la sasa',
+    namba: 'Namba ya Mauzo',
+    imekamilika: 'Imekamilika',
+    imebatilishwa: 'Imebatilishwa',
+    batilisha: 'Batilisha',
+    sababuYaKubatilisha: 'Sababu ya kubatilisha (angalau herufi 5)...',
+    hakunaMauzo: 'Hakuna mauzo yaliyopatikana',
+    angaliaBidhaa: 'Angalia bidhaa',
+    aliyebatilisha: 'Aliyebatilisha',
+    njiaZoteZaMalipo: 'Njia zote za malipo',
   },
 
   // Receipt
@@ -345,6 +356,11 @@ export const SW = {
     bidhaaTanoZaJuu: 'Bidhaa 5 za Juu',
     haliYaMatawi: 'Hali ya Matawi',
     mauzoCount: (n) => `${n} mauzo`,
+    mchanganyikoMalipo: 'Mchanganuo wa malipo',
+    hisaChiniOrodha: 'Bidhaa zilizo chini ya kiwango cha chini cha hisa',
+    maombiOrodha: 'Maombi yanayosubiri idhini',
+    ombiKutokaKwenda: (from, to) => `${from} → ${to}`,
+    aliyeomba: 'Aliyeomba',
   },
 
   // End of Day Closing

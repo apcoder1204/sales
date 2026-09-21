@@ -51,6 +51,9 @@ class SaleResponse(BaseModel):
     status: str
     items: list[SaleItemResponse]
     created_at: datetime
+    voided_by: str | None = None
+    voided_at: datetime | None = None
+    void_reason: str | None = None
 
     model_config = {"from_attributes": True}
 

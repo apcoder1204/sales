@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { ShoppingBag, Receipt, TrendingUp, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '@components/layout/PageWrapper'
@@ -6,6 +6,7 @@ import KpiCard from '@components/ui/KpiCard'
 import Card from '@components/ui/Card'
 import Button from '@components/ui/Button'
 import SalesTrendChart from '@components/charts/SalesTrendChart'
+import { PaymentBreakdownModal } from './DrillDowns'
 import { formatCurrency, formatNumber, formatDateTime } from '@utils/formatters'
 import { useDashboard } from './useDashboard'
 import SW from '@constants/sw'
@@ -13,6 +14,7 @@ import SW from '@constants/sw'
 export default function CashierDash() {
   const { data, loading } = useDashboard()
   const navigate = useNavigate()
+  const [drillDown, setDrillDown] = useState(null)
 
   return (
     <PageWrapper
@@ -25,11 +27,16 @@ export default function CashierDash() {
       }
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title={SW.dashibodi.mauzoLeo} value={formatCurrency(data?.today_revenue)} icon={TrendingUp} color="green" loading={loading} />
+        <KpiCard title={SW.dashibodi.mauzoLeo} value={formatCurrency(data?.today_revenue)} icon={TrendingUp} color="green" loading={loading} onClick={() => setDrillDown('today')} />
         <KpiCard title={SW.dashibodi.muamalaLeo} value={formatNumber(data?.today_transactions)} icon={Receipt} color="blue" loading={loading} />
         <KpiCard title={SW.ripoti.wastaniWaUuzaji} value={formatCurrency(data?.avg_sale_value)} icon={ShoppingBag} color="purple" loading={loading} />
         <KpiCard title={SW.dashibodi.muamalaWaMwisho} value={data?.last_sale_time ? formatDateTime(data.last_sale_time) : '-'} icon={Clock} color="yellow" loading={loading} />
       </div>
+
+      <PaymentBreakdownModal
+        open={drillDown === 'today'} onClose={() => setDrillDown(null)}
+        title={SW.dashibodi.mauzoLeo} breakdown={data?.today_payment_breakdown} count={data?.today_transactions}
+      />
 
       <Card title={SW.dashibodi.mwelekeoMauzoLeo}>
         <SalesTrendChart data={data?.sales_trend || []} />

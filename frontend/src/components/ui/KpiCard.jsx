@@ -1,8 +1,8 @@
 import React from 'react'
 import { clsx } from 'clsx'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, ChevronRight } from 'lucide-react'
 
-export default function KpiCard({ title, value, icon: Icon, trend, trendLabel, color = 'blue', loading }) {
+export default function KpiCard({ title, value, icon: Icon, trend, trendLabel, color = 'blue', loading, onClick }) {
   const colorMap = {
     blue: { icon: 'text-primary bg-primary-muted', trend: 'text-primary' },
     green: { icon: 'text-accent-green bg-accent-green-muted', trend: 'text-accent-green' },
@@ -22,8 +22,16 @@ export default function KpiCard({ title, value, icon: Icon, trend, trendLabel, c
     )
   }
 
+  const Wrapper = onClick ? 'button' : 'div'
+
   return (
-    <div className="glass-card p-5 hover:border-border-light transition-colors">
+    <Wrapper
+      onClick={onClick}
+      className={clsx(
+        'glass-card p-5 hover:border-border-light transition-colors text-left w-full',
+        onClick && 'cursor-pointer hover:bg-bg-hover'
+      )}
+    >
       <div className="flex items-start justify-between mb-3">
         <p className="text-sm text-text-secondary">{title}</p>
         {Icon && (
@@ -33,12 +41,19 @@ export default function KpiCard({ title, value, icon: Icon, trend, trendLabel, c
         )}
       </div>
       <p className="text-2xl font-bold text-text-primary mb-1">{value}</p>
-      {(trend !== undefined || trendLabel) && (
-        <div className={clsx('flex items-center gap-1 text-xs', trend > 0 ? 'text-accent-green' : trend < 0 ? 'text-accent-red' : 'text-text-muted')}>
-          {trend > 0 ? <TrendingUp size={12} /> : trend < 0 ? <TrendingDown size={12} /> : null}
-          <span>{trendLabel}</span>
-        </div>
-      )}
-    </div>
+      <div className="flex items-center justify-between">
+        {(trend !== undefined || trendLabel) ? (
+          <div className={clsx('flex items-center gap-1 text-xs', trend > 0 ? 'text-accent-green' : trend < 0 ? 'text-accent-red' : 'text-text-muted')}>
+            {trend > 0 ? <TrendingUp size={12} /> : trend < 0 ? <TrendingDown size={12} /> : null}
+            <span>{trendLabel}</span>
+          </div>
+        ) : <span />}
+        {onClick && (
+          <span className="flex items-center gap-0.5 text-xs text-text-muted">
+            <ChevronRight size={14} />
+          </span>
+        )}
+      </div>
+    </Wrapper>
   )
 }

@@ -37,7 +37,7 @@ class Sale(Base):
     )
     branch: Mapped["Branch"] = relationship("Branch", lazy="selectin")
     cashier: Mapped["User"] = relationship("User", foreign_keys=[cashier_id], lazy="selectin")
-    voider: Mapped["User | None"] = relationship("User", foreign_keys=[voided_by], lazy="noload")
+    voider: Mapped["User | None"] = relationship("User", foreign_keys=[voided_by], lazy="selectin")
 
     __table_args__ = (
         CheckConstraint("subtotal >= 0", name="chk_sales_subtotal_pos"),

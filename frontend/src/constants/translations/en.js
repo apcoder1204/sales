@@ -22,6 +22,7 @@ export const EN = {
     wasifu: 'My Profile',
     toka: 'Logout',
     harakatiZaBidhaa: 'Movements',
+    historiaMauzo: 'Sales History',
   },
 
   // Auth
@@ -303,6 +304,16 @@ export const EN = {
     bidhaaIdadi: (n) => `Items (${n})`,
     imeongezwaKwenyeKikapu: (jina) => `${jina} added`,
     vipandeCount: (n) => `${n} pcs`,
+    subtitleHistoria: 'All sales for the current branch context',
+    namba: 'Sale No',
+    imekamilika: 'Completed',
+    imebatilishwa: 'Voided',
+    batilisha: 'Void',
+    sababuYaKubatilisha: 'Reason for voiding (min. 5 characters)...',
+    hakunaMauzo: 'No sales found',
+    angaliaBidhaa: 'View items',
+    aliyebatilisha: 'Voided by',
+    njiaZoteZaMalipo: 'All payment methods',
   },
 
   // Receipt
@@ -344,6 +355,11 @@ export const EN = {
     bidhaaTanoZaJuu: 'Top 5 Products',
     haliYaMatawi: 'Branch Status',
     mauzoCount: (n) => `${n} sale${n === 1 ? '' : 's'}`,
+    mchanganyikoMalipo: 'Payment breakdown',
+    hisaChiniOrodha: 'Products below their minimum stock level',
+    maombiOrodha: 'Requests awaiting approval',
+    ombiKutokaKwenda: (from, to) => `${from} → ${to}`,
+    aliyeomba: 'Requested by',
   },
 
   // End of Day Closing

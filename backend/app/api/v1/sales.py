@@ -50,6 +50,9 @@ async def create_sale(
                 ) for i in sale.items
             ],
             created_at=sale.created_at,
+            voided_by=sale.voider.full_name if sale.voider else None,
+            voided_at=sale.voided_at,
+            void_reason=sale.void_reason,
         ),
         receipt=receipt,
     )
@@ -91,6 +94,9 @@ async def list_sales(
                 ) for i in s.items
             ],
             created_at=s.created_at,
+            voided_by=s.voider.full_name if s.voider else None,
+            voided_at=s.voided_at,
+            void_reason=s.void_reason,
         ) for s in rows
     ]
     return {"items": items, "total": total, "page": page, "per_page": per_page,
