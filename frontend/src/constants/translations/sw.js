@@ -1,5 +1,28 @@
 // Swahili UI strings — single source of truth
+
+// Terminology dictionary: stable resource keys (set by the backend, e.g.
+// NotFoundException's `resource_key`) -> the display name for this
+// language. Shared vocabulary used by makosa.msimbo.NOT_FOUND below and
+// anywhere else a resource type needs naming consistently.
+const RESOURCE_NAMES = {
+  product: 'Bidhaa',
+  sale: 'Muamala',
+  branch: 'Tawi',
+  day_closing: 'Kufunga kwa Siku',
+  request: 'Ombi',
+  request_item: 'Kipengele cha Ombi',
+  user: 'Mtumiaji',
+  category: 'Jamii',
+  main_store: 'Ghala Kuu',
+  record: 'Rekodi',
+}
+
 export const SW = {
+  // Terminology dictionary — see RESOURCE_NAMES above; also exposed as
+  // SW.rasilimali for any other UI spot that needs a consistent resource
+  // display name by the same stable key.
+  rasilimali: RESOURCE_NAMES,
+
   // App
   appName: 'DUKANI POS',
   tagline: 'Mfumo wa Uuzaji na Usimamizi wa Bidhaa',
@@ -626,6 +649,80 @@ export const SW = {
     tokeni: 'Tokeni si sahihi. Ingia tena.',
     jumla: 'Kuna tatizo. Jaribu tena.',
     jazaSehemuZote: 'Tafadhali jaza sehemu zote zinazohitajika',
+    // Msimbo (code) wa AppException ya backend -> ujumbe. Tazama maelezo
+    // kamili katika en.js — muundo ni sawa, maneno ni ya Kiswahili
+    // yanayolingana kabisa na `detail` ya asili ya backend.
+    msimbo: {
+      INVALID_TOKEN: 'Kipindi si sahihi. Tafadhali ingia tena.',
+      TOKEN_EXPIRED: 'Muda wa kipindi chako umeisha. Tafadhali ingia tena.',
+      INVALID_CREDENTIALS: 'Jina la mtumiaji au neno la siri si sahihi',
+      ACCOUNT_LOCKED: (p) => `Akaunti imefungwa hadi ${p?.locked_until ? new Date(p.locked_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}. Jaribu tena baadaye.`,
+      ACCOUNT_INACTIVE: 'Akaunti imezimwa. Wasiliana na msimamizi.',
+      INSUFFICIENT_PERMISSION: 'Huna ruhusa ya kufanya hivi',
+      NOT_FOUND: (p) => `${RESOURCE_NAMES[p?.resource] || RESOURCE_NAMES.record} haipatikani`,
+      INSUFFICIENT_STOCK: (p) => `Hisa haitoshi kwa '${p?.product}'. Zinapatikana: ${p?.available}, Ulizohitaji: ${p?.requested}`,
+      DUPLICATE: 'Tayari ipo',
+      TRANSFER_NOT_ALLOWED: 'Huna ruhusa ya kuhamisha bidhaa kati ya Sehemu za Mauzo. Wasiliana na Meneja Mkuu.',
+      RATE_LIMIT_EXCEEDED: 'Umefanya majaribio mengi. Tafadhali subiri kisha jaribu tena.',
+      INTERNAL_ERROR: 'Imetokea hitilafu. Jaribu tena.',
+      DAY_ALREADY_CLOSED: 'Siku hii tayari imefungwa kwa tawi hili. Wasiliana na msimamizi kufungua tena.',
+      SALE_ALREADY_VOIDED: 'Muamala huu tayari umebatilishwa',
+      INVENTORY_ROW_MISSING: 'Hifadhi ya bidhaa haikupatikana kwa ajili ya kurejesha hisa',
+      BRANCH_INACTIVE: 'Tawi hili halifanyi kazi kwa sasa',
+      REGISTER_ALREADY_OPEN: 'Tawi hili tayari lina rejista iliyo wazi',
+      DAY_NOT_CLOSED: 'Siku hii haijafungwa',
+      CASHIER_REQUIRES_BRANCH: 'Mhusika wa fedha (cashier) lazima apewe tawi',
+      USERNAME_TAKEN: 'Jina la mtumiaji tayari linatumika',
+      CATEGORY_IN_USE: 'Jamii inatumika na bidhaa, haiwezi kufutwa',
+      RESET_TOKEN_INVALID: 'Kiungo cha kuweka upya nenosiri si sahihi au kimeisha muda',
+      CURRENT_PASSWORD_INCORRECT: 'Nenosiri la sasa si sahihi',
+      USER_HAS_HISTORY: 'Mtumiaji huyu ana historia ya shughuli mfumoni (mauzo, ufungaji, uhamisho, n.k.) na hawezi kufutwa kabisa. Mzima badala yake.',
+      ROLE_HIERARCHY_RESTRICTED: 'Huna ruhusa ya kufanya hivi',
+      CANNOT_SELF_EDIT: 'Huwezi kuhariri akaunti yako mwenyewe hapa',
+      CANNOT_SELF_DEACTIVATE: 'Huwezi kuzima akaunti yako mwenyewe',
+      CANNOT_SELF_DELETE: 'Huwezi kufuta akaunti yako mwenyewe',
+      SAME_BRANCH_TRANSFER: 'Tawi la kutoa na kupokea haliwezi kuwa sawa',
+      BRANCH_WRITE_RESTRICTED: 'Huwezi kufanya kazi kwa tawi lingine',
+      MAIN_STORE_ONLY: 'Hisa inaruhusiwa kutoka Ghala Kuu pekee',
+      OWN_BRANCH_ONLY: 'Unaweza kuomba bidhaa kwa tawi lako pekee',
+      MAIN_STORE_REQUIRED: 'Ombi lazima lihusishe Ghala Kuu',
+      BRANCH_READ_RESTRICTED: 'Huwezi kuona vyanzo vya tawi lingine',
+      REQUEST_CANNOT_BE_APPROVED: 'Ombi hili haliwezi kuidhinishwa',
+      APPROVED_QTY_EXCEEDS_REQUESTED: 'Idadi iliyoidhinishwa haiwezi kuzidi iliyoombwa',
+      ALL_ITEMS_MUST_BE_REVIEWED: 'Idhinisho la vipengele vyote vya ombi linahitajika',
+      REQUEST_NOT_APPROVED: 'Ombi hili halijaidhinishwa bado',
+      NO_APPROVED_ITEMS: 'Hakuna bidhaa zilizoidhinishwa za kutekeleza',
+      REQUEST_CANNOT_BE_REJECTED: 'Ombi hili haliwezi kukataliwa',
+    },
+    // Aina (type) ya makosa ya uthibitishaji wa Pydantic -> ujumbe, kwa
+    // majibu ya 422 (detail yenye muundo wa array). Inashughulikia aina za
+    // asili za Pydantic (missing, string_too_short, ...) na aina zetu maalum
+    // za PydanticCustomError (password_*, ...).
+    aina: {
+      missing: 'Sehemu hii inahitajika',
+      string_too_short: (ctx) => `Lazima iwe na angalau herufi ${ctx?.min_length ?? ''}`,
+      string_too_long: (ctx) => `Lazima isizidi herufi ${ctx?.max_length ?? ''}`,
+      greater_than: (ctx) => `Lazima iwe kubwa kuliko ${ctx?.gt ?? ''}`,
+      greater_than_equal: (ctx) => `Lazima iwe kubwa au sawa na ${ctx?.ge ?? ''}`,
+      less_than: (ctx) => `Lazima iwe ndogo kuliko ${ctx?.lt ?? ''}`,
+      less_than_equal: (ctx) => `Lazima iwe ndogo au sawa na ${ctx?.le ?? ''}`,
+      int_parsing: 'Lazima iwe namba kamili',
+      float_parsing: 'Lazima iwe namba',
+      uuid_parsing: 'Kitambulisho si sahihi',
+      bool_parsing: 'Lazima iwe ndiyo au hapana',
+      literal_error: 'Thamani si miongoni mwa chaguo zinazoruhusiwa',
+      value_error: null,
+      password_too_short: 'Nenosiri lazima liwe na herufi angalau 8',
+      password_too_long: 'Nenosiri ni refu mno',
+      password_needs_lowercase: 'Nenosiri lazima liwe na angalau herufi ndogo moja',
+      password_needs_uppercase: 'Nenosiri lazima liwe na angalau herufi kubwa moja',
+      password_needs_digit: 'Nenosiri lazima liwe na angalau namba moja',
+      password_too_common: 'Nenosiri hili ni rahisi kubashiri sana, chagua lingine',
+      passwords_mismatch: 'Nenosiri na uthibitisho hazifanani',
+      selling_price_below_cost: 'Bei ya uuzaji lazima iwe kubwa au sawa na gharama',
+      adjustment_reason_required: 'Sababu inahitajika kwa aina hii ya marekebisho',
+      payment_reference_required: 'Nambari ya kumbukumbu inahitajika kwa Pesa ya Simu na Benki',
+    },
   },
 
   // Success messages

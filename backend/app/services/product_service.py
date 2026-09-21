@@ -57,7 +57,7 @@ class ProductService:
         from app.models.branch import Branch
         product = await product_repo.get_by_id(db, product_id)
         if not product:
-            raise NotFoundException("Bidhaa")
+            raise NotFoundException("Bidhaa", "product")
 
         from sqlalchemy import select as sa_select
         query = (
@@ -124,7 +124,7 @@ class ProductService:
     async def update_product(self, db: AsyncSession, product_id: UUID, data: ProductUpdate, user):
         product = await product_repo.get_by_id(db, product_id)
         if not product:
-            raise NotFoundException("Bidhaa")
+            raise NotFoundException("Bidhaa", "product")
         before = {"name": product.name, "selling_price": str(product.selling_price)}
         updates = data.model_dump(exclude_none=True)
         product = await product_repo.update(db, product_id, updates)
@@ -140,7 +140,7 @@ class ProductService:
     async def soft_delete(self, db: AsyncSession, product_id: UUID, user):
         product = await product_repo.get_by_id(db, product_id)
         if not product:
-            raise NotFoundException("Bidhaa")
+            raise NotFoundException("Bidhaa", "product")
         await product_repo.update(db, product_id, {"status": "inactive"})
         await db.commit()
         await audit_service.log(
@@ -180,7 +180,7 @@ class ProductService:
         from app.models.category import Category
         cat = (await db.get(Category, cat_id))
         if not cat:
-            raise NotFoundException("Jamii")
+            raise NotFoundException("Jamii", "category")
         before = {"name": cat.name}
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(cat, field, value)
@@ -200,10 +200,10 @@ class ProductService:
         from sqlalchemy import select
         cat = await db.get(Category, cat_id)
         if not cat:
-            raise NotFoundException("Jamii")
+            raise NotFoundException("Jamii", "category")
         used = (await db.execute(select(Product.id).where(Product.category_id == cat_id).limit(1))).scalar_one_or_none()
         if used:
-            raise DuplicateException("Jamii inatumika na bidhaa, haiwezi kufutwa")
+            raise DuplicateException("Jamii inatumika na bidhaa, haiwezi kufutwa", "CATEGORY_IN_USE")
         await db.delete(cat)
         await db.commit()
         await audit_service.log(

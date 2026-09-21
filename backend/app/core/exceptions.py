@@ -3,8 +3,19 @@ from fastapi import HTTPException
 
 
 class AppException(HTTPException):
-    def __init__(self, status_code: int, detail: str, code: str):
-        super().__init__(status_code=status_code, detail={"detail": detail, "code": code})
+    """Every response body is {"detail": <Swahili fallback text>, "code":
+    <stable machine-readable identifier>, "params": <optional structured
+    data for dynamic content>}. `detail` remains a real, readable Swahili
+    sentence (used if the frontend has no translation for `code` yet, and
+    for anything reading raw API responses directly), but `code` (+
+    `params` for messages with interpolated values) is what the frontend
+    actually uses to pick a message in the active UI language — see
+    frontend/src/constants/translations/{en,sw}.js `makosa.msimbo`."""
+    def __init__(self, status_code: int, detail: str, code: str, params: dict | None = None):
+        payload = {"detail": detail, "code": code}
+        if params:
+            payload["params"] = params
+        super().__init__(status_code=status_code, detail=payload)
 
 
 class InvalidTokenException(AppException):
@@ -27,7 +38,8 @@ class AccountLockedException(AppException):
         super().__init__(
             423,
             f"Akaunti imefungwa hadi {locked_until.strftime('%H:%M')}. Jaribu tena baadaye.",
-            "ACCOUNT_LOCKED"
+            "ACCOUNT_LOCKED",
+            params={"locked_until": locked_until.isoformat()},
         )
 
 
@@ -37,13 +49,16 @@ class InactiveUserException(AppException):
 
 
 class InsufficientPermissionException(AppException):
-    def __init__(self, detail: str = "Huna ruhusa ya kufanya hivi"):
-        super().__init__(403, detail, "INSUFFICIENT_PERMISSION")
+    def __init__(self, detail: str = "Huna ruhusa ya kufanya hivi", code: str = "INSUFFICIENT_PERMISSION"):
+        super().__init__(403, detail, code)
 
 
 class NotFoundException(AppException):
-    def __init__(self, resource: str = "Rekodi"):
-        super().__init__(404, f"{resource} haipatikani", "NOT_FOUND")
+    # resource_key is the stable lookup key the frontend's terminology
+    # dictionary (SW.rasilimali) uses to translate `resource` — a small,
+    # fixed vocabulary (see call sites), not free text.
+    def __init__(self, resource: str = "Rekodi", resource_key: str = "record"):
+        super().__init__(404, f"{resource} haipatikani", "NOT_FOUND", params={"resource": resource_key})
 
 
 class InsufficientStockException(AppException):
@@ -51,13 +66,14 @@ class InsufficientStockException(AppException):
         super().__init__(
             400,
             f"Hisa haitoshi kwa '{product}'. Zinapatikana: {available}, Ulizohitaji: {requested}",
-            "INSUFFICIENT_STOCK"
+            "INSUFFICIENT_STOCK",
+            params={"product": product, "available": available, "requested": requested},
         )
 
 
 class DuplicateException(AppException):
-    def __init__(self, field: str = "Rekodi"):
-        super().__init__(409, f"{field} tayari ipo", "DUPLICATE")
+    def __init__(self, field: str = "Rekodi", code: str = "DUPLICATE"):
+        super().__init__(409, f"{field} tayari ipo", code)
 
 
 class TransferPermissionException(AppException):
@@ -70,5 +86,5 @@ class TransferPermissionException(AppException):
 
 
 class ValidationException(AppException):
-    def __init__(self, detail: str):
-        super().__init__(400, detail, "VALIDATION_ERROR")
+    def __init__(self, detail: str, code: str = "VALIDATION_ERROR"):
+        super().__init__(400, detail, code)

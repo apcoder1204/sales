@@ -2,6 +2,7 @@ from uuid import UUID
 from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 
 class StockAdjustRequest(BaseModel):
@@ -18,7 +19,7 @@ class StockAdjustRequest(BaseModel):
         # stock_out, damaged, adjustment — is exactly what an audit trail
         # needs explained, so it can't be submitted with no reason at all.
         if self.type in ("stock_out", "damaged", "adjustment") and not (self.notes and self.notes.strip()):
-            raise ValueError("Sababu inahitajika kwa aina hii ya marekebisho")
+            raise PydanticCustomError("adjustment_reason_required", "Sababu inahitajika kwa aina hii ya marekebisho")
         return self
 
 

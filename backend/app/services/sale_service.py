@@ -29,14 +29,17 @@ class SaleService:
     ) -> tuple:
         closing = await daily_closing_repo.get_by_branch_date(db, data.branch_id, business_date_today())
         if closing and closing.status == "closed":
-            raise ValidationException("Siku hii tayari imefungwa kwa tawi hili. Wasiliana na msimamizi kufungua tena.")
+            raise ValidationException(
+                "Siku hii tayari imefungwa kwa tawi hili. Wasiliana na msimamizi kufungua tena.",
+                "DAY_ALREADY_CLOSED",
+            )
 
         # --- Phase 1: validate products (no DB locks yet — fail fast) ---
         products: dict[UUID, object] = {}
         for item_in in data.items:
             product = await product_repo.get_by_id(db, item_in.product_id)
             if not product or product.status != "active":
-                raise NotFoundException("Bidhaa")
+                raise NotFoundException("Bidhaa", "product")
             products[item_in.product_id] = product
 
         # Calculate financials from locked-in product prices
@@ -124,9 +127,9 @@ class SaleService:
         check)."""
         sale = await sale_repo.get_by_id(db, sale_id)
         if not sale:
-            raise NotFoundException("Muamala")
+            raise NotFoundException("Muamala", "sale")
         if user.role.name == "cashier" and sale.cashier_id != user.id:
-            raise NotFoundException("Muamala")
+            raise NotFoundException("Muamala", "sale")
         return sale
 
     def get_receipt(self, sale) -> ReceiptData:
@@ -163,16 +166,17 @@ class SaleService:
             # sale can't both pass the status check and both restore stock.
             sale = await sale_repo.get_by_id_locked(db, sale_id)
             if not sale:
-                raise NotFoundException("Muamala")
+                raise NotFoundException("Muamala", "sale")
             if sale.status != "completed":
-                raise ValidationException("Muamala huu tayari umebatilishwa")
+                raise ValidationException("Muamala huu tayari umebatilishwa", "SALE_ALREADY_VOIDED")
 
             closing = await daily_closing_repo.get_by_branch_date(
                 db, sale.branch_id, business_date_for(sale.created_at)
             )
             if closing and closing.status == "closed":
                 raise ValidationException(
-                    "Siku ya muamala huu tayari imefungwa. Wasiliana na msimamizi kufungua tena."
+                    "Siku ya muamala huu tayari imefungwa. Wasiliana na msimamizi kufungua tena.",
+                    "DAY_ALREADY_CLOSED",
                 )
 
             items = list(sale.items)
@@ -190,7 +194,8 @@ class SaleService:
                     # inconsistent. Surface it loudly rather than silently
                     # fabricating a new row with a guessed quantity.
                     raise ValidationException(
-                        "Hifadhi ya bidhaa haikupatikana kwa ajili ya kurejesha hisa"
+                        "Hifadhi ya bidhaa haikupatikana kwa ajili ya kurejesha hisa",
+                        "INVENTORY_ROW_MISSING",
                     )
                 qty_before = inv.quantity
                 qty_after = qty_before + item.quantity

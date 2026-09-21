@@ -1,6 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
 from app.core.security import validate_password_strength
 
 
@@ -21,7 +22,7 @@ class UserCreate(BaseModel):
     @model_validator(mode="after")
     def _passwords_match(self):
         if self.password != self.confirm_password:
-            raise ValueError("Nenosiri na uthibitisho hazifanani")
+            raise PydanticCustomError("passwords_mismatch", "Nenosiri na uthibitisho hazifanani")
         return self
 
 
@@ -42,7 +43,7 @@ class UserUpdate(BaseModel):
     @model_validator(mode="after")
     def _passwords_match(self):
         if self.password is not None and self.password != self.confirm_password:
-            raise ValueError("Nenosiri na uthibitisho hazifanani")
+            raise PydanticCustomError("passwords_mismatch", "Nenosiri na uthibitisho hazifanani")
         return self
 
 

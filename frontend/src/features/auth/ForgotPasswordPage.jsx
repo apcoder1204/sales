@@ -5,6 +5,7 @@ import { Mail, Zap, ArrowLeft } from 'lucide-react'
 import Button from '@components/ui/Button'
 import Input from '@components/ui/Input'
 import SW from '@constants/sw'
+import { resolveApiErrorMessage } from '@utils/apiError'
 import { authService } from '@services/authService'
 
 export default function ForgotPasswordPage() {
@@ -22,8 +23,7 @@ export default function ForgotPasswordPage() {
       await authService.forgotPassword(email)
       setSent(true)
     } catch (err) {
-      const detail = err.response?.data?.detail || SW.makosa.jumla
-      setError(detail)
+      setError(resolveApiErrorMessage(err))
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,28 @@
 // English UI strings — mirrors translations/sw.js key-for-key
+
+// Terminology dictionary: stable resource keys (set by the backend, e.g.
+// NotFoundException's `resource_key`) -> the display name for this
+// language. Shared vocabulary used by makosa.msimbo.NOT_FOUND below and
+// anywhere else a resource type needs naming consistently.
+const RESOURCE_NAMES = {
+  product: 'Product',
+  sale: 'Sale',
+  branch: 'Branch',
+  day_closing: 'Day Closing',
+  request: 'Request',
+  request_item: 'Request Item',
+  user: 'User',
+  category: 'Category',
+  main_store: 'Main Store',
+  record: 'Record',
+}
+
 export const EN = {
+  // Terminology dictionary — see RESOURCE_NAMES above; also exposed as
+  // SW.rasilimali for any other UI spot that needs a consistent resource
+  // display name by the same stable key.
+  rasilimali: RESOURCE_NAMES,
+
   // App
   appName: 'DUKANI POS',
   tagline: 'Sales and Inventory Management System',
@@ -625,6 +648,84 @@ export const EN = {
     tokeni: 'Invalid token. Please log in again.',
     jumla: 'Something went wrong. Please try again.',
     jazaSehemuZote: 'Please fill in all required fields',
+    // Backend AppException `code` -> message. Keyed by the exact SCREAMING_
+    // SNAKE_CASE code every API error response carries (see
+    // backend/app/core/exceptions.py). A function receives that error's
+    // `params` for messages with interpolated values; anything not listed
+    // here falls back to the backend's own (Swahili) `detail` text — see
+    // hooks/useApi.js.
+    msimbo: {
+      INVALID_TOKEN: 'Invalid session. Please log in again.',
+      TOKEN_EXPIRED: 'Your session has expired. Please log in again.',
+      INVALID_CREDENTIALS: 'Incorrect username or password',
+      ACCOUNT_LOCKED: (p) => `Account locked until ${p?.locked_until ? new Date(p.locked_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}. Please try again later.`,
+      ACCOUNT_INACTIVE: 'This account is deactivated. Contact your administrator.',
+      INSUFFICIENT_PERMISSION: 'You do not have permission to do this',
+      NOT_FOUND: (p) => `${RESOURCE_NAMES[p?.resource] || RESOURCE_NAMES.record} not found`,
+      INSUFFICIENT_STOCK: (p) => `Insufficient stock for '${p?.product}'. Available: ${p?.available}, requested: ${p?.requested}`,
+      DUPLICATE: 'This already exists',
+      TRANSFER_NOT_ALLOWED: 'You do not have permission to transfer stock between Sales Points. Contact the General Manager.',
+      RATE_LIMIT_EXCEEDED: 'Too many attempts. Please wait and try again.',
+      INTERNAL_ERROR: 'Something went wrong. Please try again.',
+      DAY_ALREADY_CLOSED: 'This day has already been closed for this branch. Contact your administrator to reopen it.',
+      SALE_ALREADY_VOIDED: 'This transaction has already been voided',
+      INVENTORY_ROW_MISSING: 'Stock record not found to restore inventory',
+      BRANCH_INACTIVE: 'This branch is not currently active',
+      REGISTER_ALREADY_OPEN: 'This branch already has an open register',
+      DAY_NOT_CLOSED: 'This day has not been closed',
+      CASHIER_REQUIRES_BRANCH: 'A cashier must be assigned a branch',
+      USERNAME_TAKEN: 'This username is already taken',
+      CATEGORY_IN_USE: 'This category is used by products and cannot be deleted',
+      RESET_TOKEN_INVALID: 'This password reset link is invalid or has expired',
+      CURRENT_PASSWORD_INCORRECT: 'Current password is incorrect',
+      USER_HAS_HISTORY: 'This user has activity history in the system (sales, closings, transfers, etc.) and cannot be permanently deleted. Deactivate instead.',
+      ROLE_HIERARCHY_RESTRICTED: 'You do not have permission to do this',
+      CANNOT_SELF_EDIT: 'You cannot edit your own account here',
+      CANNOT_SELF_DEACTIVATE: 'You cannot deactivate your own account',
+      CANNOT_SELF_DELETE: 'You cannot delete your own account',
+      SAME_BRANCH_TRANSFER: 'The source and destination branch cannot be the same',
+      BRANCH_WRITE_RESTRICTED: 'You cannot act on behalf of another branch',
+      MAIN_STORE_ONLY: 'Stock is only permitted from the Main Store',
+      OWN_BRANCH_ONLY: 'You can only request stock for your own branch',
+      MAIN_STORE_REQUIRED: 'The request must involve the Main Store',
+      BRANCH_READ_RESTRICTED: 'You cannot view sources for another branch',
+      REQUEST_CANNOT_BE_APPROVED: 'This request cannot be approved',
+      APPROVED_QTY_EXCEEDS_REQUESTED: 'The approved quantity cannot exceed the requested quantity',
+      ALL_ITEMS_MUST_BE_REVIEWED: 'All items in the request must be reviewed',
+      REQUEST_NOT_APPROVED: 'This request has not been approved yet',
+      NO_APPROVED_ITEMS: 'No approved items to execute',
+      REQUEST_CANNOT_BE_REJECTED: 'This request cannot be rejected',
+    },
+    // Pydantic validation-error `type` -> message, for 422 responses (the
+    // array-shaped `detail`). Covers both Pydantic's own built-in types
+    // (missing, string_too_short, ...) and our custom PydanticCustomError
+    // types raised from field/model validators (password_*, ...). `ctx`
+    // carries Pydantic's own interpolation values (e.g. min_length).
+    aina: {
+      missing: 'This field is required',
+      string_too_short: (ctx) => `Must be at least ${ctx?.min_length ?? ''} characters`,
+      string_too_long: (ctx) => `Must be at most ${ctx?.max_length ?? ''} characters`,
+      greater_than: (ctx) => `Must be greater than ${ctx?.gt ?? ''}`,
+      greater_than_equal: (ctx) => `Must be greater than or equal to ${ctx?.ge ?? ''}`,
+      less_than: (ctx) => `Must be less than ${ctx?.lt ?? ''}`,
+      less_than_equal: (ctx) => `Must be less than or equal to ${ctx?.le ?? ''}`,
+      int_parsing: 'Must be a whole number',
+      float_parsing: 'Must be a number',
+      uuid_parsing: 'Invalid identifier',
+      bool_parsing: 'Must be true or false',
+      literal_error: 'Value is not one of the allowed options',
+      value_error: null,
+      password_too_short: 'Password must be at least 8 characters',
+      password_too_long: 'Password is too long',
+      password_needs_lowercase: 'Password must contain at least one lowercase letter',
+      password_needs_uppercase: 'Password must contain at least one uppercase letter',
+      password_needs_digit: 'Password must contain at least one number',
+      password_too_common: 'This password is too easy to guess, choose another',
+      passwords_mismatch: 'Passwords do not match',
+      selling_price_below_cost: 'Selling price must be greater than or equal to cost',
+      adjustment_reason_required: 'A reason is required for this type of adjustment',
+      payment_reference_required: 'A reference number is required for Mobile Money and Bank payments',
+    },
   },
 
   // Success messages

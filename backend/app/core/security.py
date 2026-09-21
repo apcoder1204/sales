@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from jose import jwt, JWTError, ExpiredSignatureError
+from pydantic_core import PydanticCustomError
 import bcrypt
 from app.config import settings
 
@@ -31,20 +32,26 @@ _DENYLISTED_PASSWORDS = {
 
 def validate_password_strength(password: str) -> str:
     """Shared by every schema that accepts a new password (user create/update,
-    password reset) so the policy can't drift between call sites."""
+    password reset) so the policy can't drift between call sites.
+
+    Raises PydanticCustomError (not plain ValueError) so each failure gets a
+    stable `type` (e.g. "password_too_short") in the resulting validation
+    error instead of a generic "value_error" — that stable type is what the
+    frontend maps to a translated message (see makosa.uthibitisho in
+    en.js/sw.js), the same way `code` does for AppException."""
     if len(password) < 8:
-        raise ValueError("Nenosiri lazima liwe na herufi angalau 8")
+        raise PydanticCustomError("password_too_short", "Nenosiri lazima liwe na herufi angalau 8")
     if len(password.encode("utf-8")) > 72:
-        raise ValueError("Nenosiri ni refu mno")
+        raise PydanticCustomError("password_too_long", "Nenosiri ni refu mno")
     if not re.search(r"[a-z]", password):
-        raise ValueError("Nenosiri lazima liwe na angalau herufi ndogo moja")
+        raise PydanticCustomError("password_needs_lowercase", "Nenosiri lazima liwe na angalau herufi ndogo moja")
     if not re.search(r"[A-Z]", password):
-        raise ValueError("Nenosiri lazima liwe na angalau herufi kubwa moja")
+        raise PydanticCustomError("password_needs_uppercase", "Nenosiri lazima liwe na angalau herufi kubwa moja")
     if not re.search(r"\d", password):
-        raise ValueError("Nenosiri lazima liwe na angalau namba moja")
+        raise PydanticCustomError("password_needs_digit", "Nenosiri lazima liwe na angalau namba moja")
     normalized = re.sub(r"[\d\W]+$", "", password.strip().lower())
     if normalized in _DENYLISTED_PASSWORDS:
-        raise ValueError("Nenosiri hili ni rahisi kubashiri sana, chagua lingine")
+        raise PydanticCustomError("password_too_common", "Nenosiri hili ni rahisi kubashiri sana, chagua lingine")
     return password
 
 

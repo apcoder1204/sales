@@ -5,6 +5,7 @@ import { Eye, EyeOff, Zap, Lock, ArrowLeft } from 'lucide-react'
 import Button from '@components/ui/Button'
 import Input from '@components/ui/Input'
 import SW from '@constants/sw'
+import { resolveApiErrorMessage } from '@utils/apiError'
 import { authService } from '@services/authService'
 
 export default function ResetPasswordPage() {
@@ -28,14 +29,7 @@ export default function ResetPasswordPage() {
       setDone(true)
       setTimeout(() => navigate('/login', { replace: true }), 2500)
     } catch (err) {
-      const detail = err.response?.data?.detail
-      if (typeof detail === 'string') {
-        setError(detail)
-      } else if (Array.isArray(detail) && detail[0]?.msg) {
-        setError(detail[0].msg)
-      } else {
-        setError(SW.makosa.jumla)
-      }
+      setError(resolveApiErrorMessage(err))
     } finally {
       setLoading(false)
     }

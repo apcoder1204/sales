@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useToast } from './useToast'
-import SW from '@constants/sw'
+import { resolveApiErrorMessage } from '@utils/apiError'
 
 export function useApi() {
   const [loading, setLoading] = useState(false)
@@ -16,17 +16,7 @@ export function useApi() {
       onSuccess?.(result)
       return result
     } catch (err) {
-      const raw = err.response?.data?.detail
-      let msg
-      if (Array.isArray(raw) && raw.length > 0) {
-        // Pydantic v2 validation errors — extract readable messages, strip "Value error, " prefix
-        msg = raw
-          .map((e) => (e.msg || '').replace(/^Value error,\s*/, ''))
-          .filter(Boolean)
-          .join('; ') || SW.makosa.jumla
-      } else {
-        msg = (typeof raw === 'string' ? raw : null) || SW.makosa.jumla
-      }
+      const msg = resolveApiErrorMessage(err)
       setError(msg)
       if (!silent) toast.error(msg)
       onError?.(err)

@@ -5,6 +5,7 @@ import { Eye, EyeOff, Zap, Lock, User } from 'lucide-react'
 import { useAuth } from '@hooks/useAuth'
 import Button from '@components/ui/Button'
 import Input from '@components/ui/Input'
+import { resolveApiErrorMessage } from '@utils/apiError'
 import SW from '@constants/sw'
 
 export default function LoginPage() {
@@ -28,8 +29,7 @@ export default function LoginPage() {
       await login(form.username, form.password)
       navigate('/dashibodi', { replace: true })
     } catch (err) {
-      const detail = err.response?.data?.detail || SW.makosa.jumla
-      setError(detail)
+      setError(resolveApiErrorMessage(err))
     } finally {
       setLoading(false)
     }

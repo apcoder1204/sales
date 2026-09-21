@@ -36,7 +36,7 @@ async def _get_role_name(db: AsyncSession, role_id: int) -> str | None:
 async def _validate_branch_assignment(db: AsyncSession, role_name: str | None, branch_id) -> None:
     from app.core.authorization import get_active_branch_or_error
     if role_name in BRANCH_REQUIRED_ROLES and branch_id is None:
-        raise ValidationException("Mhusika wa fedha (cashier) lazima apewe tawi")
+        raise ValidationException("Mhusika wa fedha (cashier) lazima apewe tawi", "CASHIER_REQUIRES_BRANCH")
     if branch_id is not None:
         await get_active_branch_or_error(db, branch_id, "Tawi")
 
@@ -72,13 +72,13 @@ class UserService:
                     user_id=creator.id, username=creator.username, user_role=creator.role.name,
                     details={"reason": "admin_cannot_create_role", "role_id": data.role_id},
                 )
-                raise InsufficientPermissionException("Huna ruhusa ya kuunda mtumiaji wa aina hii")
+                raise InsufficientPermissionException("Huna ruhusa ya kuunda mtumiaji wa aina hii", "ROLE_HIERARCHY_RESTRICTED")
 
         await _validate_branch_assignment(db, target_role_name, data.branch_id)
 
         existing = await user_repo.get_by_username(db, data.username)
         if existing:
-            raise DuplicateException("Jina la mtumiaji")
+            raise DuplicateException("Jina la mtumiaji", "USERNAME_TAKEN")
 
         try:
             async with db.begin_nested():
@@ -94,7 +94,7 @@ class UserService:
             # The pre-check above closes the common case; this catches the
             # narrow race of two concurrent creates for the same username,
             # so the loser gets a clean 400 instead of a raw 500.
-            raise DuplicateException("Jina la mtumiaji") from exc
+            raise DuplicateException("Jina la mtumiaji", "USERNAME_TAKEN") from exc
         await db.commit()
         await audit_service.log(
             db, action="USER_CREATED", category="users",
@@ -107,7 +107,7 @@ class UserService:
     async def update_user(self, db: AsyncSession, user_id: UUID, data: UserUpdate, editor):
         user = await user_repo.get_by_id(db, user_id)
         if not user:
-            raise NotFoundException("Mtumiaji")
+            raise NotFoundException("Mtumiaji", "user")
 
         # Nobody — including super_admin — may use the admin user-management
         # surface to change their own role/branch/active-state. Self-service
@@ -121,7 +121,7 @@ class UserService:
                 entity_type="user", entity_id=str(user_id),
                 details={"reason": "cannot_edit_self_via_user_management"},
             )
-            raise InsufficientPermissionException("Huwezi kuhariri akaunti yako mwenyewe hapa")
+            raise InsufficientPermissionException("Huwezi kuhariri akaunti yako mwenyewe hapa", "CANNOT_SELF_EDIT")
 
         if editor.role.name == "admin":
             if user.role.name in HIDDEN_FROM_ADMIN or (
@@ -134,7 +134,7 @@ class UserService:
                     entity_type="user", entity_id=str(user_id),
                     details={"reason": "admin_cannot_edit_hidden_role"},
                 )
-                raise InsufficientPermissionException("Huna ruhusa ya kuhariri mtumiaji huyu")
+                raise InsufficientPermissionException("Huna ruhusa ya kuhariri mtumiaji huyu", "ROLE_HIERARCHY_RESTRICTED")
 
         final_role_name = (
             await _get_role_name(db, data.role_id) if data.role_id is not None else user.role.name
@@ -159,7 +159,7 @@ class UserService:
     async def unlock_user(self, db: AsyncSession, user_id: UUID, editor):
         user = await user_repo.get_by_id(db, user_id)
         if not user:
-            raise NotFoundException("Mtumiaji")
+            raise NotFoundException("Mtumiaji", "user")
         if editor.role.name == "admin" and user.role.name in HIDDEN_FROM_ADMIN:
             await audit_service.log(
                 db, action="PERMISSION_DENIED", category="system",
@@ -167,14 +167,14 @@ class UserService:
                 entity_type="user", entity_id=str(user_id),
                 details={"reason": "admin_cannot_unlock_hidden_role"},
             )
-            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi")
+            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi", "ROLE_HIERARCHY_RESTRICTED")
         await user_repo.update(db, user_id, {"locked_until": None, "failed_login_attempts": 0})
         await db.commit()
 
     async def deactivate_user(self, db: AsyncSession, user_id: UUID, editor):
         user = await user_repo.get_by_id(db, user_id)
         if not user:
-            raise NotFoundException("Mtumiaji")
+            raise NotFoundException("Mtumiaji", "user")
         if str(editor.id) == str(user_id):
             await audit_service.log(
                 db, action="PERMISSION_DENIED", category="system",
@@ -182,7 +182,7 @@ class UserService:
                 entity_type="user", entity_id=str(user_id),
                 details={"reason": "cannot_deactivate_self"},
             )
-            raise InsufficientPermissionException("Huwezi kuzima akaunti yako mwenyewe")
+            raise InsufficientPermissionException("Huwezi kuzima akaunti yako mwenyewe", "CANNOT_SELF_DEACTIVATE")
         if editor.role.name == "admin" and user.role.name in HIDDEN_FROM_ADMIN:
             await audit_service.log(
                 db, action="PERMISSION_DENIED", category="system",
@@ -190,7 +190,7 @@ class UserService:
                 entity_type="user", entity_id=str(user_id),
                 details={"reason": "admin_cannot_deactivate_hidden_role"},
             )
-            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi")
+            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi", "ROLE_HIERARCHY_RESTRICTED")
         await user_repo.update(db, user_id, {"is_active": False})
         await db.commit()
         await audit_service.log(
@@ -209,7 +209,7 @@ class UserService:
         guards as deactivate_user."""
         user = await user_repo.get_by_id(db, user_id)
         if not user:
-            raise NotFoundException("Mtumiaji")
+            raise NotFoundException("Mtumiaji", "user")
         if str(editor.id) == str(user_id):
             await audit_service.log(
                 db, action="PERMISSION_DENIED", category="system",
@@ -217,7 +217,7 @@ class UserService:
                 entity_type="user", entity_id=str(user_id),
                 details={"reason": "cannot_delete_self"},
             )
-            raise InsufficientPermissionException("Huwezi kufuta akaunti yako mwenyewe")
+            raise InsufficientPermissionException("Huwezi kufuta akaunti yako mwenyewe", "CANNOT_SELF_DELETE")
         if editor.role.name == "admin" and user.role.name in HIDDEN_FROM_ADMIN:
             await audit_service.log(
                 db, action="PERMISSION_DENIED", category="system",
@@ -225,7 +225,7 @@ class UserService:
                 entity_type="user", entity_id=str(user_id),
                 details={"reason": "admin_cannot_delete_hidden_role"},
             )
-            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi")
+            raise InsufficientPermissionException("Huna ruhusa ya kufanya hivi", "ROLE_HIERARCHY_RESTRICTED")
 
         history = await user_repo.get_history_counts(db, user_id)
         blocking = {k: v for k, v in history.items() if v > 0}
@@ -238,7 +238,8 @@ class UserService:
             )
             raise ValidationException(
                 "Mtumiaji huyu ana historia ya shughuli mfumoni (mauzo, ufungaji, uhamisho, n.k.) "
-                "na hawezi kufutwa kabisa. Mzima badala yake."
+                "na hawezi kufutwa kabisa. Mzima badala yake.",
+                "USER_HAS_HISTORY",
             )
 
         await user_repo.hard_delete(db, user_id)

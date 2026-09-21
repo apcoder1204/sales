@@ -94,7 +94,7 @@ async def get_available_sources(
     # legitimately need to check sourcing for any destination while
     # allocating/approving requests, so they're left unrestricted here.
     if current_user.role.name == "cashier" and str(current_user.branch_id) != str(destination_branch_id):
-        raise InsufficientPermissionException("Huwezi kuona vyanzo vya tawi lingine")
+        raise InsufficientPermissionException("Huwezi kuona vyanzo vya tawi lingine", "BRANCH_READ_RESTRICTED")
     return await inventory_service.get_available_sources(db, product_id, quantity, destination_branch_id)
 
 

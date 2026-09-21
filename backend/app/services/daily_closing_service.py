@@ -45,7 +45,7 @@ class DailyClosingService:
         business_date = business_date or business_date_today()
         branch = await db.get(Branch, branch_id)
         if not branch:
-            raise NotFoundException("Tawi")
+            raise NotFoundException("Tawi", "branch")
 
         existing = await daily_closing_repo.get_by_branch_date(db, branch_id, business_date)
         from_dt, to_dt = _window_for_register(existing, business_date)
@@ -68,12 +68,12 @@ class DailyClosingService:
         business_date = data.business_date or business_date_today()
         branch = await db.get(Branch, data.branch_id)
         if not branch:
-            raise NotFoundException("Tawi")
+            raise NotFoundException("Tawi", "branch")
         if not branch.is_active:
-            raise ValidationException("Tawi hili halifanyi kazi kwa sasa")
+            raise ValidationException("Tawi hili halifanyi kazi kwa sasa", "BRANCH_INACTIVE")
 
         if await daily_closing_repo.get_open_register(db, data.branch_id):
-            raise ValidationException("Tawi hili tayari lina rejista iliyo wazi")
+            raise ValidationException("Tawi hili tayari lina rejista iliyo wazi", "REGISTER_ALREADY_OPEN")
 
         next_number = await daily_closing_repo.get_max_register_number(
             db, data.branch_id, business_date
@@ -92,7 +92,7 @@ class DailyClosingService:
             # Two concurrent open-register calls for the same branch: only
             # one can win uq_daily_closing_one_open_per_branch — the loser
             # lands here instead of a raw 500.
-            raise DuplicateException("Rejista iliyo wazi kwa tawi hili") from exc
+            raise DuplicateException("Rejista iliyo wazi kwa tawi hili", "REGISTER_ALREADY_OPEN") from exc
 
         await db.commit()
         await audit_service.log(
@@ -110,11 +110,11 @@ class DailyClosingService:
         business_date = data.business_date or business_date_today()
         branch = await db.get(Branch, data.branch_id)
         if not branch:
-            raise NotFoundException("Tawi")
+            raise NotFoundException("Tawi", "branch")
 
         existing = await daily_closing_repo.get_by_branch_date(db, data.branch_id, business_date)
         if existing and existing.status == "closed":
-            raise ValidationException("Siku hii tayari imefungwa kwa tawi hili")
+            raise ValidationException("Siku hii tayari imefungwa kwa tawi hili", "DAY_ALREADY_CLOSED")
 
         from_dt, to_dt = _window_for_register(existing, business_date)
         totals = await sale_repo.get_totals_by_payment_method(db, data.branch_id, from_dt, to_dt)
@@ -163,7 +163,7 @@ class DailyClosingService:
             # business_date) with no existing row yet: both pass the
             # `existing is None` check above, only one INSERT can win the
             # unique constraint — the loser lands here instead of a raw 500.
-            raise DuplicateException("Kufunga kwa siku hii") from exc
+            raise DuplicateException("Kufunga kwa siku hii", "DAY_ALREADY_CLOSED") from exc
 
         await db.commit()
         # This session uses expire_on_commit=False, so `closing.expenses` (already
@@ -189,9 +189,9 @@ class DailyClosingService:
     async def reopen(self, db: AsyncSession, closing_id: UUID, reason: str, user):
         closing = await daily_closing_repo.get_by_id(db, closing_id)
         if not closing:
-            raise NotFoundException("Kufunga kwa Siku")
+            raise NotFoundException("Kufunga kwa Siku", "day_closing")
         if closing.status != "closed":
-            raise ValidationException("Siku hii haijafungwa")
+            raise ValidationException("Siku hii haijafungwa", "DAY_NOT_CLOSED")
 
         # A branch may have at most one OPEN register at a time — if a
         # newer register was already opened for this branch (the normal
@@ -202,7 +202,8 @@ class DailyClosingService:
         other_open = await daily_closing_repo.get_open_register(db, closing.branch_id)
         if other_open and other_open.id != closing.id:
             raise ValidationException(
-                "Tawi hili tayari lina rejista nyingine iliyo wazi. Ifunge kwanza."
+                "Tawi hili tayari lina rejista nyingine iliyo wazi. Ifunge kwanza.",
+                "REGISTER_ALREADY_OPEN",
             )
 
         closing.status = "open"
@@ -212,7 +213,7 @@ class DailyClosingService:
         try:
             await db.flush()
         except IntegrityError as exc:
-            raise DuplicateException("Rejista iliyo wazi kwa tawi hili") from exc
+            raise DuplicateException("Rejista iliyo wazi kwa tawi hili", "REGISTER_ALREADY_OPEN") from exc
         await db.commit()
         await db.refresh(closing)
 

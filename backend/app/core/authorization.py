@@ -43,7 +43,7 @@ async def get_main_store_id(db: AsyncSession) -> UUID:
 
     main_store = await inventory_repo.get_main_store(db)
     if not main_store:
-        raise NotFoundException("Ghala Kuu")
+        raise NotFoundException("Ghala Kuu", "main_store")
     return main_store.id
 
 
@@ -109,11 +109,11 @@ async def require_write_branch_access(
     `target_branch_id`. No-op for global-scope roles."""
     if user.role.name == "cashier":
         if target_branch_id is None or str(user.branch_id) != str(target_branch_id):
-            raise InsufficientPermissionException("Huwezi kufanya kazi kwa tawi lingine")
+            raise InsufficientPermissionException("Huwezi kufanya kazi kwa tawi lingine", "BRANCH_WRITE_RESTRICTED")
     elif user.role.name == "store_keeper":
         main_store_id = await get_main_store_id(db)
         if target_branch_id is None or str(main_store_id) != str(target_branch_id):
-            raise InsufficientPermissionException("Hisa inaruhusiwa kutoka Ghala Kuu pekee")
+            raise InsufficientPermissionException("Hisa inaruhusiwa kutoka Ghala Kuu pekee", "MAIN_STORE_ONLY")
 
 
 async def get_active_branch_or_error(db: AsyncSession, branch_id: UUID | None, label: str):
@@ -121,9 +121,9 @@ async def get_active_branch_or_error(db: AsyncSession, branch_id: UUID | None, l
 
     branch = await db.get(Branch, branch_id) if branch_id else None
     if not branch:
-        raise NotFoundException(label)
+        raise NotFoundException(label, "branch")
     if not branch.is_active:
-        raise ValidationException(f"{label} halifanyi kazi kwa sasa")
+        raise ValidationException(f"{label} halifanyi kazi kwa sasa", "BRANCH_INACTIVE")
     return branch
 
 
@@ -132,7 +132,7 @@ async def require_valid_branch_pair(db: AsyncSession, from_branch_id: UUID, to_b
     constraint alone can't give a clean 404/400 for this — it surfaces as a
     raw IntegrityError — so it's validated here before anything is written."""
     if str(from_branch_id) == str(to_branch_id):
-        raise ValidationException("Tawi la kutoa na kupokea haliwezi kuwa sawa")
+        raise ValidationException("Tawi la kutoa na kupokea haliwezi kuwa sawa", "SAME_BRANCH_TRANSFER")
     from_branch = await get_active_branch_or_error(db, from_branch_id, "Tawi la kutoa")
     to_branch = await get_active_branch_or_error(db, to_branch_id, "Tawi la kupokea")
     return from_branch, to_branch
@@ -156,14 +156,14 @@ async def require_stock_request_branches(
 
     if user.role.name == "cashier":
         if str(to_branch_id) != str(user.branch_id):
-            raise InsufficientPermissionException("Unaweza kuomba bidhaa kwa tawi lako pekee")
+            raise InsufficientPermissionException("Unaweza kuomba bidhaa kwa tawi lako pekee", "OWN_BRANCH_ONLY")
         main_store_id = await get_main_store_id(db)
         if str(from_branch_id) != str(main_store_id):
-            raise InsufficientPermissionException("Ombi linapaswa kutoka Ghala Kuu")
+            raise InsufficientPermissionException("Ombi linapaswa kutoka Ghala Kuu", "MAIN_STORE_ONLY")
     elif user.role.name == "store_keeper":
         main_store_id = await get_main_store_id(db)
         if main_store_id not in (from_branch_id, to_branch_id):
-            raise InsufficientPermissionException("Ombi lazima lihusishe Ghala Kuu")
+            raise InsufficientPermissionException("Ombi lazima lihusishe Ghala Kuu", "MAIN_STORE_REQUIRED")
 
 
 async def require_direct_transfer_branches(
@@ -179,4 +179,4 @@ async def require_direct_transfer_branches(
     if user.role.name == "store_keeper":
         main_store_id = await get_main_store_id(db)
         if str(from_branch_id) != str(main_store_id):
-            raise InsufficientPermissionException("Hisa inaruhusiwa kutoka Ghala Kuu pekee")
+            raise InsufficientPermissionException("Hisa inaruhusiwa kutoka Ghala Kuu pekee", "MAIN_STORE_ONLY")

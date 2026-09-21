@@ -8,6 +8,7 @@ import { useAuth } from '@hooks/useAuth'
 import { useToast } from '@hooks/useToast'
 import { authService } from '@services/authService'
 import { tokenStorage } from '@services/api'
+import { resolveApiErrorMessage } from '@utils/apiError'
 import SW from '@constants/sw'
 
 export default function ProfilePage() {
@@ -70,7 +71,7 @@ export default function ProfilePage() {
       setConfirmPassword('')
       await reload()
     } catch (err) {
-      setError(err.response?.data?.detail || SW.makosa.jumla)
+      setError(resolveApiErrorMessage(err))
     } finally {
       setSaving(false)
     }

@@ -23,7 +23,7 @@ class InventoryService:
 
         product = await product_repo.get_by_id(db, product_id)
         if not product:
-            raise NotFoundException("Bidhaa")
+            raise NotFoundException("Bidhaa", "product")
 
         async with db.begin_nested():
             # get_or_create handles the brand-new-(product,branch) race

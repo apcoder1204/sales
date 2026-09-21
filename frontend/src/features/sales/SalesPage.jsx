@@ -13,6 +13,7 @@ import { usePermission } from '@hooks/usePermission'
 import { useToast } from '@hooks/useToast'
 import { formatCurrency, formatDateTime } from '@utils/formatters'
 import { getPaymentMethods } from '@utils/constants'
+import { resolveApiErrorMessage } from '@utils/apiError'
 import SW from '@constants/sw'
 
 export default function SalesPage() {
@@ -56,7 +57,7 @@ export default function SalesPage() {
       setVoidReason('')
       load()
     } catch (err) {
-      toast.error(err.response?.data?.detail || SW.makosa.jumla)
+      toast.error(resolveApiErrorMessage(err))
     } finally {
       setVoiding(false)
     }

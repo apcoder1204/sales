@@ -40,7 +40,7 @@ class TransferService:
         for item_in in data.items:
             product = await product_repo.get_by_id(db, item_in.product_id)
             if not product:
-                raise NotFoundException("Bidhaa")
+                raise NotFoundException("Bidhaa", "product")
             products[item_in.product_id] = product
 
         request_no = await transfer_repo.get_next_request_no(db)
@@ -92,21 +92,21 @@ class TransferService:
             # the same request can't both pass the status check below.
             req = await transfer_repo.get_request_by_id_locked(db, request_id)
             if not req:
-                raise NotFoundException("Ombi")
+                raise NotFoundException("Ombi", "request")
             if req.status != "pending":
-                raise ValidationException("Ombi hili haliwezi kuidhinishwa")
+                raise ValidationException("Ombi hili haliwezi kuidhinishwa", "REQUEST_CANNOT_BE_APPROVED")
 
             items_by_id = {item.id: item for item in req.items}
             approvals: dict = {}
             for a in data.items:
                 item = items_by_id.get(a.item_id)
                 if not item:
-                    raise NotFoundException("Kipengele cha ombi")
+                    raise NotFoundException("Kipengele cha ombi", "request_item")
                 if a.approved_qty > item.requested_qty:
-                    raise ValidationException("Idadi iliyoidhinishwa haiwezi kuzidi iliyoombwa")
+                    raise ValidationException("Idadi iliyoidhinishwa haiwezi kuzidi iliyoombwa", "APPROVED_QTY_EXCEEDS_REQUESTED")
                 approvals[a.item_id] = a.approved_qty
             if set(approvals.keys()) != set(items_by_id.keys()):
-                raise ValidationException("Idhinisho la vipengele vyote vya ombi linahitajika")
+                raise ValidationException("Idhinisho la vipengele vyote vya ombi linahitajika", "ALL_ITEMS_MUST_BE_REVIEWED")
 
             # Lock inventory rows in a deterministic order (by product_id) —
             # reduces deadlock risk against a concurrent approval touching
@@ -183,7 +183,7 @@ class TransferService:
         """
         product = await product_repo.get_by_id(db, product_id)
         if not product:
-            raise NotFoundException("Bidhaa")
+            raise NotFoundException("Bidhaa", "product")
 
         src = await inventory_repo.get_by_product_branch_locked(db, product_id, from_branch_id)
         checkable = ((src.quantity - src.reserved_qty) if check_reserved else src.quantity) if src else 0
@@ -236,9 +236,9 @@ class TransferService:
             # stock / create a StockTransfer for it.
             req = await transfer_repo.get_request_by_id_locked(db, request_id)
             if not req:
-                raise NotFoundException("Ombi")
+                raise NotFoundException("Ombi", "request")
             if req.status != "approved":
-                raise ValidationException("Ombi hili halijaidhinishwa bado")
+                raise ValidationException("Ombi hili halijaidhinishwa bado", "REQUEST_NOT_APPROVED")
 
             # Execution is a physical handover — only whoever holds the stock being
             # sent may confirm it: a cashier for their own branch, a store keeper
@@ -254,7 +254,7 @@ class TransferService:
 
             approved_items = [i for i in req.items if i.status == "approved" and (i.approved_qty or 0) > 0]
             if not approved_items:
-                raise ValidationException("Hakuna bidhaa zilizoidhinishwa za kutekeleza")
+                raise ValidationException("Hakuna bidhaa zilizoidhinishwa za kutekeleza", "NO_APPROVED_ITEMS")
 
             transfer_no = await transfer_repo.get_next_transfer_no(db)
             tf = await transfer_repo.create_transfer(db, {
@@ -304,9 +304,9 @@ class TransferService:
         async with db.begin_nested():
             req = await transfer_repo.get_request_by_id_locked(db, request_id)
             if not req:
-                raise NotFoundException("Ombi")
+                raise NotFoundException("Ombi", "request")
             if req.status != "pending":
-                raise ValidationException("Ombi hili haliwezi kukataliwa")
+                raise ValidationException("Ombi hili haliwezi kukataliwa", "REQUEST_CANNOT_BE_REJECTED")
 
             req.status = "rejected"
             req.reviewed_by = user.id

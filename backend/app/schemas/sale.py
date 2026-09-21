@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 
 class SaleItemInput(BaseModel):
@@ -21,7 +22,7 @@ class SaleCreate(BaseModel):
     def validate_payment_reference(self):
         if self.payment_method in ("mobile_money", "bank_transfer"):
             if not self.payment_reference:
-                raise ValueError("Nambari ya kumbukumbu inahitajika kwa Pesa ya Simu na Benki")
+                raise PydanticCustomError("payment_reference_required", "Nambari ya kumbukumbu inahitajika kwa Pesa ya Simu na Benki")
         return self
 
 

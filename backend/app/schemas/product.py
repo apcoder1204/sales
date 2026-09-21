@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 
 class ProductCreate(BaseModel):
@@ -21,7 +22,7 @@ class ProductCreate(BaseModel):
     @model_validator(mode="after")
     def selling_gte_cost(self):
         if self.selling_price < self.cost_price:
-            raise ValueError("Bei ya uuzaji lazima iwe kubwa au sawa na gharama")
+            raise PydanticCustomError("selling_price_below_cost", "Bei ya uuzaji lazima iwe kubwa au sawa na gharama")
         return self
 
 

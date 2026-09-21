@@ -170,7 +170,7 @@ class AuthService:
                 db, action="PASSWORD_RESET_INVALID_TOKEN", category="authentication",
                 username="unknown", user_role="unknown",
             )
-            raise ValidationException("Kiungo cha kuweka upya nenosiri si sahihi au kimeisha muda")
+            raise ValidationException("Kiungo cha kuweka upya nenosiri si sahihi au kimeisha muda", "RESET_TOKEN_INVALID")
 
         user = reset_token.user
         reset_token.used_at = _utcnow()
@@ -202,7 +202,7 @@ class AuthService:
         if data.username is not None and data.username != user.username:
             existing = await user_repo.get_by_username(db, data.username)
             if existing and existing.id != user.id:
-                raise DuplicateException("Jina la mtumiaji")
+                raise DuplicateException("Jina la mtumiaji", "USERNAME_TAKEN")
             updates["username"] = data.username
             changed_fields.append("username")
 
@@ -218,7 +218,7 @@ class AuthService:
             if not data.current_password or not verify_password(
                 data.current_password, user.password_hash
             ):
-                raise ValidationException("Nenosiri la sasa si sahihi")
+                raise ValidationException("Nenosiri la sasa si sahihi", "CURRENT_PASSWORD_INCORRECT")
             updates["password_hash"] = hash_password(data.new_password)
             # Changing your own password must invalidate every existing
             # session/token, exactly like logout and admin-triggered
