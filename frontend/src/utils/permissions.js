@@ -17,7 +17,7 @@ export const PERMISSION_MAP = {
     'reports.sales', 'reports.inventory', 'reports.branch', 'reports.cashier',
     'audit.read',
     'users.read', 'users.write',
-    'branches.read',
+    'branches.read', 'branches.manage',
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
   ],
   admin: [
@@ -28,7 +28,7 @@ export const PERMISSION_MAP = {
     'reports.sales', 'reports.inventory', 'reports.branch', 'reports.cashier',
     'audit.read',
     'users.read', 'users.write',
-    'branches.read',
+    'branches.read', 'branches.manage',
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
   ],
   general_manager: [
@@ -80,4 +80,8 @@ export const canExecuteTransfer = (user) => {
 
 export const canManageUsers = (user) => {
   return hasPermission(user, 'users.write')
+}
+
+export const canManageBranches = (user) => {
+  return hasPermission(user, 'branches.manage')
 }

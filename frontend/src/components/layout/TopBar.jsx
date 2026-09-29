@@ -37,40 +37,34 @@ export default function TopBar({ onMenuClick }) {
   const branchLabel = activeBranch?.name || (isGlobal ? SW.common.ofisiYote : user?.branch || '')
 
   return (
-    <header className="h-14 bg-bg-card border-b border-border flex items-center justify-between px-4 flex-shrink-0">
-      <div className="flex items-center gap-3">
-        <button onClick={onMenuClick} className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-bg-hover">
+    <header className="h-14 bg-bg-card border-b border-border flex items-center px-4 gap-2 flex-shrink-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <button onClick={onMenuClick} className="text-text-muted hover:text-text-primary transition-colors p-1.5 rounded-lg hover:bg-bg-hover flex-shrink-0">
           <Menu size={20} />
         </button>
-        <div className="hidden sm:block">
-          <p className="text-sm text-text-muted">
+        <div className="hidden sm:block min-w-0">
+          <p className="text-sm text-text-muted truncate">
             <span className="text-text-primary font-medium">{SW.appName}</span>
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={toggleLanguage}
-          title={language === 'sw' ? SW.common.badilishaKwendaKiingereza : SW.common.badilishaKwendaKiswahili}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-panel border border-border text-sm text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
-        >
-          <Languages size={14} />
-          <span className="font-medium">{language === 'sw' ? 'SW' : 'EN'}</span>
-        </button>
-
+      {/* Branch context selector — kept centered per the app's header
+          convention; still the single source of truth for branch context
+          (useBranch/BranchContext), just repositioned. */}
+      <div className="flex items-center justify-center flex-shrink-0">
         {isGlobal && (
           <div className="relative">
             <button
               onClick={() => { setDropOpen((v) => !v); setUserMenuOpen(false) }}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-panel border border-border text-sm text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
             >
-              <Building2 size={14} />
-              <span>{branchLabel}</span>
-              <ChevronDown size={14} />
+              <Building2 size={14} className="flex-shrink-0" />
+              <span className="max-w-[120px] sm:max-w-[220px] truncate">{branchLabel}</span>
+              <ChevronDown size={14} className="flex-shrink-0" />
             </button>
             {dropOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 glass-card shadow-glass z-50 py-1">
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 glass-card shadow-glass z-50 py-1">
                 <button
                   onClick={() => { selectBranch(null); setDropOpen(false) }}
                   className="w-full text-left px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
@@ -93,12 +87,23 @@ export default function TopBar({ onMenuClick }) {
 
         {!isGlobal && user?.branch && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-panel border border-border text-sm text-text-secondary">
-            <Building2 size={14} />
-            <span>{user.branch}</span>
+            <Building2 size={14} className="flex-shrink-0" />
+            <span className="max-w-[120px] sm:max-w-[220px] truncate">{user.branch}</span>
           </div>
         )}
+      </div>
 
-        <div className="relative">
+      <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
+        <button
+          onClick={toggleLanguage}
+          title={language === 'sw' ? SW.common.badilishaKwendaKiingereza : SW.common.badilishaKwendaKiswahili}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-panel border border-border text-sm text-text-secondary hover:text-text-primary hover:border-border-light transition-colors flex-shrink-0"
+        >
+          <Languages size={14} />
+          <span className="font-medium">{language === 'sw' ? 'SW' : 'EN'}</span>
+        </button>
+
+        <div className="relative flex-shrink-0">
           <button
             onClick={() => { setUserMenuOpen((v) => !v); setDropOpen(false) }}
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg hover:bg-bg-hover transition-colors"

@@ -46,6 +46,7 @@ export const EN = {
     toka: 'Logout',
     harakatiZaBidhaa: 'Movements',
     historiaMauzo: 'Sales History',
+    matawi: 'Branches',
   },
 
   // Auth
@@ -650,6 +651,38 @@ export const EN = {
     POS3: 'CCTV POINT AH',
   },
 
+  // Global branch/Matawi registry management (admin/super_admin only) —
+  // distinct from `matawi` above (a static legacy code->label map, unused).
+  matawiUsimamizi: {
+    kichwaUkurasa: 'Manage system branches',
+    ongeza: 'Add Branch',
+    hariri: 'Edit Branch',
+    jina: 'Branch Name',
+    msimbo: 'Code',
+    aina: 'Type',
+    ainaGhalaKuu: 'Main Store',
+    ainaSehemuYaMauzo: 'Point of Sale',
+    anwani: 'Address',
+    simu: 'Phone Number',
+    hali: 'Status',
+    hai: 'Active',
+    hafanyiKazi: 'Inactive',
+    ameundwa: 'Created',
+    amesasishwa: 'Updated',
+    haririKitendo: 'Edit',
+    futaKitendo: 'Delete / Deactivate',
+    hakunaMatawi: 'No branches yet',
+    futaKichwa: 'Delete or Deactivate Branch',
+    thibitishaFuta: (jina) =>
+      `Are you sure you want to delete branch "${jina}"?`,
+    futaMaelezo:
+      'If this branch has no activity history (sales, stock, closings, transfers, users), it will be ' +
+      'permanently deleted. Otherwise it will only be deactivated to protect business history — it will ' +
+      'no longer appear in the branch selector but past records stay intact.',
+    jinaPlaceholder: 'e.g. CCTV POINT MBEYA',
+    msimboPlaceholder: 'e.g. POS4',
+  },
+
   // Errors
   makosa: {
     hisaHaitoshi: 'Insufficient stock',
@@ -709,6 +742,8 @@ export const EN = {
       REQUEST_NOT_APPROVED: 'This request has not been approved yet',
       NO_APPROVED_ITEMS: 'No approved items to execute',
       REQUEST_CANNOT_BE_REJECTED: 'This request cannot be rejected',
+      BRANCH_ALREADY_EXISTS: 'A branch with this name or code already exists',
+      LAST_ACTIVE_MAIN_STORE: 'Cannot deactivate or delete the only active Main Store. Set up another Main Store first.',
     },
     // Pydantic validation-error `type` -> message, for 422 responses (the
     // array-shaped `detail`). Covers both Pydantic's own built-in types
@@ -739,6 +774,8 @@ export const EN = {
       selling_price_below_cost: 'Selling price must be greater than or equal to cost',
       adjustment_reason_required: 'A reason is required for this type of adjustment',
       payment_reference_required: 'A reference number is required for Mobile Money and Bank payments',
+      branch_field_blank: 'This field cannot be blank',
+      branch_code_has_spaces: 'Code cannot contain spaces',
     },
   },
 

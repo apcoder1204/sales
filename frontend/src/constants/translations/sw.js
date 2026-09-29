@@ -46,6 +46,7 @@ export const SW = {
     toka: 'Toka',
     harakatiZaBidhaa: 'Harakati',
     historiaMauzo: 'Historia ya Mauzo',
+    matawi: 'Matawi',
   },
 
   // Auth
@@ -651,6 +652,38 @@ export const SW = {
     POS3: 'CCTV POINT AH',
   },
 
+  // Global branch/Matawi registry management (admin/super_admin only) —
+  // distinct from `matawi` above (a static legacy code->label map, unused).
+  matawiUsimamizi: {
+    kichwaUkurasa: 'Simamia matawi ya mfumo',
+    ongeza: 'Ongeza Tawi',
+    hariri: 'Hariri Tawi',
+    jina: 'Jina la Tawi',
+    msimbo: 'Msimbo',
+    aina: 'Aina',
+    ainaGhalaKuu: 'Ghala Kuu',
+    ainaSehemuYaMauzo: 'Sehemu ya Mauzo',
+    anwani: 'Anwani',
+    simu: 'Namba ya Simu',
+    hali: 'Hali',
+    hai: 'Hai',
+    hafanyiKazi: 'Haifanyi Kazi',
+    ameundwa: 'Imeundwa',
+    amesasishwa: 'Imesasishwa',
+    haririKitendo: 'Hariri',
+    futaKitendo: 'Futa / Zima',
+    hakunaMatawi: 'Hakuna matawi yaliyopo',
+    futaKichwa: 'Futa au Zima Tawi',
+    thibitishaFuta: (jina) =>
+      `Je, una uhakika wa kufuta tawi "${jina}"?`,
+    futaMaelezo:
+      'Kama tawi hili halina historia yoyote ya shughuli (mauzo, hisa, ufungaji, uhamisho, watumiaji), ' +
+      'litafutwa kabisa. Vinginevyo, litazimwa tu ili kulinda historia ya biashara — halitaonekana ' +
+      'tena kwenye uteuzi wa tawi lakini rekodi za zamani zitabaki salama.',
+    jinaPlaceholder: 'mfano: CCTV POINT MBEYA',
+    msimboPlaceholder: 'mfano: POS4',
+  },
+
   // Errors
   makosa: {
     hisaHaitoshi: 'Bidhaa haitoshi',
@@ -707,6 +740,8 @@ export const SW = {
       REQUEST_NOT_APPROVED: 'Ombi hili halijaidhinishwa bado',
       NO_APPROVED_ITEMS: 'Hakuna bidhaa zilizoidhinishwa za kutekeleza',
       REQUEST_CANNOT_BE_REJECTED: 'Ombi hili haliwezi kukataliwa',
+      BRANCH_ALREADY_EXISTS: 'Tawi lenye jina au msimbo huu tayari lipo',
+      LAST_ACTIVE_MAIN_STORE: 'Haiwezekani kuzima au kufuta Ghala Kuu pekee linalofanya kazi. Anzisha Ghala Kuu jingine kwanza.',
     },
     // Aina (type) ya makosa ya uthibitishaji wa Pydantic -> ujumbe, kwa
     // majibu ya 422 (detail yenye muundo wa array). Inashughulikia aina za
@@ -736,6 +771,8 @@ export const SW = {
       selling_price_below_cost: 'Bei ya uuzaji lazima iwe kubwa au sawa na gharama',
       adjustment_reason_required: 'Sababu inahitajika kwa aina hii ya marekebisho',
       payment_reference_required: 'Nambari ya kumbukumbu inahitajika kwa Pesa ya Simu na Benki',
+      branch_field_blank: 'Sehemu hii haiwezi kuwa tupu',
+      branch_code_has_spaces: 'Msimbo hauwezi kuwa na nafasi',
     },
   },
 

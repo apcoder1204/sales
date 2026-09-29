@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, ArrowLeftRight,
   BarChart3, ScrollText, Users, ChevronLeft, ChevronDown, Zap,
-  List, Tag, RefreshCw, Activity, Lock, Receipt,
+  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { usePermission } from '@hooks/usePermission'
@@ -23,6 +23,7 @@ const NAV_ITEMS = {
   ripoti: { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },
   kumbukumbu: { to: '/kumbukumbu', icon: ScrollText, label: SW.nav.kumbukumbu, permission: 'audit.read' },
   watumiaji: { to: '/watumiaji', icon: Users, label: SW.nav.watumiaji, permission: 'users.read' },
+  matawi: { to: '/matawi', icon: Building2, label: SW.nav.matawi, permission: 'branches.manage' },
 }
 
 // Order reflects each role's actual day-to-day sequence, not one generic
@@ -35,10 +36,10 @@ const ROLE_NAV_ORDER = {
   cashier: ['mauzo', 'historiaMauzo', 'ufungaji', 'bidhaa', 'uhamisho', 'ripoti'],
   store_keeper: ['bidhaa', 'uhamisho', 'ripoti', 'kumbukumbu'],
   general_manager: ['uhamisho', 'ripoti', 'ufungaji', 'bidhaa', 'kumbukumbu'],
-  admin: ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji'],
-  super_admin: ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji'],
+  admin: ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
+  super_admin: ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
 }
-const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji']
+const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi']
 
 export default function Sidebar({ open, onToggle }) {
   const { can, role } = usePermission()

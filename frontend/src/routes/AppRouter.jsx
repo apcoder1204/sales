@@ -26,6 +26,7 @@ const ReportsPage = lazy(() => import('@features/reports/ReportsPage'))
 const ClosingPage = lazy(() => import('@features/closing/ClosingPage'))
 const AuditPage = lazy(() => import('@features/audit/AuditPage'))
 const UsersPage = lazy(() => import('@features/users/UsersPage'))
+const BranchesPage = lazy(() => import('@features/branches/BranchesPage'))
 const ProfilePage = lazy(() => import('@features/profile/ProfilePage'))
 
 const Fallback = () => (
@@ -114,6 +115,12 @@ function RoutedApp() {
             <Route path="/watumiaji" element={
               <RoleRoute permissions={['users.read']}>
                 <UsersPage />
+              </RoleRoute>
+            } />
+
+            <Route path="/matawi" element={
+              <RoleRoute permissions={['branches.manage']}>
+                <BranchesPage />
               </RoleRoute>
             } />
 
