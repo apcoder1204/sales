@@ -5,13 +5,14 @@ import Select from '@components/ui/Select'
 import Input from '@components/ui/Input'
 import Button from '@components/ui/Button'
 import Card from '@components/ui/Card'
+import Badge from '@components/ui/Badge'
 import DataTable from '@components/tables/DataTable'
 import SalesTrendChart from '@components/charts/SalesTrendChart'
 import BranchSalesChart from '@components/charts/BranchSalesChart'
 import TopProductsChart from '@components/charts/TopProductsChart'
 import { reportService } from '@services/reportService'
 import { usePermission } from '@hooks/usePermission'
-import { formatCurrency, formatDateTime, formatNumber } from '@utils/formatters'
+import { formatCurrency, formatDateTime, formatNumber, formatPercent } from '@utils/formatters'
 import { getReportPeriods } from '@utils/constants'
 import { downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
 import { useToast } from '@hooks/useToast'
@@ -32,6 +33,7 @@ export default function ReportsPage() {
     { value: 'low_stock', label: SW.ripoti.hisaChini, permission: 'reports.inventory' },
     { value: 'inventory_valuation', label: SW.ripoti.thamaniYaInventory, permission: 'reports.inventory' },
     { value: 'closing', label: SW.ripoti.ufungaji, permission: 'reports.closing' },
+    { value: 'profit_loss', label: SW.ripoti.faida.jina, permission: 'reports.profit_loss' },
   ]
 
   const [reportType, setReportType] = useState('sales')
@@ -100,6 +102,7 @@ export default function ReportsPage() {
         case 'low_stock': result = await reportService.lowStock(params); break
         case 'inventory_valuation': result = await reportService.inventoryValuation(params); break
         case 'closing': result = await reportService.closing(params); break
+        case 'profit_loss': result = await reportService.profitLoss(params); break
         default: result = null
       }
       setData(result)
@@ -215,6 +218,7 @@ function ReportContent({ type, data, onClosingExport, closingExporting, canDownl
         canDownload={canDownloadClosing}
       />
     )
+    case 'profit_loss': return <ProfitLossReport data={data} />
     default: return null
   }
 }
@@ -528,5 +532,112 @@ function LowStockReport({ data }) {
       data={data.items || []}
       emptyTitle={SW.ripoti.hakunaBidhaaHisaChini}
     />
+  )
+}
+
+// null margin (no revenue to divide by) is a distinct state from 0% —
+// formatPercent(null) would show a misleading "0%", so render "—" instead.
+function pct(v) {
+  return v == null ? '—' : formatPercent(v)
+}
+
+function plColor(v) {
+  if (v > 0) return 'text-accent-green'
+  if (v < 0) return 'text-accent-red'
+  return 'text-text-secondary'
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    profit: { color: 'green', label: SW.ripoti.faida.faida },
+    loss: { color: 'red', label: SW.ripoti.faida.hasara },
+    break_even: { color: 'gray', label: SW.ripoti.faida.kutokaKuathiriana },
+  }
+  const s = map[status] || map.break_even
+  return <Badge color={s.color}>{s.label}</Badge>
+}
+
+function ProfitLossReport({ data }) {
+  const s = data.summary || {}
+  const products = data.products || []
+  const topProducts = products.slice(0, 10)
+  const lossProducts = products.filter((p) => p.gross_profit < 0)
+
+  const branchCols = [
+    { key: 'branch', header: SW.ufungaji.tawi },
+    { key: 'revenue', header: SW.ripoti.mapato, render: (v) => formatCurrency(v) },
+    { key: 'cost_of_goods_sold', header: SW.ripoti.faida.gharamaMauzo, render: (v) => formatCurrency(v) },
+    { key: 'gross_profit', header: SW.ripoti.faida.faidaGhalisi, render: (v) => <span className={`font-semibold ${plColor(v)}`}>{formatCurrency(v)}</span> },
+    { key: 'operating_expenses', header: SW.ripoti.faida.gharamaZaUendeshaji, render: (v) => formatCurrency(v) },
+    { key: 'net_profit', header: SW.ripoti.faida.faidaHalisi, render: (v) => <span className={`font-semibold ${plColor(v)}`}>{formatCurrency(v)}</span> },
+    { key: 'net_margin', header: SW.ripoti.faida.faidaHalisiAsilimia, render: (v) => pct(v) },
+    { key: 'status', header: SW.common.hali, render: (v) => <StatusBadge status={v} /> },
+  ]
+
+  const productCols = [
+    { key: 'product', header: SW.bidhaa.bidhaa },
+    { key: 'quantity_sold', header: SW.ripoti.faida.idadiIliyouzwaHeader, render: (v) => formatNumber(v) },
+    { key: 'revenue', header: SW.ripoti.mapato, render: (v) => formatCurrency(v) },
+    { key: 'cost_of_goods_sold', header: SW.ripoti.faida.gharamaMauzo, render: (v) => formatCurrency(v) },
+    { key: 'gross_profit', header: SW.ripoti.faida.faidaGhalisi, render: (v) => <span className={`font-semibold ${plColor(v)}`}>{formatCurrency(v)}</span> },
+    { key: 'gross_margin', header: SW.ripoti.faida.faidaGhalisiAsilimia, render: (v) => pct(v) },
+  ]
+
+  const categoryCols = [
+    { key: 'category', header: SW.bidhaa.jamii },
+    { key: 'revenue', header: SW.ripoti.mapato, render: (v) => formatCurrency(v) },
+    { key: 'cost_of_goods_sold', header: SW.ripoti.faida.gharamaMauzo, render: (v) => formatCurrency(v) },
+    { key: 'gross_profit', header: SW.ripoti.faida.faidaGhalisi, render: (v) => <span className={`font-semibold ${plColor(v)}`}>{formatCurrency(v)}</span> },
+    { key: 'gross_margin', header: SW.ripoti.faida.faidaGhalisiAsilimia, render: (v) => pct(v) },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <KpiCard label={SW.ripoti.mapato} value={formatCurrency(s.revenue)} />
+        <KpiCard label={SW.ripoti.faida.gharamaMauzo} value={formatCurrency(s.cost_of_goods_sold)} />
+        <KpiCard label={SW.ripoti.faida.faidaGhalisi} value={<span className={plColor(s.gross_profit)}>{formatCurrency(s.gross_profit)}</span>} />
+        <KpiCard label={SW.ripoti.faida.faidaGhalisiAsilimia} value={pct(s.gross_margin)} />
+        <KpiCard label={SW.ripoti.faida.gharamaZaUendeshaji} value={formatCurrency(s.operating_expenses)} />
+        <KpiCard
+          label={SW.ripoti.faida.faidaHalisi}
+          value={<span className={plColor(s.net_profit)}>{formatCurrency(s.net_profit)}</span>}
+        />
+      </div>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-text-muted">{SW.ripoti.faida.muundoWaHesabu}</p>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-text-secondary">{SW.ripoti.faida.faidaHalisiAsilimia}: <span className={`font-semibold ${plColor(s.net_profit)}`}>{pct(s.net_margin)}</span></span>
+            {s.status && <StatusBadge status={s.status} />}
+          </div>
+        </div>
+      </Card>
+
+      {data.branches && data.branches.length > 0 && (
+        <Card title={SW.ripoti.faida.faidaKwaTawi}>
+          <DataTable columns={branchCols} data={data.branches} emptyTitle={SW.ripoti.faida.hakunaDataFaida} />
+        </Card>
+      )}
+
+      <Card title={SW.ripoti.faida.bidhaaZenyeFaidaKubwa}>
+        <DataTable columns={productCols} data={topProducts} emptyTitle={SW.ripoti.faida.hakunaDataFaida} />
+      </Card>
+
+      <Card title={SW.ripoti.faida.bidhaaZaHasaraAuFaidaDogo}>
+        {lossProducts.length > 0 ? (
+          <DataTable columns={productCols} data={lossProducts} emptyTitle={SW.ripoti.faida.hakunaDataFaida} />
+        ) : (
+          <p className="text-sm text-text-muted text-center py-6">{SW.ripoti.faida.hakunaBidhaaZaHasara}</p>
+        )}
+      </Card>
+
+      {data.categories && data.categories.length > 0 && (
+        <Card title={SW.ripoti.faida.faidaKwaJamii}>
+          <DataTable columns={categoryCols} data={data.categories} emptyTitle={SW.ripoti.faida.hakunaDataFaida} />
+        </Card>
+      )}
+    </div>
   )
 }

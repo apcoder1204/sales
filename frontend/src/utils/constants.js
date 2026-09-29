@@ -47,8 +47,10 @@ export const getTxTypes = () => ({
 
 export const getReportPeriods = () => [
   { value: 'today', label: SW.hali.kipindi.today },
+  { value: 'yesterday', label: SW.hali.kipindi.yesterday },
   { value: 'week', label: SW.hali.kipindi.week },
   { value: 'month', label: SW.hali.kipindi.month },
+  { value: 'last_month', label: SW.hali.kipindi.last_month },
   { value: 'custom', label: SW.hali.kipindi.custom },
 ]
 

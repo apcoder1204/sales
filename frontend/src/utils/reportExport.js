@@ -229,6 +229,54 @@ function normalise(type, data, period) {
       }
     }
 
+    case 'profit_loss': {
+      const s = data.summary || {}
+      const pct = (v) => (v == null ? '—' : `${Number(v).toFixed(1)}%`)
+      const statusLabel = (v) => (v === 'profit' ? SW.ripoti.faida.faida : v === 'loss' ? SW.ripoti.faida.hasara : SW.ripoti.faida.kutokaKuathiriana)
+      return {
+        title: `${SW.ripoti.faida.jina}${label}`,
+        sheets: [
+          {
+            name: SW.ripoti.muhtasariSheet,
+            head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]],
+            rows: [
+              [SW.ripoti.mapato, fmtCurrency(s.revenue)],
+              [SW.ripoti.faida.gharamaMauzo, fmtCurrency(s.cost_of_goods_sold)],
+              [SW.ripoti.faida.faidaGhalisi, fmtCurrency(s.gross_profit)],
+              [SW.ripoti.faida.faidaGhalisiAsilimia, pct(s.gross_margin)],
+              [SW.ripoti.faida.gharamaZaUendeshaji, fmtCurrency(s.operating_expenses)],
+              [SW.ripoti.faida.faidaHalisi, fmtCurrency(s.net_profit)],
+              [SW.ripoti.faida.faidaHalisiAsilimia, pct(s.net_margin)],
+              [SW.common.hali, statusLabel(s.status)],
+            ],
+          },
+          {
+            name: SW.ripoti.faida.faidaKwaTawi,
+            head: [[SW.ufungaji.tawi, SW.ripoti.mapato, SW.ripoti.faida.gharamaMauzo, SW.ripoti.faida.faidaGhalisi, SW.ripoti.faida.gharamaZaUendeshaji, SW.ripoti.faida.faidaHalisi, SW.ripoti.faida.faidaHalisiAsilimia, SW.common.hali]],
+            rows: (data.branches || []).map((b) => [
+              b.branch, fmtCurrency(b.revenue), fmtCurrency(b.cost_of_goods_sold), fmtCurrency(b.gross_profit),
+              fmtCurrency(b.operating_expenses), fmtCurrency(b.net_profit), pct(b.net_margin), statusLabel(b.status),
+            ]),
+          },
+          {
+            name: SW.ripoti.faida.bidhaaZenyeFaidaKubwa,
+            head: [[SW.bidhaa.bidhaa, SW.ripoti.faida.idadiIliyouzwaHeader, SW.ripoti.mapato, SW.ripoti.faida.gharamaMauzo, SW.ripoti.faida.faidaGhalisi, SW.ripoti.faida.faidaGhalisiAsilimia]],
+            rows: (data.products || []).map((p) => [
+              p.product, fmt(p.quantity_sold), fmtCurrency(p.revenue), fmtCurrency(p.cost_of_goods_sold),
+              fmtCurrency(p.gross_profit), pct(p.gross_margin),
+            ]),
+          },
+          {
+            name: SW.ripoti.faida.faidaKwaJamii,
+            head: [[SW.bidhaa.jamii, SW.ripoti.mapato, SW.ripoti.faida.gharamaMauzo, SW.ripoti.faida.faidaGhalisi, SW.ripoti.faida.faidaGhalisiAsilimia]],
+            rows: (data.categories || []).map((c) => [
+              c.category, fmtCurrency(c.revenue), fmtCurrency(c.cost_of_goods_sold), fmtCurrency(c.gross_profit), pct(c.gross_margin),
+            ]),
+          },
+        ],
+      }
+    }
+
     default:
       return { title: SW.ripoti.ripoti, sheets: [] }
   }

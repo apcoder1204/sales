@@ -1,6 +1,7 @@
 from uuid import UUID
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
+from collections import defaultdict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
@@ -9,19 +10,48 @@ UTC = timezone.utc
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.models.product import Product
+from app.models.category import Category
 from app.models.inventory import Inventory
 from app.models.branch import Branch
 from app.models.user import User
+from app.models.daily_closing import DailyClosing
 from app.schemas.report import (
     SalesReportResponse, SalesSummary, ChartPoint, TopProduct,
     PaymentBreakdown, InventoryReportResponse, InventorySummary,
     BranchInventory, LowStockItem, BranchPerformanceResponse,
     BranchPerformance, CashierPerformanceResponse, CashierPerformance,
-    ClosingReportResponse, ClosingReportRow, ClosingReportSummary, ClosingReportExpense
+    ClosingReportResponse, ClosingReportRow, ClosingReportSummary, ClosingReportExpense,
+    ProfitLossResponse, ProfitLossPeriod, ProfitLossBranchInfo, ProfitLossSummary,
+    BranchProfitLoss, ProductProfitability, CategoryProfitability,
 )
 from app.repositories.inventory_repo import inventory_repo
 from app.core.business_time import business_date_today, utc_range_for_business_date
 from app.config import settings
+
+
+def _resolve_period_dates(period: str, from_date: date | None, to_date: date | None) -> tuple[date, date]:
+    """The local (business) calendar start/end dates a period name refers
+    to. Shared by _get_date_range (which converts this to a UTC datetime
+    range for Sale.created_at filtering) and the P&L report (which also
+    needs the plain local dates to filter DailyClosing.business_date
+    directly, without a lossy round-trip through a UTC-shifted timestamp)."""
+    today = business_date_today()
+    if period == "today":
+        return today, today
+    elif period == "yesterday":
+        yesterday = today - timedelta(days=1)
+        return yesterday, yesterday
+    elif period == "week":
+        start = today - timedelta(days=today.weekday())
+        return start, today
+    elif period == "month":
+        return today.replace(day=1), today
+    elif period == "last_month":
+        first_this_month = today.replace(day=1)
+        last_day_prev_month = first_this_month - timedelta(days=1)
+        return last_day_prev_month.replace(day=1), last_day_prev_month
+    else:
+        return (from_date or today), (to_date or today)
 
 
 def _get_date_range(period: str, from_date: date | None, to_date: date | None):
@@ -30,23 +60,26 @@ def _get_date_range(period: str, from_date: date | None, to_date: date | None):
     # utc_range_for_business_date rather than a raw UTC combine() — otherwise
     # the range is off by the local UTC offset and mis-attributes sales made
     # near local midnight, the same class of bug fixed in daily_closing_service.
-    today = business_date_today()
-    if period == "today":
-        return utc_range_for_business_date(today)
-    elif period == "week":
-        start = today - timedelta(days=today.weekday())
-        range_start, _ = utc_range_for_business_date(start)
-        _, range_end = utc_range_for_business_date(today)
-        return (range_start, range_end)
-    elif period == "month":
-        start = today.replace(day=1)
-        range_start, _ = utc_range_for_business_date(start)
-        _, range_end = utc_range_for_business_date(today)
-        return (range_start, range_end)
-    else:
-        range_start, _ = utc_range_for_business_date(from_date or today)
-        _, range_end = utc_range_for_business_date(to_date or today)
-        return (range_start, range_end)
+    local_from, local_to = _resolve_period_dates(period, from_date, to_date)
+    range_start, _ = utc_range_for_business_date(local_from)
+    _, range_end = utc_range_for_business_date(local_to)
+    return (range_start, range_end)
+
+
+def _margin(numerator: Decimal, revenue: Decimal) -> float | None:
+    """Gross/net margin % — null (not a divide-by-zero crash or a
+    misleading 0%) when there's no revenue to take a percentage of."""
+    if revenue == 0:
+        return None
+    return float(numerator / revenue * 100)
+
+
+def _pl_status(net_profit: Decimal) -> str:
+    if net_profit > 0:
+        return "profit"
+    if net_profit < 0:
+        return "loss"
+    return "break_even"
 
 
 class ReportService:
@@ -304,6 +337,170 @@ class ReportService:
             closings_count=len(closings),
         )
         return ClosingReportResponse(summary=summary, closings=closings, generated_at=datetime.now(UTC))
+
+    async def get_profit_loss_report(
+        self, db: AsyncSession,
+        period: str, from_date: date | None, to_date: date | None,
+        branch_id: UUID | None,
+    ) -> ProfitLossResponse:
+        """Revenue and COGS come straight from SaleItem's own historical
+        snapshot (unit_price/cost_price captured at sale time by
+        sale_service.create_sale) — never Product's current price/cost, so
+        a later cost change never retroactively changes a past period's
+        profit. Operating expenses come from DailyClosingExpense, the app's
+        one existing expense ledger — see _closing_counts_as_expense for why
+        not every recorded "matumizi" line counts."""
+        local_from, local_to = _resolve_period_dates(period, from_date, to_date)
+        from_dt, to_dt = _get_date_range(period, from_date, to_date)
+
+        item_filters = [
+            Sale.status == "completed",
+            Sale.created_at >= from_dt,
+            Sale.created_at <= to_dt,
+        ]
+        if branch_id:
+            item_filters.append(Sale.branch_id == branch_id)
+
+        # ── Revenue / COGS by branch ────────────────────────────────────
+        branch_sales_q = select(
+            Branch.id, Branch.name,
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("revenue"),
+            func.coalesce(func.sum(SaleItem.quantity * SaleItem.cost_price), 0).label("cogs"),
+        ).select_from(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).join(
+            Branch, Sale.branch_id == Branch.id
+        ).where(*item_filters).group_by(Branch.id, Branch.name)
+        branch_sales_rows = (await db.execute(branch_sales_q)).all()
+
+        # ── Operating expenses by branch ────────────────────────────────
+        # A "matumizi" (DailyClosingExpense) row only represents a real cash
+        # outflow when the register actually came up short — see
+        # daily_closing_service.close_day's own comment: the identical
+        # {description, amount} shape is also used to explain a SURPLUS
+        # (e.g. a customer's unclaimed change), which is not a business
+        # expense. Both counted_cash and total_cash are stored per closing,
+        # so the raw (pre-matumizi) variance is exactly reconstructible —
+        # no need to guess.
+        closing_q = select(DailyClosing).where(
+            DailyClosing.business_date >= local_from,
+            DailyClosing.business_date <= local_to,
+        )
+        if branch_id:
+            closing_q = closing_q.where(DailyClosing.branch_id == branch_id)
+        closings = (await db.execute(closing_q)).scalars().all()
+
+        def _closing_counts_as_expense(c: DailyClosing) -> bool:
+            if c.counted_cash is None:
+                return True
+            return (c.counted_cash - c.total_cash) < 0
+
+        branch_expenses: dict = defaultdict(lambda: Decimal("0"))
+        branch_names: dict = {}
+        for c in closings:
+            branch_names.setdefault(c.branch_id, c.branch.name)
+            if not _closing_counts_as_expense(c):
+                continue
+            branch_expenses[c.branch_id] += sum((e.amount for e in c.expenses), Decimal("0"))
+
+        # ── Merge into one row per branch that had any activity ─────────
+        branch_rows: dict = {}
+        for r in branch_sales_rows:
+            branch_rows[r.id] = {"name": r.name, "revenue": Decimal(r.revenue), "cogs": Decimal(r.cogs)}
+        for bid, name in branch_names.items():
+            branch_rows.setdefault(bid, {"name": name, "revenue": Decimal("0"), "cogs": Decimal("0")})
+
+        branches: list[BranchProfitLoss] = []
+        total_revenue = Decimal("0")
+        total_cogs = Decimal("0")
+        total_expenses = Decimal("0")
+        for bid, row in sorted(branch_rows.items(), key=lambda kv: kv[1]["name"]):
+            revenue, cogs = row["revenue"], row["cogs"]
+            expenses = branch_expenses.get(bid, Decimal("0"))
+            gross_profit = revenue - cogs
+            net_profit = gross_profit - expenses
+            branches.append(BranchProfitLoss(
+                branch_id=bid, branch=row["name"],
+                revenue=float(revenue), cost_of_goods_sold=float(cogs),
+                gross_profit=float(gross_profit), gross_margin=_margin(gross_profit, revenue),
+                operating_expenses=float(expenses), net_profit=float(net_profit),
+                net_margin=_margin(net_profit, revenue), status=_pl_status(net_profit),
+            ))
+            total_revenue += revenue
+            total_cogs += cogs
+            total_expenses += expenses
+
+        total_gross_profit = total_revenue - total_cogs
+        total_net_profit = total_gross_profit - total_expenses
+        summary = ProfitLossSummary(
+            revenue=float(total_revenue), cost_of_goods_sold=float(total_cogs),
+            gross_profit=float(total_gross_profit), gross_margin=_margin(total_gross_profit, total_revenue),
+            operating_expenses=float(total_expenses), net_profit=float(total_net_profit),
+            net_margin=_margin(total_net_profit, total_revenue), status=_pl_status(total_net_profit),
+        )
+
+        # ── Product profitability ───────────────────────────────────────
+        product_q = select(
+            Product.id, Product.name,
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("qty"),
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("revenue"),
+            func.coalesce(func.sum(SaleItem.quantity * SaleItem.cost_price), 0).label("cogs"),
+        ).select_from(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).join(
+            Product, SaleItem.product_id == Product.id
+        ).where(*item_filters).group_by(Product.id, Product.name)
+        product_rows = (await db.execute(product_q)).all()
+        products = sorted(
+            (
+                ProductProfitability(
+                    product_id=r.id, product=r.name, quantity_sold=int(r.qty),
+                    revenue=float(r.revenue), cost_of_goods_sold=float(r.cogs),
+                    gross_profit=float(Decimal(r.revenue) - Decimal(r.cogs)),
+                    gross_margin=_margin(Decimal(r.revenue) - Decimal(r.cogs), Decimal(r.revenue)),
+                )
+                for r in product_rows
+            ),
+            key=lambda p: p.gross_profit, reverse=True,
+        )
+
+        # ── Category profitability ──────────────────────────────────────
+        category_q = select(
+            Category.id, Category.name,
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("revenue"),
+            func.coalesce(func.sum(SaleItem.quantity * SaleItem.cost_price), 0).label("cogs"),
+        ).select_from(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).join(
+            Product, SaleItem.product_id == Product.id
+        ).join(Category, Product.category_id == Category.id).where(*item_filters).group_by(
+            Category.id, Category.name
+        )
+        category_rows = (await db.execute(category_q)).all()
+        categories = sorted(
+            (
+                CategoryProfitability(
+                    category_id=r.id, category=r.name,
+                    revenue=float(r.revenue), cost_of_goods_sold=float(r.cogs),
+                    gross_profit=float(Decimal(r.revenue) - Decimal(r.cogs)),
+                    gross_margin=_margin(Decimal(r.revenue) - Decimal(r.cogs), Decimal(r.revenue)),
+                )
+                for r in category_rows
+            ),
+            key=lambda c: c.gross_profit, reverse=True,
+        )
+
+        branch_info = None
+        if branch_id:
+            b = await db.get(Branch, branch_id)
+            if b:
+                branch_info = ProfitLossBranchInfo(id=b.id, name=b.name)
+
+        return ProfitLossResponse(
+            period=ProfitLossPeriod(start=local_from, end=local_to),
+            branch=branch_info,
+            summary=summary,
+            # Only meaningful as a breakdown in the consolidated ALL view —
+            # a single already-scoped branch's list would just repeat itself.
+            branches=branches if not branch_id else [],
+            products=products,
+            categories=categories,
+            generated_at=datetime.now(UTC),
+        )
 
 
 report_service = ReportService()

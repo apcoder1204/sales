@@ -567,6 +567,28 @@ export const EN = {
     simuShort: 'Mobile',
     imetolewa: (ts) => `Generated: ${ts}`,
     ukurasa: (i, total) => `Page ${i} / ${total}`,
+
+    // Profit & Loss
+    faida: {
+      jina: 'Profit & Loss',
+      gharamaMauzo: 'Cost of Goods Sold',
+      faidaGhalisi: 'Gross Profit',
+      faidaGhalisiAsilimia: 'Gross Margin',
+      gharamaZaUendeshaji: 'Operating Expenses',
+      faidaHalisi: 'Net Profit',
+      faidaHalisiAsilimia: 'Net Margin',
+      faida: 'Profit',
+      hasara: 'Loss',
+      kutokaKuathiriana: 'Break-even',
+      faidaKwaTawi: 'Profit & Loss by Branch',
+      bidhaaZenyeFaidaKubwa: 'Top Profitable Products',
+      bidhaaZaHasaraAuFaidaDogo: 'Loss-Making Products',
+      hakunaBidhaaZaHasara: 'No loss-making products in this period',
+      faidaKwaJamii: 'Profitability by Category',
+      muundoWaHesabu: 'Revenue − Cost of Goods Sold = Gross Profit. Gross Profit − Operating Expenses = Net Profit.',
+      idadiIliyouzwaHeader: 'Qty',
+      hakunaDataFaida: 'No sales in this period',
+    },
   },
 
   // Audit
@@ -835,8 +857,10 @@ export const EN = {
     },
     kipindi: {
       today: 'Today',
+      yesterday: 'Yesterday',
       week: 'This Week',
       month: 'This Month',
+      last_month: 'Last Month',
       custom: 'Custom Range',
     },
     tawi: {

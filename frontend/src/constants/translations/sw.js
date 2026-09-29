@@ -568,6 +568,28 @@ export const SW = {
     simuShort: 'Simu',
     imetolewa: (ts) => `Imetolewa: ${ts}`,
     ukurasa: (i, total) => `Ukurasa ${i} / ${total}`,
+
+    // Profit & Loss
+    faida: {
+      jina: 'Faida na Hasara',
+      gharamaMauzo: 'Gharama za Bidhaa Zilizouzwa',
+      faidaGhalisi: 'Faida Ghalisi',
+      faidaGhalisiAsilimia: 'Asilimia ya Faida Ghalisi',
+      gharamaZaUendeshaji: 'Gharama za Uendeshaji',
+      faidaHalisi: 'Faida Halisi',
+      faidaHalisiAsilimia: 'Asilimia ya Faida Halisi',
+      faida: 'Faida',
+      hasara: 'Hasara',
+      kutokaKuathiriana: 'Sawa (bila faida wala hasara)',
+      faidaKwaTawi: 'Faida na Hasara kwa Tawi',
+      bidhaaZenyeFaidaKubwa: 'Bidhaa Zenye Faida Kubwa Zaidi',
+      bidhaaZaHasaraAuFaidaDogo: 'Bidhaa Zenye Hasara',
+      hakunaBidhaaZaHasara: 'Hakuna bidhaa zenye hasara katika kipindi hiki',
+      faidaKwaJamii: 'Faida kwa Jamii ya Bidhaa',
+      muundoWaHesabu: 'Mapato − Gharama za Bidhaa = Faida Ghalisi. Faida Ghalisi − Gharama za Uendeshaji = Faida Halisi.',
+      idadiIliyouzwaHeader: 'Idadi',
+      hakunaDataFaida: 'Hakuna mauzo katika kipindi hiki',
+    },
   },
 
   // Audit
@@ -832,8 +854,10 @@ export const SW = {
     },
     kipindi: {
       today: 'Leo',
+      yesterday: 'Jana',
       week: 'Wiki Hii',
       month: 'Mwezi Huu',
+      last_month: 'Mwezi Uliopita',
       custom: 'Muda Maalum',
     },
     tawi: {

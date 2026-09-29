@@ -54,6 +54,11 @@ export const reportService = {
     return data
   },
 
+  profitLoss: async (params = {}) => {
+    const { data } = await api.get('/reports/profit-loss', { params: mapReportParams(params) })
+    return data
+  },
+
   dashboard: async (params = {}) => {
     const { data } = await api.get('/reports/dashboard', { params: mapReportParams(params) })
     return data

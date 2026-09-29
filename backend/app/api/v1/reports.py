@@ -317,6 +317,17 @@ async def branch_performance(
     return await report_service.get_branch_performance(db, period, from_date, to_date, branch_id)
 
 
+@router.get("/profit-loss", dependencies=[_financial_access])
+async def profit_loss_report(
+    period: str = "month",
+    from_date: date | None = None,
+    to_date: date | None = None,
+    branch_id: UUID | None = Depends(branch_context),
+    db: AsyncSession = Depends(get_db),
+):
+    return await report_service.get_profit_loss_report(db, period, from_date, to_date, branch_id)
+
+
 @router.get("/cashier-performance", dependencies=[_financial_access])
 async def cashier_performance(
     branch_id: UUID | None = Depends(branch_context),

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class ReportFilter(BaseModel):
-    period: Literal["today", "week", "month", "custom"] = "today"
+    period: Literal["today", "yesterday", "week", "month", "last_month", "custom"] = "today"
     from_date: date | None = None
     to_date: date | None = None
     branch_id: UUID | None = None
@@ -131,4 +131,73 @@ class ClosingReportSummary(BaseModel):
 class ClosingReportResponse(BaseModel):
     summary: ClosingReportSummary
     closings: list[ClosingReportRow]
+    generated_at: datetime
+
+
+# ── Profit & Loss ────────────────────────────────────────────────────────────
+
+class ProfitLossPeriod(BaseModel):
+    start: date
+    end: date
+
+
+class ProfitLossBranchInfo(BaseModel):
+    id: UUID
+    name: str
+
+
+class ProfitLossSummary(BaseModel):
+    revenue: float
+    cost_of_goods_sold: float
+    gross_profit: float
+    gross_margin: float | None
+    operating_expenses: float
+    net_profit: float
+    net_margin: float | None
+    status: Literal["profit", "loss", "break_even"]
+
+
+class BranchProfitLoss(BaseModel):
+    branch_id: UUID
+    branch: str
+    revenue: float
+    cost_of_goods_sold: float
+    gross_profit: float
+    gross_margin: float | None
+    operating_expenses: float
+    net_profit: float
+    net_margin: float | None
+    status: Literal["profit", "loss", "break_even"]
+
+
+class ProductProfitability(BaseModel):
+    product_id: UUID
+    product: str
+    quantity_sold: int
+    revenue: float
+    cost_of_goods_sold: float
+    gross_profit: float
+    gross_margin: float | None
+
+
+class CategoryProfitability(BaseModel):
+    category_id: int
+    category: str
+    revenue: float
+    cost_of_goods_sold: float
+    gross_profit: float
+    gross_margin: float | None
+
+
+class ProfitLossResponse(BaseModel):
+    period: ProfitLossPeriod
+    # None means a consolidated "ALL branches" view (global roles only —
+    # branch_context already enforces this server-side).
+    branch: ProfitLossBranchInfo | None
+    summary: ProfitLossSummary
+    # Populated only for the consolidated ALL-branches view — a single
+    # already-scoped branch's breakdown would just repeat `summary`.
+    branches: list[BranchProfitLoss]
+    products: list[ProductProfitability]
+    categories: list[CategoryProfitability]
     generated_at: datetime
