@@ -1,16 +1,13 @@
 import React, { useState } from 'react'
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, ArrowLeftRight,
-  BarChart3, ScrollText, Users, LogOut, ChevronLeft, ChevronDown, Zap,
+  BarChart3, ScrollText, Users, ChevronLeft, ChevronDown, Zap,
   List, Tag, RefreshCw, Activity, Lock, Receipt,
 } from 'lucide-react'
 import { clsx } from 'clsx'
-import { useAuth } from '@hooks/useAuth'
 import { usePermission } from '@hooks/usePermission'
-import { useToast } from '@hooks/useToast'
-import Avatar from '@components/ui/Avatar'
 import SW from '@constants/sw'
 
 // Every nav item that isn't the Dashboard (always first, for everyone —
@@ -44,10 +41,7 @@ const ROLE_NAV_ORDER = {
 const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji']
 
 export default function Sidebar({ open, onToggle }) {
-  const { user, logout } = useAuth()
   const { can, role } = usePermission()
-  const toast = useToast()
-  const navigate = useNavigate()
   const location = useLocation()
   const [bidhaaOpen, setBidhaaOpen] = useState(location.pathname.startsWith('/bidhaa'))
 
@@ -62,12 +56,6 @@ export default function Sidebar({ open, onToggle }) {
     { to: '/dashibodi', icon: LayoutDashboard, label: SW.nav.dashibodi, permission: null },
   ]
   const navOrder = ROLE_NAV_ORDER[role] || DEFAULT_NAV_ORDER
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/login')
-    toast.info(SW.mafanikio.umefanikiwaKutoka)
-  }
 
   const showBidhaa = bidhaaChildren.some((c) => !c.permission || can(c.permission))
   const isBidhaaActive = location.pathname.startsWith('/bidhaa')
@@ -225,45 +213,10 @@ export default function Sidebar({ open, onToggle }) {
       </div>
 
       {/* Nav — Dashboard always first, then role-ordered (see ROLE_NAV_ORDER) */}
-      <nav className="flex-1 overflow-y-auto py-3 space-y-1 px-2">
+      <nav className="flex-1 overflow-y-auto py-3 space-y-1 px-2 pb-3">
         {topNavItems.map(renderNavItem)}
         {navOrder.map((key) => (key === 'bidhaa' ? renderBidhaaGroup() : renderNavItem(NAV_ITEMS[key])))}
       </nav>
-
-      {/* User */}
-      <div className="border-t border-border px-2 py-3 space-y-1 flex-shrink-0">
-        <button
-          onClick={() => navigate('/wasifu')}
-          title={SW.nav.wasifu}
-          className={clsx(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
-            open && 'bg-bg-hover hover:bg-bg-panel'
-          )}
-        >
-          <Avatar name={user?.full_name || ''} size="sm" className="flex-shrink-0" />
-          <AnimatePresence>
-            {open && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-medium text-text-primary truncate">{user?.full_name}</p>
-                <p className="text-[10px] text-text-muted truncate">{SW.majukumu[user?.role] || user?.role}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </button>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:text-accent-red hover:bg-accent-red-muted transition-colors"
-        >
-          <LogOut size={18} className="flex-shrink-0" />
-          <AnimatePresence>
-            {open && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm">
-                {SW.nav.toka}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
-      </div>
     </motion.aside>
   )
 }
