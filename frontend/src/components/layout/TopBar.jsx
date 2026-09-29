@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Menu, Building2, ChevronDown, Languages } from 'lucide-react'
 import { useAuth } from '@hooks/useAuth'
 import { usePermission } from '@hooks/usePermission'
 import { useBranch } from '@hooks/useBranch'
 import { useLanguage } from '@hooks/useLanguage'
 import { userService } from '@services/userService'
+import Avatar from '@components/ui/Avatar'
 import SW from '@constants/sw'
 
 export default function TopBar({ onMenuClick }) {
@@ -12,6 +14,7 @@ export default function TopBar({ onMenuClick }) {
   const { isGlobal } = usePermission()
   const { activeBranchId, selectBranch, branches, setBranches } = useBranch()
   const { language, toggleLanguage } = useLanguage()
+  const navigate = useNavigate()
   const [dropOpen, setDropOpen] = useState(false)
 
   useEffect(() => {
@@ -84,6 +87,17 @@ export default function TopBar({ onMenuClick }) {
             <span>{user.branch}</span>
           </div>
         )}
+
+        <button
+          onClick={() => navigate('/wasifu')}
+          className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg hover:bg-bg-hover transition-colors"
+        >
+          <Avatar name={user?.full_name || ''} size="sm" />
+          <div className="hidden sm:block text-left leading-tight">
+            <p className="text-sm font-medium text-text-primary">{user?.full_name}</p>
+            <p className="text-[11px] text-text-muted">{SW.majukumu[user?.role] || user?.role}</p>
+          </div>
+        </button>
       </div>
     </header>
   )

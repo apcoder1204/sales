@@ -341,6 +341,7 @@ export const SW = {
     angaliaBidhaa: 'Angalia bidhaa',
     aliyebatilisha: 'Aliyebatilisha',
     njiaZoteZaMalipo: 'Njia zote za malipo',
+    angaliaRipotiKamili: 'Angalia Ripoti Kamili',
   },
 
   // Receipt

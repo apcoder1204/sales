@@ -340,6 +340,7 @@ export const EN = {
     angaliaBidhaa: 'View items',
     aliyebatilisha: 'Voided by',
     njiaZoteZaMalipo: 'All payment methods',
+    angaliaRipotiKamili: 'View Detailed Report',
   },
 
   // Receipt
