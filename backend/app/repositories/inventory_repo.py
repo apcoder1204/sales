@@ -147,5 +147,27 @@ class InventoryRepository(BaseRepository[Inventory]):
         await db.flush()
         return tx
 
+    async def get_valuation_by_branch(self, db: AsyncSession, branch_id: UUID | None = None):
+        """Stock-on-hand valuation (qty * cost_price) grouped by branch —
+        one row per active branch, or a single row when scoped to one."""
+        q = (
+            select(
+                Branch.id.label("branch_id"),
+                Branch.name.label("branch_name"),
+                func.coalesce(func.sum(Inventory.quantity), 0).label("total_quantity"),
+                func.coalesce(func.sum(Inventory.quantity * Product.cost_price), 0).label("total_value"),
+                func.count(func.distinct(Inventory.product_id)).label("product_count"),
+            )
+            .select_from(Branch)
+            .outerjoin(Inventory, Inventory.branch_id == Branch.id)
+            .outerjoin(Product, Product.id == Inventory.product_id)
+            .where(Branch.is_active == True)
+            .group_by(Branch.id, Branch.name)
+            .order_by(Branch.name)
+        )
+        if branch_id:
+            q = q.where(Branch.id == branch_id)
+        return (await db.execute(q)).all()
+
 
 inventory_repo = InventoryRepository()

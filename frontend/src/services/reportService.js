@@ -40,6 +40,15 @@ export const reportService = {
     return data
   },
 
+  // Reuses /inventory/summary directly (same endpoint the dashboard's
+  // Inventory Value drilldown and the Stock Ledger's valuation header use)
+  // rather than duplicating the same per-branch valuation query under
+  // /reports too.
+  inventoryValuation: async (params = {}) => {
+    const { data } = await api.get('/inventory/summary', { params: { branch_id: params.branch_id || undefined } })
+    return data
+  },
+
   closing: async (params = {}) => {
     const { data } = await api.get('/reports/closing', { params: mapReportParams(params) })
     return data

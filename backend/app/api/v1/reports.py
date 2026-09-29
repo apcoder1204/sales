@@ -154,6 +154,39 @@ async def dashboard_summary(
         for r in pending_rows
     ]
 
+    # Action Center: a register still "open" from a *past* business day means
+    # someone forgot to close it — cash for that day was never reconciled,
+    # and nothing else in the app surfaces this proactively today. Today's
+    # own open register is normal (it's supposed to be open right now) and
+    # deliberately excluded here.
+    from app.models.daily_closing import DailyClosing
+    stale_q = select(DailyClosing).where(
+        DailyClosing.status == "open", DailyClosing.business_date < today
+    )
+    if scoped_branch_id:
+        stale_q = stale_q.where(DailyClosing.branch_id == scoped_branch_id)
+    stale_rows = (
+        await db.execute(stale_q.order_by(DailyClosing.business_date.asc()).limit(10))
+    ).scalars().all()
+    stale_registers = [
+        {
+            "id": str(c.id),
+            "branch_name": c.branch.name,
+            "business_date": c.business_date.isoformat(),
+            "register_number": c.register_number,
+            "opened_by": c.opener.full_name if c.opener else None,
+        }
+        for c in stale_rows
+    ]
+
+    # Action Center, cashier case: is *this* branch's register open right
+    # now? Only meaningful for a specific branch, not the ALL-branches view.
+    register_open_today = None
+    if scoped_branch_id:
+        from app.repositories.daily_closing_repo import daily_closing_repo
+        open_reg = await daily_closing_repo.get_open_register(db, scoped_branch_id)
+        register_open_today = bool(open_reg and open_reg.business_date == today)
+
     inv_value_q = (
         select(func.coalesce(func.sum(Inventory.quantity * Product.cost_price), 0))
         .join(Product, Inventory.product_id == Product.id)
@@ -248,6 +281,8 @@ async def dashboard_summary(
         "today_payment_breakdown": today_payment_breakdown,
         "month_payment_breakdown": month_payment_breakdown,
         "pending_requests_list": pending_requests_list,
+        "stale_registers": stale_registers,
+        "register_open_today": register_open_today,
     }
 
 

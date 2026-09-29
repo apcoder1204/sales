@@ -23,6 +23,8 @@ export const inventoryService = {
     return data
   },
 
+  // Per-branch stock valuation (qty * cost_price) — backs the Inventory
+  // Value drilldown and the Stock Ledger summary header.
   summary: async (branchId) => {
     const { data } = await api.get('/inventory/summary', {
       params: branchId ? { branch_id: branchId } : {},

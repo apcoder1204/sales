@@ -29,14 +29,20 @@ export const getSaleStatuses = () => ({
   voided: { label: SW.hali.mauzo.voided, color: 'red' },
 })
 
+// Keys match Inventory.transaction_type exactly as the backend writes it
+// (sale_service/inventory_service/transfer_service) — this previously had
+// four keys (adjustment_in/adjustment_out/initial_stock/return) that don't
+// exist in any real data, while missing stock_in/stock_out/damaged, which
+// do — every stock_in/stock_out/damaged/adjustment row fell through to the
+// untranslated raw-value gray-badge fallback in the ledger table.
 export const getTxTypes = () => ({
   sale: { label: SW.hali.harakati.sale, color: 'red' },
+  stock_in: { label: SW.hali.harakati.stock_in, color: 'green' },
+  stock_out: { label: SW.hali.harakati.stock_out, color: 'red' },
   transfer_in: { label: SW.hali.harakati.transfer_in, color: 'green' },
   transfer_out: { label: SW.hali.harakati.transfer_out, color: 'yellow' },
-  adjustment_in: { label: SW.hali.harakati.adjustment_in, color: 'green' },
-  adjustment_out: { label: SW.hali.harakati.adjustment_out, color: 'red' },
-  initial_stock: { label: SW.hali.harakati.initial_stock, color: 'blue' },
-  return: { label: SW.hali.harakati.return, color: 'purple' },
+  adjustment: { label: SW.hali.harakati.adjustment, color: 'blue' },
+  damaged: { label: SW.hali.harakati.damaged, color: 'red' },
 })
 
 export const getReportPeriods = () => [

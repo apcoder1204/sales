@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.core.dependencies import get_current_user, require_role
 from app.schemas.inventory import (
     StockAdjustRequest, InventoryMovementResponse,
-    AvailableSourcesResponse
+    AvailableSourcesResponse, InventoryValuationResponse
 )
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.inventory_service import inventory_service
@@ -105,3 +105,14 @@ async def get_low_stock(
     db: AsyncSession = Depends(get_db),
 ):
     return await inventory_repo.get_low_stock(db, branch_id)
+
+
+@router.get("/summary", response_model=list[InventoryValuationResponse])
+async def get_inventory_summary(
+    branch_id: UUID | None = Depends(branch_context),
+    # Same visibility rule as cost_price elsewhere (COST_PRICE_ROLES) —
+    # total_value is derived from cost_price, which cashiers never see.
+    current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await inventory_service.get_valuation(db, branch_id)

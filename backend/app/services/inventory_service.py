@@ -1,8 +1,9 @@
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.config import settings
 from app.repositories.inventory_repo import inventory_repo
 from app.repositories.product_repo import product_repo
-from app.schemas.inventory import AvailableSourcesResponse, SourceBranch
+from app.schemas.inventory import AvailableSourcesResponse, SourceBranch, InventoryValuationResponse
 from app.core.exceptions import InsufficientStockException, NotFoundException
 from app.core.authorization import require_write_branch_access
 from app.services.audit_service import audit_service
@@ -144,6 +145,17 @@ class InventoryService:
 
         return {"items": result, "total": total, "page": page, "per_page": per_page,
                 "pages": math.ceil(total / per_page) if total else 1}
+
+    async def get_valuation(self, db: AsyncSession, branch_id: UUID | None = None) -> list[InventoryValuationResponse]:
+        rows = await inventory_repo.get_valuation_by_branch(db, branch_id)
+        return [
+            InventoryValuationResponse(
+                branch_id=r.branch_id, branch_name=r.branch_name,
+                total_quantity=int(r.total_quantity),
+                total_value=f"{settings.CURRENCY} {int(r.total_value):,}",
+                product_count=int(r.product_count),
+            ) for r in rows
+        ]
 
 
 inventory_service = InventoryService()

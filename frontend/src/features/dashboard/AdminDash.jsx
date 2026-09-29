@@ -6,6 +6,7 @@ import Card from '@components/ui/Card'
 import SalesTrendChart from '@components/charts/SalesTrendChart'
 import BranchSalesChart from '@components/charts/BranchSalesChart'
 import { PaymentBreakdownModal, LowStockDrillDownModal } from './DrillDowns'
+import ActionCenter from './ActionCenter'
 import { formatCurrency, formatNumber } from '@utils/formatters'
 import { useDashboard } from './useDashboard'
 import SW from '@constants/sw'
@@ -16,6 +17,7 @@ export default function AdminDash() {
 
   return (
     <PageWrapper title={SW.dashibodi.msimamizi} subtitle={SW.dashibodi.subtitleAdmin}>
+      <ActionCenter data={data} loading={loading} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title={SW.dashibodi.mauzoLeo} value={formatCurrency(data?.today_revenue)} icon={ShoppingBag} color="blue" loading={loading} onClick={() => setDrillDown('today')} />
         <KpiCard title={SW.dashibodi.mauzoMwezi} value={formatCurrency(data?.month_revenue)} icon={TrendingUp} color="green" loading={loading} onClick={() => setDrillDown('month')} />

@@ -30,6 +30,7 @@ export default function ReportsPage() {
     { value: 'branch_performance', label: SW.ripoti.tawi, permission: 'reports.branch' },
     { value: 'cashier_performance', label: SW.ripoti.mhusika, permission: 'reports.cashier' },
     { value: 'low_stock', label: SW.ripoti.hisaChini, permission: 'reports.inventory' },
+    { value: 'inventory_valuation', label: SW.ripoti.thamaniYaInventory, permission: 'reports.inventory' },
     { value: 'closing', label: SW.ripoti.ufungaji, permission: 'reports.closing' },
   ]
 
@@ -97,6 +98,7 @@ export default function ReportsPage() {
         case 'branch_performance': result = await reportService.branchPerformance(params); break
         case 'cashier_performance': result = await reportService.cashierPerformance(params); break
         case 'low_stock': result = await reportService.lowStock(params); break
+        case 'inventory_valuation': result = await reportService.inventoryValuation(params); break
         case 'closing': result = await reportService.closing(params); break
         default: result = null
       }
@@ -120,7 +122,7 @@ export default function ReportsPage() {
             options={availableTypes}
             containerClassName="min-w-48"
           />
-          {activeReportType !== 'stock_movements' && activeReportType !== 'inventory' && activeReportType !== 'low_stock' && (
+          {!['stock_movements', 'inventory', 'low_stock', 'inventory_valuation'].includes(activeReportType) && (
             <Select
               label={SW.ripoti.kipindiLabel}
               value={period}
@@ -204,6 +206,7 @@ function ReportContent({ type, data, onClosingExport, closingExporting, canDownl
     case 'branch_performance': return <BranchReport data={data} />
     case 'cashier_performance': return <CashierReport data={data} />
     case 'low_stock': return <LowStockReport data={data} />
+    case 'inventory_valuation': return <InventoryValuationReport data={data} />
     case 'closing': return (
       <ClosingReport
         data={data}
@@ -493,6 +496,21 @@ function ClosingReport({ data, onExport, exporting, canDownload }) {
         emptyTitle={SW.ripoti.hakunaUfungajiKipindi}
       />
     </div>
+  )
+}
+
+function InventoryValuationReport({ data }) {
+  return (
+    <DataTable
+      columns={[
+        { key: 'branch_name', header: SW.ufungaji.tawi },
+        { key: 'product_count', header: SW.bidhaa.bidhaa, render: (v) => formatNumber(v) },
+        { key: 'total_quantity', header: SW.hifadhi.bichiBidhaa, render: (v) => formatNumber(v) },
+        { key: 'total_value', header: SW.hifadhi.thamani, render: (v) => <span className="font-bold text-text-primary">{v}</span> },
+      ]}
+      data={data || []}
+      emptyTitle={SW.common.hakuna}
+    />
   )
 }
 

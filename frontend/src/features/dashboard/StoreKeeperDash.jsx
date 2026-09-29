@@ -1,23 +1,38 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Package, AlertTriangle, ArrowLeftRight, Activity } from 'lucide-react'
 import PageWrapper from '@components/layout/PageWrapper'
 import KpiCard from '@components/ui/KpiCard'
 import Card from '@components/ui/Card'
+import { LowStockDrillDownModal, PendingRequestsDrillDownModal, InventoryValueDrillDownModal } from './DrillDowns'
+import ActionCenter from './ActionCenter'
 import { formatNumber, formatCurrency } from '@utils/formatters'
 import { useDashboard } from './useDashboard'
 import SW from '@constants/sw'
 
 export default function StoreKeeperDash() {
   const { data, loading } = useDashboard()
+  const [drillDown, setDrillDown] = useState(null)
 
   return (
     <PageWrapper title={SW.dashibodi.mhusikaHifadhi} subtitle={SW.dashibodi.subtitleStoreKeeper}>
+      <ActionCenter data={data} loading={loading} />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title={SW.ripoti.bidhaaZote} value={formatNumber(data?.total_products)} icon={Package} color="blue" loading={loading} />
-        <KpiCard title={SW.ripoti.thamaniYaInventory} value={formatCurrency(data?.inventory_value)} icon={Activity} color="green" loading={loading} />
-        <KpiCard title={SW.dashibodi.maombiYanayosubiri} value={formatNumber(data?.pending_requests)} icon={ArrowLeftRight} color="yellow" loading={loading} />
-        <KpiCard title={SW.hifadhi.hisaChini} value={formatNumber(data?.low_stock_count)} icon={AlertTriangle} color="red" loading={loading} />
+        <KpiCard title={SW.ripoti.thamaniYaInventory} value={formatCurrency(data?.inventory_value)} icon={Activity} color="green" loading={loading} onClick={() => setDrillDown('inventory_value')} />
+        <KpiCard title={SW.dashibodi.maombiYanayosubiri} value={formatNumber(data?.pending_requests)} icon={ArrowLeftRight} color="yellow" loading={loading} onClick={() => setDrillDown('pending')} />
+        <KpiCard title={SW.hifadhi.hisaChini} value={formatNumber(data?.low_stock_count)} icon={AlertTriangle} color="red" loading={loading} onClick={() => setDrillDown('low_stock')} />
       </div>
+
+      <InventoryValueDrillDownModal open={drillDown === 'inventory_value'} onClose={() => setDrillDown(null)} />
+      <PendingRequestsDrillDownModal
+        open={drillDown === 'pending'} onClose={() => setDrillDown(null)}
+        items={data?.pending_requests_list}
+      />
+      <LowStockDrillDownModal
+        open={drillDown === 'low_stock'} onClose={() => setDrillDown(null)}
+        items={data?.low_stock_items}
+      />
 
       <Card title={SW.ripoti.hisaChini}>
         <div className="space-y-2">

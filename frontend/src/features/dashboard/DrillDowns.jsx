@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import KpiDrillDownModal from '@components/ui/KpiDrillDownModal'
+import { inventoryService } from '@services/inventoryService'
 import { formatNumber, formatDateTime } from '@utils/formatters'
 import SW from '@constants/sw'
 
@@ -33,6 +34,37 @@ export function LowStockDrillDownModal({ open, onClose, items }) {
         {(!items || items.length === 0) && (
           <p className="text-sm text-text-muted text-center py-4">{SW.common.hakuna}</p>
         )}
+      </div>
+    </KpiDrillDownModal>
+  )
+}
+
+// Unlike the others, this one fetches its own data on open rather than
+// reading it out of the dashboard payload — inventory/summary is a
+// separate, on-demand query (per-branch valuation), not something every
+// dashboard load needs to compute.
+export function InventoryValueDrillDownModal({ open, onClose }) {
+  const [rows, setRows] = useState(null)
+
+  useEffect(() => {
+    if (!open) { setRows(null); return }
+    inventoryService.summary().then(setRows).catch(() => setRows([]))
+  }, [open])
+
+  return (
+    <KpiDrillDownModal open={open} onClose={onClose} title={SW.ripoti.thamaniYaInventory} subtitle={SW.dashibodi.thamaniKwaTawi}>
+      <div className="space-y-2">
+        {(rows || []).map((r) => (
+          <div key={r.branch_id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+            <div>
+              <p className="text-sm font-medium text-text-primary">{r.branch_name}</p>
+              <p className="text-xs text-text-muted">{SW.bidhaa.idadiBidhaa(r.product_count)}</p>
+            </div>
+            <span className="text-sm font-semibold text-text-primary">{r.total_value}</span>
+          </div>
+        ))}
+        {rows === null && <p className="text-sm text-text-muted text-center py-4">{SW.common.pakia}</p>}
+        {rows && rows.length === 0 && <p className="text-sm text-text-muted text-center py-4">{SW.common.hakuna}</p>}
       </div>
     </KpiDrillDownModal>
   )

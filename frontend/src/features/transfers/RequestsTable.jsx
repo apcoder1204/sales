@@ -1,14 +1,39 @@
-import React from 'react'
+import React, { useState } from 'react'
 import DataTable from '@components/tables/DataTable'
 import Badge from '@components/ui/Badge'
 import Button from '@components/ui/Button'
 import { formatDateTime } from '@utils/formatters'
 import { getTransferStatuses } from '@utils/constants'
 import { usePermission } from '@hooks/usePermission'
+import { useAuth } from '@hooks/useAuth'
+import { useApi } from '@hooks/useApi'
+import { isGlobalRole } from '@utils/permissions'
+import { transferService } from '@services/transferService'
 import SW from '@constants/sw'
 
-export default function RequestsTable({ requests, loading, onReview, pagination }) {
+export default function RequestsTable({ requests, loading, onReview, onExecuted, pagination }) {
   const { can } = usePermission()
+  const { user } = useAuth()
+  const { call } = useApi()
+  const [executingId, setExecutingId] = useState(null)
+
+  // Same eligibility rule as ReviewRequestModal's execute button — a
+  // physical handover, so only whoever's actually holding the stock (or a
+  // global role) may confirm it. Inline here too so the common "approved,
+  // ready to hand over" case doesn't need opening the full review modal
+  // just to click one button.
+  const canExecute = (row) => can('transfers.execute') && (isGlobalRole(user) || user?.branch_id === row.from_branch_id)
+
+  const handleExecute = async (row) => {
+    setExecutingId(row.id)
+    try {
+      await call(() => transferService.executeTransfer(row.id), {
+        successMsg: SW.mafanikio.imesafirishwa, onSuccess: onExecuted,
+      })
+    } finally {
+      setExecutingId(null)
+    }
+  }
 
   const columns = [
     { key: 'request_no', header: SW.uhamisho.namba, render: (v) => <span className="font-mono text-xs text-primary-light">{v}</span> },
@@ -49,9 +74,19 @@ export default function RequestsTable({ requests, loading, onReview, pagination 
     {
       key: '_actions', header: '',
       render: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={() => onReview(row)}>
-          {SW.common.angalia}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => onReview(row)}>
+            {SW.common.angalia}
+          </Button>
+          {row.status === 'approved' && canExecute(row) && (
+            <Button
+              size="sm" loading={executingId === row.id}
+              onClick={(e) => { e.stopPropagation(); handleExecute(row) }}
+            >
+              {SW.uhamisho.tekeleza}
+            </Button>
+          )}
+        </div>
       ),
     },
   ]

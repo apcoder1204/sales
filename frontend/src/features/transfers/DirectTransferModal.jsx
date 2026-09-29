@@ -6,6 +6,7 @@ import Input from '@components/ui/Input'
 import { transferService } from '@services/transferService'
 import { productService } from '@services/productService'
 import { userService } from '@services/userService'
+import { inventoryService } from '@services/inventoryService'
 import { useApi } from '@hooks/useApi'
 import { useBranch } from '@hooks/useBranch'
 import SW from '@constants/sw'
@@ -15,6 +16,7 @@ export default function DirectTransferModal({ open, onClose, onSaved }) {
   const { activeBranchId } = useBranch()
   const [branches, setBranches] = useState([])
   const [products, setProducts] = useState([])
+  const [availableByProduct, setAvailableByProduct] = useState({})
   const [items, setItems] = useState([{ product_id: '', quantity: '' }])
   const [form, setForm] = useState({ from_branch_id: '', to_branch_id: '', notes: '' })
 
@@ -29,6 +31,21 @@ export default function DirectTransferModal({ open, onClose, onSaved }) {
     }).catch(() => {})
     productService.list({ status: 'active', per_page: 200 }).then((r) => setProducts(r.items || r)).catch(() => {})
   }, [open, activeBranchId])
+
+  // Live stock at the source branch — a direct transfer executes
+  // immediately with no approval step, so a blind submission that turns
+  // out to exceed available stock is a pure round-trip failure this avoids.
+  useEffect(() => {
+    if (!open || !form.from_branch_id) { setAvailableByProduct({}); return }
+    inventoryService.list({ branch_id: form.from_branch_id, per_page: 200 }).then((res) => {
+      const map = {}
+      for (const p of res.items || res) {
+        const inv = (p.inventory || []).find((i) => i.branch_id === form.from_branch_id)
+        if (inv) map[p.id] = inv.available_qty
+      }
+      setAvailableByProduct(map)
+    }).catch(() => setAvailableByProduct({}))
+  }, [open, form.from_branch_id])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setItem = (i, k) => (e) => setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [k]: e.target.value } : item))
@@ -79,17 +96,28 @@ export default function DirectTransferModal({ open, onClose, onSaved }) {
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-text-secondary">{SW.uhamisho.bidhaa}</p>
-          {items.map((item, i) => (
-            <div key={i} className="flex gap-2 items-end">
-              <Select value={item.product_id} onChange={setItem(i, 'product_id')}
-                options={productOptions} placeholder={SW.uhamisho.bidhaaPlaceholder} containerClassName="flex-1" />
-              <Input type="number" min="1" value={item.quantity} onChange={setItem(i, 'quantity')}
-                placeholder={SW.common.idadi} containerClassName="w-24" />
-              {items.length > 1 && (
-                <Button variant="danger" size="icon" onClick={() => removeItem(i)}>×</Button>
-              )}
-            </div>
-          ))}
+          {items.map((item, i) => {
+            const available = item.product_id ? availableByProduct[item.product_id] : undefined
+            const exceedsAvailable = available !== undefined && item.quantity && parseInt(item.quantity) > available
+            return (
+              <div key={i}>
+                <div className="flex gap-2 items-end">
+                  <Select value={item.product_id} onChange={setItem(i, 'product_id')}
+                    options={productOptions} placeholder={SW.uhamisho.bidhaaPlaceholder} containerClassName="flex-1" />
+                  <Input type="number" min="1" value={item.quantity} onChange={setItem(i, 'quantity')}
+                    placeholder={SW.common.idadi} containerClassName="w-24" />
+                  {items.length > 1 && (
+                    <Button variant="danger" size="icon" onClick={() => removeItem(i)}>×</Button>
+                  )}
+                </div>
+                {available !== undefined && (
+                  <p className={`text-xs mt-1 ${exceedsAvailable ? 'text-accent-red' : 'text-text-muted'}`}>
+                    {SW.uhamisho.kiasiKinachopatikana(available)}
+                  </p>
+                )}
+              </div>
+            )
+          })}
           <Button variant="ghost" size="sm" onClick={addItem}>{SW.uhamisho.ongezaBidhaa}</Button>
         </div>
 

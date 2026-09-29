@@ -180,6 +180,18 @@ function normalise(type, data, period) {
         }],
       }
 
+    case 'inventory_valuation':
+      return {
+        title: SW.ripoti.thamaniYaInventory,
+        sheets: [{
+          name: SW.ripoti.thamaniYaInventory,
+          head: [[SW.ufungaji.tawi, SW.bidhaa.bidhaa, SW.hifadhi.bichiBidhaa, SW.hifadhi.thamani]],
+          rows: (data || []).map((r) => [
+            r.branch_name, fmt(r.product_count), fmt(r.total_quantity), r.total_value,
+          ]),
+        }],
+      }
+
     case 'closing': {
       const s = data.summary || {}
       return {

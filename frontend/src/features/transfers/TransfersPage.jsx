@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Plus, ArrowLeftRight } from 'lucide-react'
 import PageWrapper from '@components/layout/PageWrapper'
 import Button from '@components/ui/Button'
+import Select from '@components/ui/Select'
 import RequestsTable from './RequestsTable'
 import TransfersTable from './TransfersTable'
 import CreateRequestModal from './CreateRequestModal'
@@ -11,6 +12,7 @@ import { transferService } from '@services/transferService'
 import { usePermission } from '@hooks/usePermission'
 import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { usePagination } from '@hooks/usePagination'
+import { getTransferStatuses } from '@utils/constants'
 import SW from '@constants/sw'
 
 export default function TransfersPage() {
@@ -28,13 +30,21 @@ export default function TransfersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [directOpen, setDirectOpen] = useState(false)
   const [reviewing, setReviewing] = useState(null)
+  const [status, setStatus] = useState('')
   const pagination = usePagination()
+
+  const STATUS_OPTIONS = [
+    { value: '', label: SW.uhamisho.hadhiZote },
+    ...Object.entries(getTransferStatuses())
+      .filter(([k]) => k !== 'completed') // "completed" only applies to the transfers tab, not requests
+      .map(([value, s]) => ({ value, label: s.label })),
+  ]
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       if (tab === 'requests') {
-        const res = await transferService.listRequests({ ...branchFilter, ...pagination.params })
+        const res = await transferService.listRequests({ ...branchFilter, status: status || undefined, ...pagination.params })
         setRequests(res.items || res)
         if (res.total !== undefined) pagination.setTotal(res.total)
       } else {
@@ -45,10 +55,10 @@ export default function TransfersPage() {
     } finally {
       setLoading(false)
     }
-  }, [tab, branchFilter.branch_id, pagination.page])
+  }, [tab, branchFilter.branch_id, status, pagination.page])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { pagination.reset() }, [tab, branchFilter.branch_id])
+  useEffect(() => { pagination.reset() }, [tab, branchFilter.branch_id, status])
 
   const onReviewed = () => { setReviewing(null); load() }
 
@@ -86,11 +96,18 @@ export default function TransfersPage() {
         ))}
       </div>
 
+      {tab === 'requests' && (
+        <div className="flex gap-3">
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} options={STATUS_OPTIONS} containerClassName="w-48" />
+        </div>
+      )}
+
       {tab === 'requests' ? (
         <RequestsTable
           requests={requests}
           loading={loading}
           onReview={setReviewing}
+          onExecuted={load}
           pagination={pagination}
         />
       ) : (
