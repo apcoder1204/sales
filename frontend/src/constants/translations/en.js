@@ -179,6 +179,7 @@ export const EN = {
     familiaPlaceholder: 'e.g. Hikvision, Dahua, Reolink',
     beiGhaliPlaceholder: 'Enter cost price',
     beiUzajiPlaceholder: 'Enter selling price',
+    gharamaItawekwaBaadaye: 'Cost price will be set later by an admin',
     idadiKuanziaSuffix: 'quantity you are entering now',
     tumiaMarekebishoPlaceholder: 'Use Stock Adjustments',
     itaongezaKwenyeTawiChaguliwa: (qty) => `Will add ${qty} to the selected branch`,

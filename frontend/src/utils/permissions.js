@@ -32,7 +32,7 @@ export const PERMISSION_MAP = {
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
   ],
   general_manager: [
-    'products.read', 'products.write', 'products.cost',
+    'products.read', 'products.write',
     'inventory.read',
     'sales.read',
     'transfers.read', 'transfers.request', 'transfers.approve',
@@ -43,7 +43,7 @@ export const PERMISSION_MAP = {
     'closing.view',
   ],
   store_keeper: [
-    'products.read', 'products.cost',
+    'products.read',
     'inventory.read', 'inventory.adjust',
     'transfers.read', 'transfers.request', 'transfers.execute',
     'reports.inventory',

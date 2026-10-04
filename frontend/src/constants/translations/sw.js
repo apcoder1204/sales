@@ -179,6 +179,7 @@ export const SW = {
     familiaPlaceholder: 'Mfano: Hikvision, Dahua, Reolink',
     beiGhaliPlaceholder: 'Ingiza bei ya ununuzi',
     beiUzajiPlaceholder: 'Ingiza bei ya mauzo',
+    gharamaItawekwaBaadaye: 'Gharama ya ununuzi itawekwa baadaye na msimamizi',
     idadiKuanziaSuffix: 'idadi unayoiingiza sasa',
     tumiaMarekebishoPlaceholder: 'Tumia Marekebisho ya Bidhaa',
     itaongezaKwenyeTawiChaguliwa: (qty) => `Itaongeza ${qty} kwenye tawi uliochagua`,

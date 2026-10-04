@@ -110,8 +110,11 @@ async def get_low_stock(
 @router.get("/summary", response_model=list[InventoryValuationResponse])
 async def get_inventory_summary(
     branch_id: UUID | None = Depends(branch_context),
-    # Same visibility rule as cost_price elsewhere (COST_PRICE_ROLES) —
-    # total_value is derived from cost_price, which cashiers never see.
+    # This is a separate, deliberately broader gate than per-product
+    # cost_price visibility (COST_PRICE_ROLES in product_service.py, now
+    # super_admin/admin only) — store_keeper/general_manager still need
+    # aggregate stock *value* for inventory management, even though they
+    # no longer see individual products' cost_price.
     current_user=Depends(require_role("super_admin", "admin", "store_keeper", "general_manager")),
     db: AsyncSession = Depends(get_db),
 ):

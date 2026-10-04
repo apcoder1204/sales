@@ -9,7 +9,7 @@ from app.schemas.product import (
     CategoryCreate, CategoryUpdate, CategoryResponse,
 )
 from app.schemas.common import PaginatedResponse, MessageResponse
-from app.services.product_service import product_service
+from app.services.product_service import product_service, COST_PRICE_ROLES
 
 router = APIRouter(prefix="/products", tags=["Bidhaa"])
 
@@ -17,13 +17,18 @@ _admin = Depends(require_role("super_admin", "admin"))
 _su = Depends(require_role("super_admin"))
 
 
-def _prod_resp(p) -> ProductResponse:
+def _prod_resp(p, user) -> ProductResponse:
+    # Same cost_price visibility rule as list_products/get_with_inventory
+    # (COST_PRICE_ROLES) — without this, a role that can't see cost_price
+    # anywhere else would still see it leak back in the create/update
+    # response body.
+    show_cost = user.role.name in COST_PRICE_ROLES
     return ProductResponse(
         id=p.id, product_code=p.product_code, name=p.name,
         category=p.category.name, category_id=p.category_id,
         brand=p.brand, family_name=p.family_name,
         unit=p.unit or "Kipande", description=p.description,
-        cost_price=p.cost_price, selling_price=p.selling_price,
+        cost_price=p.cost_price if show_cost else None, selling_price=p.selling_price,
         minimum_stock=p.minimum_stock, status=p.status,
         created_at=p.created_at,
     )
@@ -92,7 +97,7 @@ async def create_product(
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_service.create_product(db, data, current_user)
-    return _prod_resp(product)
+    return _prod_resp(product, current_user)
 
 
 @router.get("/{product_id}", response_model=ProductWithInventory)
@@ -111,7 +116,7 @@ async def update_product(
     db: AsyncSession = Depends(get_db),
 ):
     product = await product_service.update_product(db, product_id, data, current_user)
-    return _prod_resp(product)
+    return _prod_resp(product, current_user)
 
 
 @router.delete("/{product_id}", response_model=MessageResponse)

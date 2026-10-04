@@ -10,6 +10,7 @@ import { userService } from '@services/userService'
 import { useApi } from '@hooks/useApi'
 import { useToast } from '@hooks/useToast'
 import { useAuth } from '@hooks/useAuth'
+import { usePermission } from '@hooks/usePermission'
 import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
 
@@ -23,7 +24,11 @@ const empty = {
 export default function ProductFormModal({ open, onClose, onSaved, product }) {
   const isEdit = Boolean(product)
   const { user } = useAuth()
+  const { can } = usePermission()
   const isGlobal = isGlobalRole(user)
+  // Cost is set later by an admin/super_admin, never while first
+  // registering a product — see ProductCreate.cost_price on the backend.
+  const showCost = isEdit && can('products.cost')
   const UNIT_OPTIONS = Object.entries(SW.bidhaa.vipimo).map(([value, label]) => ({ value, label }))
   const STATUS_OPTIONS = [
     { value: 'active', label: SW.bidhaa.hai },
@@ -92,10 +97,12 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
       family_name: form.family_name || undefined,
       unit: form.unit,
       description: form.description || undefined,
-      cost_price: parseFloat(form.cost_price) || 0,
       selling_price: parseFloat(form.selling_price),
       minimum_stock: parseInt(form.minimum_stock) || 5,
     }
+    // Cost is admin/super_admin-only and never part of the create flow —
+    // only send it when the field was actually shown and editable.
+    if (showCost) payload.cost_price = parseFloat(form.cost_price) || 0
     if (form.product_code) payload.product_code = form.product_code
     if (isEdit) payload.status = form.status
 
@@ -200,15 +207,17 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label={SW.bidhaa.beiGhali}
-            type="number"
-            min="0"
-            value={form.cost_price}
-            onChange={set('cost_price')}
-            placeholder={SW.bidhaa.beiGhaliPlaceholder}
-            leftIcon={<span className="text-xs font-bold">TSh</span>}
-          />
+          {showCost && (
+            <Input
+              label={SW.bidhaa.beiGhali}
+              type="number"
+              min="0"
+              value={form.cost_price}
+              onChange={set('cost_price')}
+              placeholder={SW.bidhaa.beiGhaliPlaceholder}
+              leftIcon={<span className="text-xs font-bold">TSh</span>}
+            />
+          )}
           <Input
             label={SW.bidhaa.beiUzaji}
             type="number"
@@ -217,9 +226,13 @@ export default function ProductFormModal({ open, onClose, onSaved, product }) {
             onChange={set('selling_price')}
             placeholder={SW.bidhaa.beiUzajiPlaceholder}
             leftIcon={<span className="text-xs font-bold">TSh</span>}
+            containerClassName={showCost ? '' : 'sm:col-span-2'}
             required
           />
         </div>
+        {!isEdit && (
+          <p className="text-xs text-text-muted -mt-2">{SW.bidhaa.gharamaItawekwaBaadaye}</p>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

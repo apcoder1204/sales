@@ -15,13 +15,17 @@ class ProductCreate(BaseModel):
     family_id: str | None = Field(None, max_length=50)
     unit: str = Field("Kipande", max_length=50)
     description: str | None = Field(None, max_length=1000)
-    cost_price: Decimal = Field(ge=0)
+    # Optional on create — cost is a sensitive figure (super_admin/admin
+    # only, see COST_PRICE_ROLES in product_service.py) and shouldn't block
+    # anyone else from registering a product. It defaults to 0 and is filled
+    # in later via an edit, by an admin/super_admin.
+    cost_price: Decimal | None = Field(None, ge=0)
     selling_price: Decimal = Field(ge=0)
     minimum_stock: int = Field(ge=0, default=5)
 
     @model_validator(mode="after")
     def selling_gte_cost(self):
-        if self.selling_price < self.cost_price:
+        if self.cost_price is not None and self.selling_price < self.cost_price:
             raise PydanticCustomError("selling_price_below_cost", "Bei ya uuzaji lazima iwe kubwa au sawa na gharama")
         return self
 

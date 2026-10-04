@@ -1,4 +1,5 @@
 from uuid import UUID
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.product_repo import product_repo
 from app.repositories.inventory_repo import inventory_repo
@@ -10,7 +11,7 @@ from app.services.audit_service import audit_service
 import math
 
 
-COST_PRICE_ROLES = {"super_admin", "admin", "general_manager", "store_keeper"}
+COST_PRICE_ROLES = {"super_admin", "admin"}
 
 
 class ProductService:
@@ -98,6 +99,11 @@ class ProductService:
 
     async def create_product(self, db: AsyncSession, data: ProductCreate, user) -> dict:
         code = data.product_code if data.product_code else await product_repo.get_next_code(db)
+        # cost_price is optional precisely so creating a product is never
+        # blocked on it (see ProductCreate) — and even if a non-admin role
+        # somehow submits one, it's ignored here, not just hidden in the
+        # UI. It defaults to 0 and is set later by an admin/super_admin.
+        cost_price = data.cost_price if (user.role.name in COST_PRICE_ROLES and data.cost_price is not None) else Decimal("0")
         product = await product_repo.create(db, {
             "product_code": code,
             "name": data.name,
@@ -107,7 +113,7 @@ class ProductService:
             "family_id": data.family_id,
             "unit": data.unit,
             "description": data.description,
-            "cost_price": data.cost_price,
+            "cost_price": cost_price,
             "selling_price": data.selling_price,
             "minimum_stock": data.minimum_stock,
             "created_by": user.id,
@@ -127,13 +133,22 @@ class ProductService:
             raise NotFoundException("Bidhaa", "product")
         before = {"name": product.name, "selling_price": str(product.selling_price)}
         updates = data.model_dump(exclude_none=True)
+        # Backend-authoritative, same as create_product — a role without
+        # cost visibility can't set cost_price either, regardless of what a
+        # tampered or stale client sends.
+        if user.role.name not in COST_PRICE_ROLES:
+            updates.pop("cost_price", None)
         product = await product_repo.update(db, product_id, updates)
         await db.commit()
+        # Decimal isn't JSON-serializable for the JSONB details column —
+        # cost_price/selling_price need the same str() cast `before` above
+        # already gets, or this raises mid-flush for any price update.
+        audit_after = {k: (str(v) if isinstance(v, Decimal) else v) for k, v in updates.items()}
         await audit_service.log(
             db, action="PRODUCT_UPDATED", category="products",
             user_id=user.id, username=user.username, user_role=user.role.name,
             entity_type="product", entity_id=str(product_id),
-            details={"before": before, "after": updates}
+            details={"before": before, "after": audit_after}
         )
         return product
 
