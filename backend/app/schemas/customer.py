@@ -104,3 +104,11 @@ class CustomerRef(BaseModel):
     phone: str
 
     model_config = {"from_attributes": True}
+
+
+class CustomerListItem(CustomerResponse):
+    """List row: profile plus the summary figures (scoped like the detail)."""
+    balance: Decimal = Decimal("0.00")
+    overdue: Decimal = Decimal("0.00")
+    available_credit: Decimal = Decimal("0.00")
+    last_payment_at: datetime | None = None

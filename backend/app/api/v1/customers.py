@@ -11,7 +11,8 @@ from app.core.dependencies import get_current_user, require_admin, require_cashi
 from app.core.idempotency import get_cached_response, store_response
 from app.db.session import get_db
 from app.schemas.customer import (
-    CustomerCreate, CustomerCreditUpdate, CustomerDetailResponse, CustomerResponse, CustomerUpdate,
+    CustomerCreate, CustomerCreditUpdate, CustomerDetailResponse, CustomerListItem, CustomerResponse,
+    CustomerUpdate,
 )
 from app.schemas.payment import (
     DebtPaymentCreate, OpeningBalanceCreate, OpeningBalanceOut, PaymentOut, ReceivableOut,
@@ -30,11 +31,17 @@ async def list_customers(
     status: Literal["active", "inactive"] | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_customer_reader),
     db: AsyncSession = Depends(get_db),
 ):
     rows, total = await customer_service.search(db, q, status, page, per_page)
-    items = [CustomerResponse.model_validate(c) for c in rows]
+    items = []
+    for c in rows:
+        summary = await ledger_service.summary(db, c, branch_id)
+        items.append(CustomerListItem(
+            **CustomerResponse.model_validate(c).model_dump(), **summary.model_dump()
+        ))
     return {"items": items, "total": total, "page": page, "per_page": per_page,
             "pages": math.ceil(total / per_page) if total else 1}
 

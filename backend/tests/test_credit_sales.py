@@ -282,3 +282,22 @@ async def test_sales_list_filter_by_method_uses_payments(client, db_session):
         assert res.status_code == 200, res.text
         ids = [s["id"] for s in res.json()["items"]]
         assert (sale_id in ids) is present, method
+
+
+@pytest.mark.asyncio
+async def test_receipt_time_is_local_business_time(client, db_session):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from app.config import settings
+
+    branch, cashier, product = await _setup(db_session)
+    r = await _sell(client, cashier, branch, product, qty=1, payments=[{"method": "cash", "amount": "80000"}])
+    assert r.status_code == 201, r.text
+    created = datetime.fromisoformat(r.json()["sale"]["created_at"])
+    if created.tzinfo is None:
+        from datetime import timezone
+        created = created.replace(tzinfo=timezone.utc)
+    expected = created.astimezone(ZoneInfo(settings.DEFAULT_TIMEZONE)).strftime("%d/%m/%Y %H:%M")
+    assert r.json()["receipt"]["date"] == expected
+    rec = await client.get(f"/api/v1/sales/{r.json()['sale']['id']}/receipt", headers=auth_headers(cashier))
+    assert rec.json()["date"] == expected

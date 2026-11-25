@@ -190,14 +190,14 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
                 />
               )}
               {deni > 0 && (
-                <button type="button" className="text-xs text-accent-blue" onClick={() => payRemainder(i)}>
+                <button type="button" className="text-xs text-primary-light hover:underline" onClick={() => payRemainder(i)}>
                   {SW.mauzo.lipaYote}
                 </button>
               )}
             </div>
           ))}
           {lines.length < MAX_LINES && (
-            <button type="button" className="text-xs text-accent-blue inline-flex items-center gap-1" onClick={addLine}>
+            <button type="button" className="text-xs text-primary-light hover:underline inline-flex items-center gap-1" onClick={addLine}>
               <Plus size={14} /> {SW.mauzo.ongezaMalipo}
             </button>
           )}

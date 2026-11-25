@@ -11,10 +11,12 @@ import { usePagination } from '@hooks/usePagination'
 import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { usePermission } from '@hooks/usePermission'
 import { useToast } from '@hooks/useToast'
-import { formatCurrency, formatDateTime } from '@utils/formatters'
+import { formatCurrency, formatDate, formatDateTime } from '@utils/formatters'
 import { getPaymentMethods } from '@utils/constants'
 import { resolveApiErrorMessage } from '@utils/apiError'
 import SW from '@constants/sw'
+
+const PAY_STATUS_COLOR = { PAID: 'green', PARTIALLY_PAID: 'blue', UNPAID: 'yellow', OVERDUE: 'red', VOIDED: 'gray' }
 
 export default function SalesPage() {
   const [sales, setSales] = useState([])
@@ -70,8 +72,18 @@ export default function SalesPage() {
     { key: 'created_at', header: SW.common.tarehe, render: (v) => formatDateTime(v) },
     { key: 'branch', header: SW.mauzo.tawiLaMauzo },
     { key: 'cashier', header: SW.risiti.mhusika },
+    { key: 'customer', header: SW.mauzo.mteja, render: (v) => (v ? v.name : <span className="text-text-muted">{SW.mauzo.mtejaWaKawaida}</span>) },
     { key: 'payment_method', header: SW.risiti.malipo, render: (v) => SW.hali.malipo[v] || v },
     { key: 'total_amount', header: SW.mauzo.jumlaKuu, render: (v) => <span className="font-semibold">{formatCurrency(v)}</span> },
+    {
+      key: 'payment_status', header: SW.mauzo.haliYaMalipo,
+      render: (v, row) => (
+        <div>
+          <Badge color={PAY_STATUS_COLOR[v] || 'gray'}>{SW.hali.deni[v] || v}</Badge>
+          {Number(row.outstanding) > 0 && <p className="text-xs text-accent-red mt-1">{SW.mauzo.salio}: {formatCurrency(row.outstanding)}</p>}
+        </div>
+      ),
+    },
     {
       key: 'status', header: SW.bidhaa.hali,
       render: (v) => <Badge color={v === 'completed' ? 'green' : 'red'}>{v === 'completed' ? SW.mauzo.imekamilika : SW.mauzo.imebatilishwa}</Badge>,
@@ -120,6 +132,25 @@ export default function SalesPage() {
               </div>
             ))}
           </div>
+          {details.payments?.length > 0 && (
+            <div className="glass-card p-3 space-y-1 text-xs mb-3">
+              <p className="text-text-muted">{SW.mauzo.malipo}</p>
+              {details.payments.map((p) => (
+                <div key={p.id} className="flex justify-between">
+                  <span className={p.status === 'reversed' ? 'line-through text-text-muted' : ''}>
+                    {p.payment_no} · {SW.hali.malipo[p.method] || p.method}{p.reference ? ` · ${p.reference}` : ''}
+                  </span>
+                  <span>{formatCurrency(p.amount)}</span>
+                </div>
+              ))}
+              {Number(details.outstanding) > 0 && (
+                <div className="flex justify-between font-medium text-accent-red">
+                  <span>{SW.mauzo.salio}{details.due_date ? ` (${formatDate(details.due_date)})` : ''}</span>
+                  <span>{formatCurrency(details.outstanding)}</span>
+                </div>
+              )}
+            </div>
+          )}
           {details.status === 'voided' && (
             <div className="glass-card p-3 space-y-1 text-xs text-text-muted">
               <p>{SW.mauzo.aliyebatilisha}: {details.voided_by}</p>

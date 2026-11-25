@@ -115,6 +115,8 @@ class ClosingReportRow(BaseModel):
     total_mobile_money: float
     total_bank_transfer: float
     total_revenue: float
+    total_credit_given: float = 0
+    total_debt_collected: float = 0
     cash_variance: float | None
     total_expenses: float
     expenses: list[ClosingReportExpense]
@@ -126,6 +128,8 @@ class ClosingReportSummary(BaseModel):
     total_mobile_money: float
     total_bank_transfer: float
     total_revenue: float
+    total_credit_given: float = 0
+    total_debt_collected: float = 0
     closings_count: int
 
 

@@ -141,3 +141,20 @@ async def test_demo_wipe_handles_debt_tables(w, db_session):
     for model in (CustomerLedgerEntry, Payment, Customer):
         n = (await db_session.execute(select(func.count()).select_from(model))).scalar()
         assert n == 0, model.__name__
+
+
+@pytest.mark.asyncio
+async def test_closing_report_includes_credit_and_collections(w):
+    await _scenario(w)
+    c = await w.client.post("/api/v1/closings/close", json={"branch_id": str(w.b.id)},
+                            headers=auth_headers(w.cashier_b))
+    assert c.status_code == 201, c.text
+    r = await w.client.get("/api/v1/reports/closing", params={"period": "today", "branch_id": str(w.b.id)},
+                           headers=auth_headers(w.admin))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    row = body["closings"][0]
+    assert row["total_credit_given"] == 450000
+    assert row["total_debt_collected"] == 50000
+    assert body["summary"]["total_credit_given"] == 450000
+    assert body["summary"]["total_debt_collected"] == 50000

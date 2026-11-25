@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, ArrowLeftRight,
   BarChart3, ScrollText, Users, ChevronLeft, ChevronDown, Zap,
-  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2,
+  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2, Contact, BookOpen,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { usePermission } from '@hooks/usePermission'
@@ -18,6 +18,8 @@ import SW from '@constants/sw'
 const NAV_ITEMS = {
   mauzo: { to: '/mauzo', icon: ShoppingCart, label: SW.nav.mauzo, permission: 'sales.create' },
   historiaMauzo: { to: '/mauzo/historia', icon: Receipt, label: SW.nav.historiaMauzo, permission: 'sales.read' },
+  wateja: { to: '/wateja', icon: Contact, label: SW.nav.wateja, permission: 'customers.read' },
+  madeniYaZamani: { to: '/wateja/madeni-ya-zamani', icon: BookOpen, label: SW.nav.madeniYaZamani, permission: 'opening_balances.manage' },
   uhamisho: { to: '/uhamisho', icon: ArrowLeftRight, label: SW.nav.uhamisho, permission: 'transfers.read' },
   ufungaji: { to: '/ufungaji', icon: Lock, label: SW.nav.ufungaji, permission: 'closing.view' },
   ripoti: { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },
@@ -33,13 +35,13 @@ const NAV_ITEMS = {
 // instead. This is purely presentational — `can()` below is still what
 // actually decides whether an item renders at all, exactly as before.
 const ROLE_NAV_ORDER = {
-  cashier: ['mauzo', 'historiaMauzo', 'ufungaji', 'bidhaa', 'uhamisho', 'ripoti'],
+  cashier: ['mauzo', 'historiaMauzo', 'wateja', 'ufungaji', 'bidhaa', 'uhamisho', 'ripoti'],
   store_keeper: ['bidhaa', 'uhamisho', 'ripoti', 'kumbukumbu'],
-  general_manager: ['uhamisho', 'ripoti', 'ufungaji', 'bidhaa', 'kumbukumbu'],
-  admin: ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
-  super_admin: ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
+  general_manager: ['uhamisho', 'ripoti', 'ufungaji', 'wateja', 'bidhaa', 'kumbukumbu'],
+  admin: ['mauzo', 'historiaMauzo', 'wateja', 'madeniYaZamani', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
+  super_admin: ['mauzo', 'historiaMauzo', 'wateja', 'madeniYaZamani', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
 }
-const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi']
+const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'wateja', 'madeniYaZamani', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi']
 
 export default function Sidebar({ open, onToggle }) {
   const { can, role } = usePermission()

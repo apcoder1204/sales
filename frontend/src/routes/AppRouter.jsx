@@ -21,6 +21,9 @@ const StockAdjustPage = lazy(() => import('@features/products/StockAdjustPage'))
 const MovementsPage = lazy(() => import('@features/inventory/MovementsPage'))
 const PosPage = lazy(() => import('@features/pos/PosPage'))
 const SalesPage = lazy(() => import('@features/sales/SalesPage'))
+const CustomersPage = lazy(() => import('@features/customers/CustomersPage'))
+const CustomerDetail = lazy(() => import('@features/customers/CustomerDetail'))
+const OpeningBalancesPage = lazy(() => import('@features/customers/OpeningBalancesPage'))
 const TransfersPage = lazy(() => import('@features/transfers/TransfersPage'))
 const ReportsPage = lazy(() => import('@features/reports/ReportsPage'))
 const ClosingPage = lazy(() => import('@features/closing/ClosingPage'))
@@ -85,6 +88,22 @@ function RoutedApp() {
             <Route path="/mauzo/historia" element={
               <RoleRoute permissions={['sales.read']}>
                 <SalesPage />
+              </RoleRoute>
+            } />
+
+            <Route path="/wateja" element={
+              <RoleRoute permissions={['customers.read']}>
+                <CustomersPage />
+              </RoleRoute>
+            } />
+            <Route path="/wateja/madeni-ya-zamani" element={
+              <RoleRoute permissions={['opening_balances.manage']}>
+                <OpeningBalancesPage />
+              </RoleRoute>
+            } />
+            <Route path="/wateja/:id" element={
+              <RoleRoute permissions={['customers.read']}>
+                <CustomerDetail />
               </RoleRoute>
             } />
 

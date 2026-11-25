@@ -339,6 +339,8 @@ class ReportService:
                 business_date=c.business_date, branch_id=c.branch_id, branch=c.branch.name, status=c.status,
                 total_cash=float(c.total_cash), total_mobile_money=float(c.total_mobile_money),
                 total_bank_transfer=float(c.total_bank_transfer), total_revenue=float(c.total_revenue),
+                total_credit_given=float(c.total_credit_given),
+                total_debt_collected=float(c.total_debt_collected),
                 cash_variance=float(c.cash_variance) if c.cash_variance is not None else None,
                 total_expenses=float(sum((e.amount for e in c.expenses), Decimal("0"))),
                 expenses=[
@@ -353,6 +355,8 @@ class ReportService:
             total_mobile_money=sum(c.total_mobile_money for c in closings),
             total_bank_transfer=sum(c.total_bank_transfer for c in closings),
             total_revenue=sum(c.total_revenue for c in closings),
+            total_credit_given=sum(c.total_credit_given for c in closings),
+            total_debt_collected=sum(c.total_debt_collected for c in closings),
             closings_count=len(closings),
         )
         return ClosingReportResponse(summary=summary, closings=closings, generated_at=datetime.now(UTC))

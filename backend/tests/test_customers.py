@@ -169,3 +169,33 @@ async def test_deactivate_customer(client, db_session):
     got = await client.get(f"/api/v1/customers/{customer.id}", headers=h)
     assert got.status_code == 200
     assert got.json()["customer"]["status"] == "inactive"
+
+
+@pytest.mark.asyncio
+async def test_customer_list_includes_scoped_balance(client, db_session):
+    import uuid as _uuid
+    from app.core.business_time import business_date_today
+    from app.services import ledger_service
+
+    a = await make_branch(db_session)
+    b = await make_branch(db_session)
+    admin = await make_user(db_session, "admin")
+    cashier_b = await make_user(db_session, "cashier", branch=b)
+    customer = await make_customer(db_session, credit_limit=Decimal("1000000"), name="Zuberi Listbalance")
+    for branch, amount in ((a, "300000"), (b, "200000")):
+        await ledger_service.post(
+            db_session, customer_id=customer.id, branch_id=branch.id, entry_type="opening_balance",
+            source_type="opening_balance", source_id=_uuid.uuid4(), business_date=business_date_today(),
+            description="t", created_by=admin.id, debit=Decimal(amount),
+        )
+
+    async def item(user):
+        r = await client.get("/api/v1/customers", params={"q": "Zuberi Listbalance"}, headers=auth_headers(user))
+        assert r.status_code == 200, r.text
+        return next(c for c in r.json()["items"] if c["id"] == str(customer.id))
+
+    mine = await item(cashier_b)
+    assert mine["balance"] == "200000.00"
+    assert mine["available_credit"] == "500000.00"
+    assert "overdue" in mine and "last_payment_at" in mine
+    assert (await item(admin))["balance"] == "500000.00"

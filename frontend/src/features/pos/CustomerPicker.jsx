@@ -130,7 +130,7 @@ export default function CustomerPicker({ value, onChange, allowCreate = true, la
       {allowCreate && !creating && (
         <button
           type="button"
-          className="text-xs text-accent-blue inline-flex items-center gap-1"
+          className="text-xs text-primary-light hover:underline inline-flex items-center gap-1"
           onClick={() => setCreating(true)}
         >
           <UserPlus size={14} /> {SW.wateja.mtejaMpya}

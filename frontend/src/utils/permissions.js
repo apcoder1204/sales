@@ -19,6 +19,8 @@ export const PERMISSION_MAP = {
     'users.read', 'users.write',
     'branches.read', 'branches.manage',
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
+    'customers.read', 'customers.write', 'customers.credit',
+    'payments.collect', 'payments.reverse', 'opening_balances.manage',
   ],
   admin: [
     'products.read', 'products.write', 'products.delete', 'products.cost',
@@ -30,6 +32,8 @@ export const PERMISSION_MAP = {
     'users.read', 'users.write',
     'branches.read', 'branches.manage',
     'closing.close', 'closing.view', 'closing.reopen', 'reports.closing',
+    'customers.read', 'customers.write', 'customers.credit',
+    'payments.collect', 'payments.reverse', 'opening_balances.manage',
   ],
   general_manager: [
     'products.read', 'products.write',
@@ -41,6 +45,7 @@ export const PERMISSION_MAP = {
     'audit.read',
     'branches.read',
     'closing.view',
+    'customers.read',
   ],
   store_keeper: [
     'products.read',
@@ -56,6 +61,7 @@ export const PERMISSION_MAP = {
     'sales.read', 'sales.create',
     'transfers.read', 'transfers.request', 'transfers.execute',
     'closing.close', 'closing.view', 'reports.closing',
+    'customers.read', 'customers.write', 'payments.collect',
   ],
 }
 

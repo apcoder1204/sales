@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 from uuid import UUID
 from datetime import date, datetime, timedelta, timezone
@@ -30,6 +31,13 @@ def _utcnow() -> datetime:
 
 def _fmt(amount: Decimal) -> str:
     return f"{settings.CURRENCY} {int(amount):,}"
+
+
+def _local_time(dt: datetime) -> datetime:
+    """Receipts show the shop's local time, not the stored UTC."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(ZoneInfo(settings.DEFAULT_TIMEZONE))
 
 
 def _method_label(method: str) -> str:
@@ -342,7 +350,7 @@ class SaleService:
             transaction_no=sale.transaction_no,
             branch_name=sale.branch.name,
             cashier_name=cashier.full_name,
-            date=sale.created_at.strftime("%d/%m/%Y %H:%M"),
+            date=_local_time(sale.created_at).strftime("%d/%m/%Y %H:%M"),
             items=items,
             subtotal=_fmt(sale.subtotal),
             total_amount=_fmt(sale.total_amount),

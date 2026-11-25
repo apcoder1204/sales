@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Lock, Unlock, Wallet, Smartphone, Landmark, Receipt, FileDown, FileSpreadsheet, DoorOpen } from 'lucide-react'
+import { Lock, Unlock, Wallet, Smartphone, Landmark, Receipt, FileDown, FileSpreadsheet, DoorOpen, HandCoins } from 'lucide-react'
 import PageWrapper from '@components/layout/PageWrapper'
 import KpiCard from '@components/ui/KpiCard'
 import Select from '@components/ui/Select'
@@ -167,6 +167,8 @@ export default function ClosingPage() {
       render: (v) => <Badge color={v === 'closed' ? 'green' : 'yellow'}>{v === 'closed' ? SW.ufungaji.imefungwa : SW.ufungaji.wazi}</Badge>,
     },
     { key: 'total_revenue', header: SW.ufungaji.jumlaKuu, render: (v) => formatCurrency(v) },
+    { key: 'total_credit_given', header: SW.wateja.mkopoUliotolewa, render: (v) => formatCurrency(v) },
+    { key: 'total_debt_collected', header: SW.wateja.madeniYaliyolipwa, render: (v) => formatCurrency(v) },
     {
       key: 'cash_variance', header: SW.ufungaji.tofauti,
       render: (v) => v == null ? '—' : (
@@ -342,6 +344,8 @@ export default function ClosingPage() {
               <KpiCard title={SW.ufungaji.simuLipa} value={formatCurrency(preview.total_mobile_money)} icon={Smartphone} color="blue" />
               <KpiCard title={SW.ufungaji.benki} value={formatCurrency(preview.total_bank_transfer)} icon={Landmark} color="purple" />
               <KpiCard title={SW.ufungaji.jumlaKuu} value={formatCurrency(preview.total_revenue)} icon={Receipt} color="yellow" />
+              <KpiCard title={SW.wateja.mkopoUliotolewa} value={formatCurrency(preview.total_credit_given)} icon={HandCoins} color="red" />
+              <KpiCard title={SW.wateja.madeniYaliyolipwa} value={formatCurrency(preview.total_debt_collected)} icon={Wallet} color="green" />
             </div>
             <p className="text-xs text-text-muted">{SW.ufungaji.idadiMauzo}: {preview.total_sales_count}</p>
 
