@@ -2,6 +2,7 @@ from uuid import UUID
 from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
+from app.models.payment import Payment, PaymentAllocation
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.repositories.base import BaseRepository
@@ -50,7 +51,12 @@ class SaleRepository(BaseRepository[Sale]):
         if cashier_id:
             q = q.where(Sale.cashier_id == cashier_id)
         if payment_method:
-            q = q.where(Sale.payment_method == payment_method)
+            q = q.where(
+                select(PaymentAllocation.id)
+                .join(Payment, Payment.id == PaymentAllocation.payment_id)
+                .where(PaymentAllocation.sale_id == Sale.id, Payment.method == payment_method)
+                .exists()
+            )
         if from_date:
             q = q.where(Sale.created_at >= datetime.combine(from_date, datetime.min.time()))
         if to_date:
@@ -66,28 +72,54 @@ class SaleRepository(BaseRepository[Sale]):
         self, db: AsyncSession,
         branch_id: UUID, from_dt: datetime, to_dt: datetime
     ) -> dict:
-        """Aggregate completed-sale totals per payment method for a branch and
-        time window — shared by the sales report's payment breakdown and by
-        end-of-day closing (preview + close)."""
-        q = select(
-            Sale.payment_method,
-            func.count(Sale.id).label("cnt"),
-            func.coalesce(func.sum(Sale.total_amount), 0).label("total"),
-        ).where(
+        """Money actually received at a branch in a time window, per method —
+        shared by end-of-day closing (preview + close). Method totals are
+        active payments of both kinds (till + debt collections, spec §6.4);
+        `count`/`revenue` are completed sales; `credit_given` is the part of
+        those sales not paid at the till; `debt_collected` is debt payments."""
+        in_window = (
+            Payment.status == "active",
+            Payment.branch_id == branch_id,
+            Payment.created_at >= from_dt,
+            Payment.created_at <= to_dt,
+        )
+        rows = (await db.execute(
+            select(Payment.method, func.coalesce(func.sum(Payment.amount), 0).label("total"))
+            .where(*in_window).group_by(Payment.method)
+        )).all()
+        totals = {"cash": 0, "mobile_money": 0, "bank_transfer": 0}
+        for r in rows:
+            totals[r.method] = float(r.total or 0)
+
+        sale_window = (
             Sale.status == "completed",
             Sale.branch_id == branch_id,
             Sale.created_at >= from_dt,
             Sale.created_at <= to_dt,
-        ).group_by(Sale.payment_method)
-        rows = (await db.execute(q)).all()
-        totals = {"cash": 0, "mobile_money": 0, "bank_transfer": 0}
-        count = 0
-        revenue = 0
-        for r in rows:
-            totals[r.payment_method] = float(r.total or 0)
-            count += int(r.cnt)
-            revenue += float(r.total or 0)
-        return {**totals, "count": count, "revenue": revenue}
+        )
+        count, revenue = (await db.execute(
+            select(func.count(Sale.id), func.coalesce(func.sum(Sale.total_amount), 0))
+            .where(*sale_window)
+        )).one()
+        paid_at_till = (
+            select(func.coalesce(func.sum(PaymentAllocation.amount), 0))
+            .join(Payment, Payment.id == PaymentAllocation.payment_id)
+            .where(
+                PaymentAllocation.sale_id == Sale.id,
+                Payment.kind == "sale", Payment.status == "active",
+            )
+            .scalar_subquery()
+        )
+        credit_given = (await db.execute(
+            select(func.coalesce(func.sum(Sale.total_amount - paid_at_till), 0)).where(*sale_window)
+        )).scalar()
+        debt_collected = (await db.execute(
+            select(func.coalesce(func.sum(Payment.amount), 0)).where(*in_window, Payment.kind == "debt")
+        )).scalar()
+        return {
+            **totals, "count": int(count), "revenue": float(revenue or 0),
+            "credit_given": float(credit_given or 0), "debt_collected": float(debt_collected or 0),
+        }
 
     async def get_sales_summary(
         self, db: AsyncSession,

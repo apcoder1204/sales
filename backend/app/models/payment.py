@@ -71,7 +71,7 @@ class PaymentAllocation(Base):
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
-    payment: Mapped["Payment"] = relationship("Payment", back_populates="allocations")
+    payment: Mapped["Payment"] = relationship("Payment", back_populates="allocations", lazy="selectin")
 
     __table_args__ = (
         CheckConstraint("amount > 0", name="chk_allocations_amount_pos"),

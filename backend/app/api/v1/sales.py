@@ -11,7 +11,8 @@ from app.schemas.sale import (
     SaleCreate, SaleResponse, SaleCreateResponse, SaleVoidRequest, ReceiptData, SaleItemResponse,
 )
 from app.schemas.common import PaginatedResponse, MessageResponse
-from app.services.sale_service import sale_service
+from app.services.sale_service import sale_service, sale_payment_view
+from app.schemas.customer import CustomerRef
 from app.repositories.sale_repo import sale_repo
 from app.core.exceptions import InsufficientPermissionException
 import math
@@ -22,13 +23,17 @@ _IDEMPOTENCY_ENDPOINT = "POST /sales"
 
 
 def _sale_response(s) -> SaleResponse:
+    view = sale_payment_view(s)
     return SaleResponse(
         id=s.id, transaction_no=s.transaction_no,
         branch=s.branch.name, branch_id=s.branch_id,
         cashier=s.cashier.full_name, cashier_id=s.cashier_id,
         subtotal=s.subtotal, total_amount=s.total_amount,
-        payment_method=s.payment_method, payment_reference=s.payment_reference,
+        payment_method=view.payment_method, payment_reference=view.payment_reference,
         status=s.status,
+        customer=CustomerRef.model_validate(s.customer) if s.customer else None,
+        payments=view.payments, paid=view.paid, outstanding=view.outstanding,
+        payment_status=view.payment_status, due_date=s.due_date,
         items=[
             SaleItemResponse(
                 id=i.id, product_id=i.product_id, product=i.product.name,

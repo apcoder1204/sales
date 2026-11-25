@@ -46,6 +46,12 @@ class Sale(Base):
     cashier: Mapped["User"] = relationship("User", foreign_keys=[cashier_id], lazy="selectin")
     voider: Mapped["User | None"] = relationship("User", foreign_keys=[voided_by], lazy="selectin")
     customer: Mapped["Customer | None"] = relationship("Customer", lazy="selectin")
+    # Read-only view of the payments applied to this sale (sale-time and
+    # debt payments, active or reversed). Written only via PaymentAllocation.
+    payment_allocations: Mapped[list["PaymentAllocation"]] = relationship(
+        "PaymentAllocation", viewonly=True, lazy="selectin",
+        primaryjoin="Sale.id == foreign(PaymentAllocation.sale_id)",
+    )
 
     __table_args__ = (
         CheckConstraint("subtotal >= 0", name="chk_sales_subtotal_pos"),

@@ -25,6 +25,7 @@ from app.models.category import Category
 from app.models.daily_closing import DailyClosing
 from app.models.inventory import Inventory
 from app.models.inventory_transaction import InventoryTransaction
+from app.models.payment import Payment, PaymentAllocation
 from app.models.product import Product
 from app.models.role import Role
 from app.models.sale import Sale
@@ -176,6 +177,10 @@ async def test_sales_after_closing_belong_to_a_new_register_period():
                         delete(InventoryTransaction).where(InventoryTransaction.reference_id.in_(sale_ids))
                     )
                     await cleanup.execute(delete(SaleItem).where(SaleItem.sale_id.in_(sale_ids)))
+                    await cleanup.execute(
+                        delete(PaymentAllocation).where(PaymentAllocation.sale_id.in_(sale_ids))
+                    )
+                    await cleanup.execute(delete(Payment).where(Payment.branch_id == ids["branch_id"]))
                     await cleanup.execute(delete(Sale).where(Sale.id.in_(sale_ids)))
                 await cleanup.execute(delete(DailyClosing).where(DailyClosing.branch_id == ids["branch_id"]))
                 await cleanup.execute(delete(AuditLog).where(AuditLog.branch_id == ids["branch_id"]))
