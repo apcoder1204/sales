@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import Modal from '@components/ui/Modal'
 import Button from '@components/ui/Button'
 import Select from '@components/ui/Select'
@@ -13,13 +14,23 @@ import { formatCurrency } from '@utils/formatters'
 import { getPaymentMethods } from '@utils/constants'
 import { isGlobalRole } from '@utils/permissions'
 import SW from '@constants/sw'
+import CustomerPicker from './CustomerPicker'
+
+const MAX_LINES = 3
+const NEEDS_REFERENCE = ['mobile_money', 'bank_transfer']
+// Whole shillings only on the client; the server re-checks every amount.
+const toInt = (v) => {
+  const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10)
+  return Number.isFinite(n) ? n : 0
+}
 
 export default function CheckoutModal({ open, onClose, onComplete }) {
   const { items, subtotal, total, clear } = useCart()
   const { user } = useAuth()
   const { loading, call } = useApi()
   const { activeBranchId, branches } = useBranch()
-  const [payment, setPayment] = useState({ method: 'cash', reference: '' })
+  const [lines, setLines] = useState([{ method: 'cash', amount: '', reference: '' }])
+  const [customer, setCustomer] = useState(null)
 
   // One key per checkout attempt, reused across retries (a slow/ambiguous
   // network response the cashier retries by clicking Sell again, or a
@@ -28,11 +39,30 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   // Regenerated each time the modal opens — a fresh open is a new attempt.
   const idempotencyKeyRef = useRef(null)
   useEffect(() => {
-    if (open) idempotencyKeyRef.current = crypto.randomUUID()
+    if (open) {
+      idempotencyKeyRef.current = crypto.randomUUID()
+      // Most sales are paid in full in cash: start there.
+      setLines([{ method: 'cash', amount: String(Math.round(total)), reference: '' }])
+      setCustomer(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const isGlobal = isGlobalRole(user)
-  const needsReference = ['mobile_money', 'bank_transfer'].includes(payment.method)
+  const totalInt = Math.round(total)
+  const paid = useMemo(() => lines.reduce((sum, l) => sum + toInt(l.amount), 0), [lines])
+  const deni = totalInt - paid
+  const overpaid = deni < 0
+  const missingReference = lines.some(
+    (l) => toInt(l.amount) > 0 && NEEDS_REFERENCE.includes(l.method) && !l.reference.trim()
+  )
+  const available = customer?.summary?.available_credit
+  const overLimitHint = deni > 0 && available !== undefined && available !== null && deni > Number(available)
+
+  const setLine = (i, patch) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  const payRemainder = (i) => setLine(i, { amount: String(toInt(lines[i].amount) + Math.max(0, deni)) })
+  const addLine = () => setLines((ls) => [...ls, { method: 'mobile_money', amount: String(Math.max(0, deni)), reference: '' }])
+  const removeLine = (i) => setLines((ls) => ls.filter((_, j) => j !== i))
 
   // A sale always sells from wherever the global branch switcher (top bar)
   // is currently pointed — there is no separate in-checkout branch choice,
@@ -47,28 +77,40 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
   const effectiveBranchId = isGlobal ? activeBranchId : user?.branch_id
 
   const handleCheckout = async () => {
-    if (needsReference && !payment.reference.trim()) return
-    if (!effectiveBranchId) return
+    if (!canSubmit) return
 
     const payload = {
       branch_id: effectiveBranchId,
-      payment_method: payment.method,
-      payment_reference: payment.reference || undefined,
+      customer_id: customer?.id || undefined,
+      payments: lines
+        .filter((l) => toInt(l.amount) > 0)
+        .map((l) => ({
+          method: l.method,
+          amount: String(toInt(l.amount)),
+          reference: l.reference.trim() || undefined,
+        })),
       items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
     }
 
-    const receipt = await call(() => saleService.create(payload, idempotencyKeyRef.current), {
-      successMsg: SW.mauzo.mauzoYamefanikiwa,
-    })
+    let result
+    try {
+      result = await call(() => saleService.create(payload, idempotencyKeyRef.current), {
+        successMsg: SW.mauzo.mauzoYamefanikiwa,
+      })
+    } catch {
+      return // useApi already showed the translated error (e.g. credit limit numbers)
+    }
 
-    if (receipt) {
+    if (result) {
       clear()
-      onComplete(receipt)
+      onComplete(result)
     }
   }
 
   const canSubmit = items.length > 0
-    && !(needsReference && !payment.reference)
+    && !overpaid
+    && !missingReference
+    && !(deni > 0 && !customer)
     && Boolean(effectiveBranchId)
     && globalBranchReady
 
@@ -77,7 +119,7 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
       open={open}
       onClose={onClose}
       title={SW.mauzo.thibitisha}
-      size="sm"
+      size="md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>{SW.common.ghairi}</Button>
@@ -114,22 +156,66 @@ export default function CheckoutModal({ open, onClose, onComplete }) {
           </div>
         </div>
 
-        <Select
-          label={SW.mauzo.njiaYaLipa}
-          value={payment.method}
-          onChange={(e) => setPayment({ ...payment, method: e.target.value })}
-          options={getPaymentMethods()}
-        />
+        {/* Payment lines: one or more methods; whatever isn't paid is debt */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-text-secondary">{SW.mauzo.malipo}</p>
+          {lines.map((line, i) => (
+            <div key={i} className="glass-card p-3 space-y-2">
+              <div className="flex gap-2 items-end">
+                <Select
+                  containerClassName="flex-1"
+                  label={SW.mauzo.njiaYaLipa}
+                  value={line.method}
+                  onChange={(e) => setLine(i, { method: e.target.value })}
+                  options={getPaymentMethods()}
+                />
+                <Input
+                  containerClassName="flex-1"
+                  label={SW.mauzo.kiasi}
+                  inputMode="numeric"
+                  value={line.amount}
+                  onChange={(e) => setLine(i, { amount: e.target.value.replace(/[^0-9]/g, '') })}
+                />
+                <Button variant="ghost" size="icon" onClick={() => removeLine(i)} aria-label={SW.mauzo.ondoaMalipo}>
+                  <Trash2 size={16} />
+                </Button>
+              </div>
+              {NEEDS_REFERENCE.includes(line.method) && (
+                <Input
+                  label={SW.mauzo.kumbukumbuNamba}
+                  value={line.reference}
+                  onChange={(e) => setLine(i, { reference: e.target.value })}
+                  placeholder={SW.mauzo.kumbukumbuPlaceholder}
+                  required
+                />
+              )}
+              {deni > 0 && (
+                <button type="button" className="text-xs text-accent-blue" onClick={() => payRemainder(i)}>
+                  {SW.mauzo.lipaYote}
+                </button>
+              )}
+            </div>
+          ))}
+          {lines.length < MAX_LINES && (
+            <button type="button" className="text-xs text-accent-blue inline-flex items-center gap-1" onClick={addLine}>
+              <Plus size={14} /> {SW.mauzo.ongezaMalipo}
+            </button>
+          )}
+        </div>
 
-        {needsReference && (
-          <Input
-            label={SW.mauzo.kumbukumbuNamba}
-            value={payment.reference}
-            onChange={(e) => setPayment({ ...payment, reference: e.target.value })}
-            placeholder={SW.mauzo.kumbukumbuPlaceholder}
-            required
-          />
-        )}
+        <div className="glass-card p-3 space-y-1 text-sm">
+          <div className="flex justify-between text-text-secondary">
+            <span>{SW.mauzo.kilicholipwa}</span><span>{formatCurrency(paid)}</span>
+          </div>
+          <div className={`flex justify-between font-medium ${deni > 0 ? 'text-accent-red' : 'text-text-primary'}`}>
+            <span>{SW.mauzo.deni}</span><span>{formatCurrency(Math.max(0, deni))}</span>
+          </div>
+          {overpaid && <p className="text-xs text-accent-red">{SW.mauzo.malipoYanazidi}</p>}
+        </div>
+
+        <CustomerPicker value={customer} onChange={setCustomer} label={deni > 0 ? SW.mauzo.mteja : SW.mauzo.mtejaHiari} />
+        {deni > 0 && !customer && <p className="text-xs text-accent-red">{SW.mauzo.mtejaAnahitajika}</p>}
+        {overLimitHint && <p className="text-xs text-accent-yellow">{SW.mauzo.mkopoUnazidi}</p>}
 
         {/* Item summary */}
         <div>
