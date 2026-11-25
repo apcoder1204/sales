@@ -108,6 +108,7 @@ class ClosingReportExpense(BaseModel):
 
 class ClosingReportRow(BaseModel):
     business_date: date
+    branch_id: UUID
     branch: str
     status: str
     total_cash: float

@@ -33,6 +33,9 @@ export default function SendWhatsAppButton({
     } catch (err) {
       if (err?.response?.status === 504 || err?.code === 'ECONNABORTED') {
         toast.error(SW.whatsapp.haijathibitishwa)
+      } else if (err?.response?.status === 413) {
+        // May come from nginx (HTML body, no error code) before the backend.
+        toast.error(SW.makosa.msimbo.WHATSAPP_PDF_TOO_LARGE)
       } else {
         toast.error(resolveApiErrorMessage(err))
       }

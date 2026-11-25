@@ -295,7 +295,9 @@ export async function buildPDF(type, data, period) {
   ])
 
   const { title, sheets } = normalise(type, data, period)
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  // compress: report tables are text-heavy; uncompressed output easily
+  // passes nginx's default 1 MB request limit when sent to WhatsApp.
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true })
 
   const BLUE = [37, 99, 235]
   const LIGHT = [241, 245, 249]
@@ -355,7 +357,9 @@ export async function buildPDF(type, data, period) {
     blob: doc.output('blob'),
     filename: filename(type, 'pdf', period),
     title,
-    periodLabel: timestamp(),
+    // The report period when it is a concrete date (closings); callers with a
+    // named period (today/week/custom range) pass their own label.
+    periodLabel: /^\d{4}-\d{2}-\d{2}$/.test(period || '') ? period : '',
   }
 }
 

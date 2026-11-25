@@ -238,3 +238,45 @@ async def test_title_control_chars_stripped(client, db_session, gateway):
     assert resp.status_code == 200
     first_line = gateway.calls[0]["caption"].split("\n")[0]
     assert first_line == "*Ripoti ya Mauzo*"
+
+
+async def test_same_title_different_period_not_duplicate(client, db_session, gateway):
+    """Every custom range is titled e.g. 'Mauzo — CUSTOM': the period must be
+    part of what identifies a report."""
+    admin = await _with_receiver(db_session)
+    r1 = await _send(client, admin, body=pdf(1), title="Mauzo — CUSTOM", period_label="2026-11-01 – 2026-11-07")
+    r2 = await _send(client, admin, body=pdf(2), title="Mauzo — CUSTOM", period_label="2026-11-08 – 2026-11-14")
+    assert (r1.status_code, r2.status_code) == (200, 200), r2.text
+    assert "2026-11-08 – 2026-11-14" in gateway.calls[1]["caption"]
+
+
+async def test_same_closing_date_different_branch_not_duplicate(client, db_session, gateway):
+    """Admin viewing all branches sends branch A's then branch B's closing
+    for the same day: two different reports."""
+    admin = await _with_receiver(db_session)
+    branch_a = await make_branch(db_session)
+    branch_b = await make_branch(db_session)
+    r1 = await _send(client, admin, report_type="closing", title="Ufungaji — 2026-11-25",
+                     period_label="2026-11-25", branch_id=branch_a.id)
+    r2 = await _send(client, admin, report_type="closing", title="Ufungaji — 2026-11-25",
+                     period_label="2026-11-25", branch_id=branch_b.id)
+    assert (r1.status_code, r2.status_code) == (200, 200), r2.text
+    assert branch_b.name in gateway.calls[1]["caption"]
+
+
+async def test_closing_report_rows_carry_branch_id(client, db_session):
+    """The Ripoti page's per-closing send button needs each row's branch."""
+    branch = await make_branch(db_session)
+    admin = await make_user(db_session, "admin")
+    resp = await client.post(
+        "/api/v1/closings/close", headers=auth_headers(admin),
+        json={"branch_id": str(branch.id), "counted_cash": 0, "expenses": []},
+    )
+    assert resp.status_code == 201, resp.text
+    resp = await client.get(
+        "/api/v1/reports/closing", headers=auth_headers(admin),
+        params={"period": "month", "branch_id": str(branch.id)},
+    )
+    assert resp.status_code == 200
+    rows = resp.json()["closings"]
+    assert rows and rows[0]["branch_id"] == str(branch.id)

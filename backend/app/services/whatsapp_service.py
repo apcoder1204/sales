@@ -146,11 +146,11 @@ async def _sent_today_count(db: AsyncSession) -> int:
     ) or 0
 
 
-def _report_key(report_type: str, title: str, branch_id: UUID | None) -> str:
+def _report_key(report_type: str, title: str, period_label: str, branch_id: UUID | None) -> str:
     """Identifies *which report* is being sent, independent of the PDF bytes:
     browser-built PDFs embed a generation timestamp, so re-sending the same
     report produces a different file every time."""
-    raw = f"{report_type}|{title}|{branch_id or ''}"
+    raw = f"{report_type}|{title}|{period_label}|{branch_id or ''}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
@@ -189,7 +189,7 @@ async def send_report(
     title = _clean(title, 120)
     period_label = _clean(period_label, 60)
     sha256 = hashlib.sha256(pdf).hexdigest()
-    report_key = _report_key(report_type, title, resolved_branch_id)
+    report_key = _report_key(report_type, title, period_label, resolved_branch_id)
 
     await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _SEND_LOCK_KEY})
     if await _sent_today_count(db) >= settings.WHATSAPP_DAILY_CAP:

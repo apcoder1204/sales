@@ -135,8 +135,8 @@ about the demo `.env` was changed; do not bypass that check, fix the
 
 Reports are sent as PDFs to one receiver number through OpenWA, a
 self-hosted, **unofficial** WhatsApp client running in Docker at
-`127.0.0.1:2785` (compose file: `/opt/openwa/docker-compose.yml`, secrets in
-`/opt/openwa/.env`, mode 600). The sender is a dedicated spare SIM, not the
+`127.0.0.1:2785` (compose file: `/home/cctvpoint/openwa/docker-compose.yml`, secrets in
+`/home/cctvpoint/openwa/.env`, mode 600). The sender is a dedicated spare SIM, not the
 business number: WhatsApp may restrict it, the receiver is never at risk.
 
 **Is it connected?** The Matawi page's "WhatsApp — Ripoti" card shows a
@@ -144,14 +144,14 @@ green/red badge. From the server:
 
 ```bash
 docker ps --filter name=openwa-api
-KEY=$(sudo -n grep OPENWA_API_KEY /opt/openwa/.env | cut -d= -f2)
+KEY=$(grep OPENWA_API_KEY /home/cctvpoint/openwa/.env | cut -d= -f2)
 SID=$(grep OPENWA_SESSION_ID /opt/dukanipos/backend/.env | cut -d= -f2)
 curl -s -H "X-API-Key: $KEY" http://127.0.0.1:2785/api/sessions/$SID | python3 -m json.tool   # "status": "ready"
 ```
 
 **Badge red / "WhatsApp haijaunganishwa"**
 
-1. Container down → `cd /opt/openwa && docker compose up -d`.
+1. Container down → `cd /home/cctvpoint/openwa && docker compose up -d`.
 2. Session not `ready` → try `POST /api/sessions/$SID/start` (same headers).
 3. Still `qr_ready` / logged out → re-link: from your laptop
    `ssh -L 2785:127.0.0.1:2785 dukani-prod`, open `http://127.0.0.1:2785`,

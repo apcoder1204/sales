@@ -317,7 +317,7 @@ class ReportService:
 
         closings = [
             ClosingReportRow(
-                business_date=c.business_date, branch=c.branch.name, status=c.status,
+                business_date=c.business_date, branch_id=c.branch_id, branch=c.branch.name, status=c.status,
                 total_cash=float(c.total_cash), total_mobile_money=float(c.total_mobile_money),
                 total_bank_transfer=float(c.total_bank_transfer), total_revenue=float(c.total_revenue),
                 cash_variance=float(c.cash_variance) if c.cash_variance is not None else None,

@@ -70,6 +70,12 @@ export default function ReportsPage() {
     }
   }
 
+  // Human-readable report period for the WhatsApp caption (and to tell two
+  // different custom ranges apart server-side).
+  const periodText = period === 'custom'
+    ? `${dateFrom} – ${dateTo}`
+    : getReportPeriods().find((p) => p.value === period)?.label || period
+
   const handleExport = async (format) => {
     if (!data) return
     setExporting(format)
@@ -175,7 +181,7 @@ export default function ReportsPage() {
             </Button>
             <SendWhatsAppButton
               reportType={activeReportType}
-              getPdf={() => buildPDF(activeReportType, data, period)}
+              getPdf={async () => ({ ...(await buildPDF(activeReportType, data, period)), periodLabel: periodText })}
               branchId={branchFilter.branch_id}
               disabled={!!exporting}
             />
@@ -202,14 +208,13 @@ export default function ReportsPage() {
           onClosingExport={handleClosingExport}
           closingExporting={exporting}
           canDownloadClosing={can('reports.closing')}
-          closingBranchId={branchFilter.branch_id}
         />
       )}
     </PageWrapper>
   )
 }
 
-function ReportContent({ type, data, onClosingExport, closingExporting, canDownloadClosing, closingBranchId }) {
+function ReportContent({ type, data, onClosingExport, closingExporting, canDownloadClosing }) {
   switch (type) {
     case 'sales': return <SalesReport data={data} />
     case 'inventory': return <InventoryReport data={data} />
@@ -224,7 +229,6 @@ function ReportContent({ type, data, onClosingExport, closingExporting, canDownl
         onExport={onClosingExport}
         exporting={closingExporting}
         canDownload={canDownloadClosing}
-        branchId={closingBranchId}
       />
     )
     case 'profit_loss': return <ProfitLossReport data={data} />
@@ -424,7 +428,7 @@ function CashierReport({ data }) {
   )
 }
 
-function ClosingReport({ data, onExport, exporting, canDownload, branchId }) {
+function ClosingReport({ data, onExport, exporting, canDownload }) {
   const s = data.summary || {}
 
   return (
@@ -506,7 +510,7 @@ function ClosingReport({ data, onExport, exporting, canDownload, branchId }) {
                   iconOnly
                   size="sm"
                   getPdf={() => buildPDF('closing', toClosingExportData([row]), row.business_date)}
-                  branchId={branchId}
+                  branchId={row.branch_id}
                   disabled={!!exporting}
                 />
               </div>

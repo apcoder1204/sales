@@ -80,8 +80,9 @@ async def send_report(
     db: AsyncSession = Depends(get_db),
     gateway: WhatsAppGateway = Depends(get_whatsapp_gateway),
 ):
-    # Read at most one byte past the cap so an oversize upload is detected
-    # without buffering an arbitrarily large body.
+    # Starlette has already spooled the multipart body (to disk past 1 MB);
+    # the real request-size bound is nginx's client_max_body_size. Read one
+    # byte past the cap so send_report can tell an oversize file apart.
     pdf = await file.read(whatsapp_service.MAX_PDF_BYTES + 1)
     await whatsapp_service.send_report(
         db, current_user, gateway,

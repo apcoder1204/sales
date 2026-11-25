@@ -33,18 +33,22 @@ systemd services (all run as user `cctvpoint`):
   dukani-deploy-webhook  python3 /home/cctvpoint/webhook_receiver.py  (listens on :9001)
   cloudflared            Cloudflare Tunnel client
 
-Docker container (the only one on the box):
+Docker container (DUKANI's only one; another project's containers also run here):
   openwa-api             OpenWA WhatsApp gateway, 127.0.0.1:2785 only — never
                           proxied by Nginx or the tunnel. Compose file in
-                          /opt/openwa (copy of deploy/openwa/). Both prod and
+                          /home/cctvpoint/openwa (copy of deploy/openwa/). Both prod and
                           demo backends call it to send report PDFs.
 ```
 
 Two independent Postgres databases on the same server: `dukani_pos` (prod,
 role `dukani`) and `dukani_pos_demo` (demo, role `dukani_demo`).
 
-The app itself does not run in Docker. Docker Engine is installed only for
-the OpenWA WhatsApp gateway (see RUNBOOK.md "WhatsApp gateway"). There is
+The app itself does not run in Docker; of DUKANI's components only the
+OpenWA WhatsApp gateway does (see RUNBOOK.md "WhatsApp gateway").
+`cctvpoint` is in the `docker` group, so no sudo is needed for it.
+
+Both sites' `location /api/` blocks set `client_max_body_size 12m;` so
+report PDFs can be uploaded for WhatsApp sending (nginx's default is 1 MB). There is
 no load balancer beyond Nginx: this is a single-server setup. (An earlier draft of this doc
 described a Docker Compose + certbot setup; that was never actually built
 out — this document now matches what's really running.)
@@ -127,7 +131,7 @@ types/defaults):
 | `FRONTEND_URL` | used to build the password-reset link sent by email |
 | `DEFAULT_TIMEZONE` | `Africa/Dar_es_Salaam` — see the business-date/timezone notes in `SECURITY.md`/code comments; changing this changes what "today" means for every closing/report |
 | `WHATSAPP_ENABLED` | `true` to show "Tuma WhatsApp" and allow sends; default off |
-| `OPENWA_API_KEY` / `OPENWA_SESSION_ID` | OpenWA master key (same value as `/opt/openwa/.env`) and the linked session id; same in prod and demo |
+| `OPENWA_API_KEY` / `OPENWA_SESSION_ID` | OpenWA master key (same value as `/home/cctvpoint/openwa/.env`) and the linked session id; same in prod and demo |
 | `OPENWA_BASE_URL` / `OPENWA_TIMEOUT_SECONDS` | default `http://127.0.0.1:2785/api` / `30` |
 | `WHATSAPP_DAILY_CAP` | business-wide sends per day; prod `50`, demo `15` |
 | `WHATSAPP_RECEIVER_OVERRIDE` | demo only: pins the receiver number (shared demo logins can't change it) |

@@ -184,6 +184,8 @@ server {
     }
 
     location /api/ {
+        # Report PDFs are uploaded here for "Tuma WhatsApp" (backend cap 10 MB).
+        client_max_body_size 12m;
         proxy_pass http://127.0.0.1:${DEMO_PORT}/api/;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
