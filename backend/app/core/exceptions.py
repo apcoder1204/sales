@@ -104,3 +104,24 @@ class WhatsAppReceiverLockedException(WhatsAppException):
             "Namba ya kupokea imewekwa na seva na haiwezi kubadilishwa hapa",
             "WHATSAPP_RECEIVER_LOCKED",
         )
+
+
+def whatsapp_error(code: str, params: dict | None = None) -> WhatsAppException:
+    """Build the WhatsApp error for `code` with its fixed status + Swahili text."""
+    status, detail = _WHATSAPP_ERRORS[code]
+    if params:
+        detail = detail.format(**params)
+    return WhatsAppException(status, detail, code, params)
+
+
+_WHATSAPP_ERRORS: dict[str, tuple[int, str]] = {
+    "WHATSAPP_DISABLED": (503, "Kutuma kwa WhatsApp hakujawashwa"),
+    "WHATSAPP_NO_RECEIVER": (400, "Namba ya kupokea ripoti haijawekwa"),
+    "WHATSAPP_NOT_CONNECTED": (503, "WhatsApp haijaunganishwa"),
+    "WHATSAPP_SEND_FAILED": (502, "Imeshindwa kutuma kwa WhatsApp"),
+    "WHATSAPP_TIMEOUT": (504, "Haijathibitishwa — angalia WhatsApp kabla ya kutuma tena"),
+    "WHATSAPP_DAILY_CAP": (429, "Kikomo cha ripoti {cap} kwa siku kimefikiwa"),
+    "WHATSAPP_DUPLICATE": (409, "Ripoti hii imeshatumwa"),
+    "WHATSAPP_INVALID_PDF": (400, "Faili si PDF sahihi"),
+    "WHATSAPP_PDF_TOO_LARGE": (413, "Faili ni kubwa mno"),
+}

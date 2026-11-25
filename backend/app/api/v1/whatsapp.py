@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.dependencies import require_admin, require_role
+from app.core.rate_limit import get_client_ip
 from app.db.session import get_db
 from app.schemas.whatsapp import (
     WhatsAppSettingsResponse,
@@ -63,3 +66,27 @@ async def update_settings(
 ):
     await whatsapp_service.set_receiver(db, data.number, current_user)
     return await _settings_response(db, gateway)
+
+
+@router.post("/send-report")
+async def send_report(
+    request: Request,
+    file: UploadFile = File(...),
+    report_type: str = Form(..., max_length=50),
+    title: str = Form(..., max_length=120),
+    period_label: str = Form("", max_length=60),
+    branch_id: UUID | None = Form(None),
+    current_user=_any_report_reader,
+    db: AsyncSession = Depends(get_db),
+    gateway: WhatsAppGateway = Depends(get_whatsapp_gateway),
+):
+    # Read at most one byte past the cap so an oversize upload is detected
+    # without buffering an arbitrarily large body.
+    pdf = await file.read(whatsapp_service.MAX_PDF_BYTES + 1)
+    await whatsapp_service.send_report(
+        db, current_user, gateway,
+        pdf=pdf, filename=file.filename, report_type=report_type, title=title,
+        period_label=period_label, branch_id=branch_id,
+        ip=get_client_ip(request),
+    )
+    return {"status": "sent"}
