@@ -97,6 +97,14 @@ async def test_status_when_gateway_unreachable(client, db_session, monkeypatch):
         raise httpx.ConnectError("refused")
 
     fastapi_app.dependency_overrides[get_whatsapp_gateway] = lambda: _gateway(handler)
+    # Independent of any receiver saved in the shared dev DB (the test's
+    # transaction is rolled back, so deleting here is safe).
+    from app.models.app_setting import AppSetting
+    from app.services.whatsapp_service import RECEIVER_KEY
+    row = await db_session.get(AppSetting, RECEIVER_KEY)
+    if row:
+        await db_session.delete(row)
+        await db_session.flush()
     cashier = await make_user(db_session, "cashier")
     resp = await client.get("/api/v1/whatsapp/status", headers=auth_headers(cashier))
     assert resp.status_code == 200
