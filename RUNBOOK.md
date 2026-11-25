@@ -131,6 +131,51 @@ if you ever see it exit immediately with "REFUSING TO RUN", something
 about the demo `.env` was changed; do not bypass that check, fix the
 `.env` instead.
 
+## WhatsApp gateway (OpenWA)
+
+Reports are sent as PDFs to one receiver number through OpenWA, a
+self-hosted, **unofficial** WhatsApp client running in Docker at
+`127.0.0.1:2785` (compose file: `/opt/openwa/docker-compose.yml`, secrets in
+`/opt/openwa/.env`, mode 600). The sender is a dedicated spare SIM, not the
+business number: WhatsApp may restrict it, the receiver is never at risk.
+
+**Is it connected?** The Matawi page's "WhatsApp — Ripoti" card shows a
+green/red badge. From the server:
+
+```bash
+docker ps --filter name=openwa-api
+KEY=$(sudo -n grep OPENWA_API_KEY /opt/openwa/.env | cut -d= -f2)
+SID=$(grep OPENWA_SESSION_ID /opt/dukanipos/backend/.env | cut -d= -f2)
+curl -s -H "X-API-Key: $KEY" http://127.0.0.1:2785/api/sessions/$SID | python3 -m json.tool   # "status": "ready"
+```
+
+**Badge red / "WhatsApp haijaunganishwa"**
+
+1. Container down → `cd /opt/openwa && docker compose up -d`.
+2. Session not `ready` → try `POST /api/sessions/$SID/start` (same headers).
+3. Still `qr_ready` / logged out → re-link: from your laptop
+   `ssh -L 2785:127.0.0.1:2785 dukani-prod`, open `http://127.0.0.1:2785`,
+   log in with the API key, open the session, scan the QR from the sender
+   phone (WhatsApp → Linked devices → Link a device).
+
+**Keep the sender phone alive.** WhatsApp logs out linked devices if the
+phone itself is unused for ~14 days: open WhatsApp on it at least every
+couple of weeks and keep it charged and on the network.
+
+**Sender number got restricted / replaced.** Put WhatsApp on a new SIM,
+create a new session (`POST /api/sessions {"name": "dukani-reports-2"}`, then
+`/start`), link it as above, set the new id as `OPENWA_SESSION_ID` in both
+`/opt/dukanipos/backend/.env` and `/opt/dukanipos-demo/backend/.env`, then
+`sudo -n systemctl restart dukani-pos dukani-pos-demo`.
+
+**Limits.** Sends are capped per business day (`WHATSAPP_DAILY_CAP`: prod 50,
+demo 15, counted separately) and the same report is refused if re-sent within
+10 minutes. Every send attempt is in the audit log (`WHATSAPP_REPORT_SEND`,
+category System) with the sender, report, PDF SHA-256 and outcome.
+
+**Turn it off quickly.** Set `WHATSAPP_ENABLED=false` in the backend `.env`
+and restart the service: the button and settings card disappear.
+
 ## Useful one-liners
 
 ```bash

@@ -32,13 +32,20 @@ systemd services (all run as user `cctvpoint`):
   dukani-pos-demo        same, -b 127.0.0.1:8001, WorkingDirectory=/opt/dukanipos-demo/backend
   dukani-deploy-webhook  python3 /home/cctvpoint/webhook_receiver.py  (listens on :9001)
   cloudflared            Cloudflare Tunnel client
+
+Docker container (the only one on the box):
+  openwa-api             OpenWA WhatsApp gateway, 127.0.0.1:2785 only — never
+                          proxied by Nginx or the tunnel. Compose file in
+                          /opt/openwa (copy of deploy/openwa/). Both prod and
+                          demo backends call it to send report PDFs.
 ```
 
 Two independent Postgres databases on the same server: `dukani_pos` (prod,
 role `dukani`) and `dukani_pos_demo` (demo, role `dukani_demo`).
 
-There is **no Docker** in this deployment and no load balancer beyond
-Nginx — this is a single-server setup. (An earlier draft of this doc
+The app itself does not run in Docker. Docker Engine is installed only for
+the OpenWA WhatsApp gateway (see RUNBOOK.md "WhatsApp gateway"). There is
+no load balancer beyond Nginx: this is a single-server setup. (An earlier draft of this doc
 described a Docker Compose + certbot setup; that was never actually built
 out — this document now matches what's really running.)
 
@@ -119,6 +126,12 @@ types/defaults):
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | password-reset email; prod only in practice |
 | `FRONTEND_URL` | used to build the password-reset link sent by email |
 | `DEFAULT_TIMEZONE` | `Africa/Dar_es_Salaam` — see the business-date/timezone notes in `SECURITY.md`/code comments; changing this changes what "today" means for every closing/report |
+| `WHATSAPP_ENABLED` | `true` to show "Tuma WhatsApp" and allow sends; default off |
+| `OPENWA_API_KEY` / `OPENWA_SESSION_ID` | OpenWA master key (same value as `/opt/openwa/.env`) and the linked session id; same in prod and demo |
+| `OPENWA_BASE_URL` / `OPENWA_TIMEOUT_SECONDS` | default `http://127.0.0.1:2785/api` / `30` |
+| `WHATSAPP_DAILY_CAP` | business-wide sends per day; prod `50`, demo `15` |
+| `WHATSAPP_RECEIVER_OVERRIDE` | demo only: pins the receiver number (shared demo logins can't change it) |
+| `WHATSAPP_CAPTION_PREFIX` | demo only: `"[DEMO] "` |
 | `REDIS_URL` | present in the prod `.env` as a leftover from before Redis was removed from the app (rate limiting is in-process `memory://` now) — unused, safe to remove whenever the file is next touched, not urgent |
 
 ## Known gaps
