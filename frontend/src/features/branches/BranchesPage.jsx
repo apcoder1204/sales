@@ -6,6 +6,7 @@ import DataTable from '@components/tables/DataTable'
 import Badge from '@components/ui/Badge'
 import Modal from '@components/ui/Modal'
 import BranchDrawer from './BranchDrawer'
+import WhatsAppSettingsCard from './WhatsAppSettingsCard'
 import { branchService } from '@services/branchService'
 import { useApi } from '@hooks/useApi'
 import { useToast } from '@hooks/useToast'
@@ -104,6 +105,8 @@ export default function BranchesPage() {
         </Button>
       }
     >
+      <WhatsAppSettingsCard />
+
       <DataTable
         columns={columns}
         data={branches}
