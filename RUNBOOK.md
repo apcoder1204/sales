@@ -145,7 +145,7 @@ green/red badge. From the server:
 ```bash
 docker ps --filter name=openwa-api
 KEY=$(grep OPENWA_API_KEY /home/cctvpoint/openwa/.env | cut -d= -f2)
-SID=$(grep OPENWA_SESSION_ID /opt/dukanipos/backend/.env | cut -d= -f2)
+SID=$(cat /home/cctvpoint/openwa/session_id)
 curl -s -H "X-API-Key: $KEY" http://127.0.0.1:2785/api/sessions/$SID | python3 -m json.tool   # "status": "ready"
 ```
 
@@ -153,10 +153,24 @@ curl -s -H "X-API-Key: $KEY" http://127.0.0.1:2785/api/sessions/$SID | python3 -
 
 1. Container down → `cd /home/cctvpoint/openwa && docker compose up -d`.
 2. Session not `ready` → try `POST /api/sessions/$SID/start` (same headers).
-3. Still `qr_ready` / logged out → re-link: from your laptop
-   `ssh -L 2785:127.0.0.1:2785 dukani-prod`, open `http://127.0.0.1:2785`,
-   log in with the API key, open the session, scan the QR from the sender
-   phone (WhatsApp → Linked devices → Link a device).
+3. Still `qr_ready` / logged out → re-link with a pairing code. On the sender
+   phone open WhatsApp → Settings → Linked devices → Link a device → "Link
+   with phone number instead" and keep that screen open, *then* request the
+   code (it is only valid ~3 minutes; an expired code makes the phone say
+   "couldn't link device"):
+   ```bash
+   curl -s -X POST -H "X-API-Key: $KEY" -H 'Content-Type: application/json' \
+     -d '{"phoneNumber":"255656653665"}' http://127.0.0.1:2785/api/sessions/$SID/pairing-code
+   ```
+   Fallback: QR via the dashboard over `ssh -L 2785:127.0.0.1:2785 dukani-prod`
+   (`http://127.0.0.1:2785`, log in with the API key).
+
+**Upgrading / re-pulling the image.** This server downloads from GitHub's
+container registry (ghcr.io) at ~46 KB/s, so `docker compose pull` stalls on
+the ~576 MB image. Pull the same image from Docker Hub instead and retag it:
+`docker pull rmyndharis/openwa:<tag>`, compare its digest with the ghcr one,
+`docker tag rmyndharis/openwa:<tag> ghcr.io/rmyndharis/openwa:<tag>`, update
+the tag in `docker-compose.yml`, then `docker compose up -d --pull never`.
 
 **Keep the sender phone alive.** WhatsApp logs out linked devices if the
 phone itself is unused for ~14 days: open WhatsApp on it at least every
