@@ -88,3 +88,19 @@ class TransferPermissionException(AppException):
 class ValidationException(AppException):
     def __init__(self, detail: str, code: str = "VALIDATION_ERROR"):
         super().__init__(400, detail, code)
+
+
+class WhatsAppException(AppException):
+    """WhatsApp report-sharing failures — each carries its own stable code
+    (WHATSAPP_*) so the frontend can show a specific message."""
+    def __init__(self, status_code: int, detail: str, code: str, params: dict | None = None):
+        super().__init__(status_code, detail, code, params)
+
+
+class WhatsAppReceiverLockedException(WhatsAppException):
+    def __init__(self):
+        super().__init__(
+            403,
+            "Namba ya kupokea imewekwa na seva na haiwezi kubadilishwa hapa",
+            "WHATSAPP_RECEIVER_LOCKED",
+        )

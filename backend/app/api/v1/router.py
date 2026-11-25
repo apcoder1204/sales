@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, users, products, inventory, sales, transfers, reports, audit_logs, daily_closing, branches
+from app.api.v1 import auth, users, products, inventory, sales, transfers, reports, audit_logs, daily_closing, branches, whatsapp
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -13,3 +13,4 @@ api_router.include_router(transfers.router)
 api_router.include_router(reports.router)
 api_router.include_router(audit_logs.router)
 api_router.include_router(daily_closing.router)
+api_router.include_router(whatsapp.router)

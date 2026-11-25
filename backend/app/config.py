@@ -65,6 +65,19 @@ class Settings(BaseSettings):
     RATE_LIMIT_LOGIN: str = "5/minute"
     RATE_LIMIT_DEFAULT: str = "100/minute"
 
+    # WhatsApp report sharing via a self-hosted OpenWA gateway (see
+    # deploy/openwa/ and RUNBOOK.md). Off unless explicitly enabled.
+    WHATSAPP_ENABLED: bool = False
+    OPENWA_BASE_URL: str = "http://127.0.0.1:2785/api"
+    OPENWA_API_KEY: str = ""
+    OPENWA_SESSION_ID: str = ""
+    OPENWA_TIMEOUT_SECONDS: float = 30
+    WHATSAPP_DAILY_CAP: int = 50
+    # When set, the receiver number is pinned to this value and cannot be
+    # changed in-app (used on the demo site, whose logins are shared).
+    WHATSAPP_RECEIVER_OVERRIDE: str = ""
+    WHATSAPP_CAPTION_PREFIX: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
     @model_validator(mode="after")
