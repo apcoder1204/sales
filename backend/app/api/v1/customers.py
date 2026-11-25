@@ -2,16 +2,19 @@ import math
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import branch_context
 from app.core.dependencies import get_current_user, require_admin, require_cashier_access, require_role
+from app.core.idempotency import get_cached_response, store_response
 from app.db.session import get_db
 from app.schemas.customer import (
     CustomerCreate, CustomerCreditUpdate, CustomerDetailResponse, CustomerResponse, CustomerUpdate,
 )
-from app.services import customer_service
+from app.schemas.payment import DebtPaymentCreate, PaymentOut, ReceivableOut
+from app.services import customer_service, ledger_service, payment_service
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -71,3 +74,53 @@ async def update_customer_credit(
     db: AsyncSession = Depends(get_db),
 ):
     return await customer_service.update_credit(db, customer_id, data, current_user)
+
+
+_PAYMENT_IDEMPOTENCY_ENDPOINT = "POST /customers/payments"
+
+
+@router.get("/{customer_id}/receivables", response_model=list[ReceivableOut])
+async def list_receivables(
+    customer_id: UUID,
+    open_only: bool = True,
+    branch_id: UUID | None = Depends(branch_context),
+    current_user=Depends(require_customer_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    await customer_service.get_or_404(db, customer_id)
+    rows = await ledger_service.receivables(db, customer_id, branch_id, open_only=open_only)
+    return [ReceivableOut.model_validate(r) for r in rows]
+
+
+@router.post("/{customer_id}/payments", response_model=PaymentOut, status_code=201)
+async def record_payment(
+    customer_id: UUID,
+    data: DebtPaymentCreate,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    current_user=Depends(require_cashier_access),
+    db: AsyncSession = Depends(get_db),
+):
+    cached = await get_cached_response(
+        db, current_user.id, _PAYMENT_IDEMPOTENCY_ENDPOINT, idempotency_key
+    )
+    if cached is not None:
+        status_code, body = cached
+        return JSONResponse(status_code=status_code, content=body)
+    payment = await payment_service.record_debt_payment(db, customer_id, data, current_user)
+    body = (await payment_service.payments_out(db, [payment]))[0].model_dump(mode="json")
+    await store_response(
+        db, current_user.id, _PAYMENT_IDEMPOTENCY_ENDPOINT, idempotency_key, 201, body
+    )
+    return body
+
+
+@router.get("/{customer_id}/payments", response_model=list[PaymentOut])
+async def list_payments(
+    customer_id: UUID,
+    branch_id: UUID | None = Depends(branch_context),
+    current_user=Depends(require_customer_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    await customer_service.get_or_404(db, customer_id)
+    rows = await payment_service.list_customer_payments(db, customer_id, branch_id)
+    return await payment_service.payments_out(db, rows)
