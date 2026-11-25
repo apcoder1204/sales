@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 from datetime import date, datetime, timedelta, timezone
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.customer import Customer
@@ -259,6 +260,54 @@ class SaleService:
             })
         return customer, today + timedelta(days=customer.credit_days)
 
+    async def _void_payments(self, db: AsyncSession, sale, reason: str, user) -> None:
+        """Undo the sale's money side (spec §6.3 Sale void): refuse while an
+        active debt payment is applied to it; otherwise reverse its till
+        payments and, for a customer sale, write the reversing ledger rows.
+        The customer row is locked too, so a concurrent debt payment (which
+        locks the customer) cannot allocate to a sale being voided."""
+        if sale.customer_id:
+            await ledger_service.lock_customer(db, sale.customer_id)
+        payments = (await db.execute(
+            select(Payment)
+            .join(PaymentAllocation, PaymentAllocation.payment_id == Payment.id)
+            .where(PaymentAllocation.sale_id == sale.id)
+            .order_by(Payment.payment_no)
+            .with_for_update(of=Payment)
+            .execution_options(populate_existing=True)
+        )).scalars().all()
+        if any(p.kind == "debt" and p.status == "active" for p in payments):
+            raise debt_error("SALE_HAS_DEBT_PAYMENTS")
+        till = [p for p in payments if p.kind == "sale" and p.status == "active"]
+        now = _utcnow()
+        for p in till:
+            p.status = "reversed"
+            p.reversed_by = user.id
+            p.reversed_at = now
+            p.reversal_reason = f"Muamala umebatilishwa: {reason}"
+        await db.flush()
+
+        if not sale.customer_id:
+            return
+        today = business_date_today()
+        sale_entry = await ledger_service.find_entry(db, "sale", sale.id, "sale")
+        await ledger_service.post(
+            db, customer_id=sale.customer_id, branch_id=sale.branch_id, entry_type="sale_void",
+            source_type="sale", source_id=sale.id, business_date=today,
+            credit=sale.total_amount, reverses_entry_id=sale_entry.id if sale_entry else None,
+            description=f"Muamala {sale.transaction_no} umebatilishwa", created_by=user.id,
+        )
+        for p in till:
+            pay_entry = await ledger_service.find_entry(db, "payment", p.id, "payment")
+            await ledger_service.post(
+                db, customer_id=sale.customer_id, branch_id=sale.branch_id,
+                entry_type="payment_reversal", source_type="payment", source_id=p.id,
+                business_date=today, debit=p.amount,
+                reverses_entry_id=pay_entry.id if pay_entry else None,
+                description=f"Malipo {p.payment_no} yamebatilishwa ({sale.transaction_no})",
+                created_by=user.id,
+            )
+
     async def get_sale_for_viewing(self, db: AsyncSession, sale_id: UUID, user):
         """Shared authorization for both GET /sales/{id} and its /receipt
         sibling — a cashier may only look up their own sales, everyone else
@@ -324,6 +373,8 @@ class SaleService:
                     "Siku ya muamala huu tayari imefungwa. Wasiliana na msimamizi kufungua tena.",
                     "DAY_ALREADY_CLOSED",
                 )
+
+            await self._void_payments(db, sale, reason, user)
 
             items = list(sale.items)
             restored = []
