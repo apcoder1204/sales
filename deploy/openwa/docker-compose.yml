@@ -1,0 +1,30 @@
+# OpenWA — self-hosted WhatsApp gateway used by DUKANI POS to send report
+# PDFs to the designated receiver number. See RUNBOOK.md "WhatsApp gateway".
+#
+# Image pinned to 0.32.1
+#   ghcr.io/rmyndharis/openwa@sha256:efe56e49e66c0ff7dacd7de68e023c2b02f44b24c8885ced3e6599d465f8ce96
+#
+# Port 2785 is bound to 127.0.0.1 only: never expose it via nginx or the
+# Cloudflare tunnel. Reach the dashboard for a QR scan over an SSH tunnel:
+#   ssh -L 2785:127.0.0.1:2785 dukani-prod
+services:
+  openwa:
+    image: ghcr.io/rmyndharis/openwa:0.32.1
+    container_name: openwa-api
+    restart: unless-stopped
+    environment:
+      ENGINE_TYPE: baileys
+      API_MASTER_KEY: ${OPENWA_API_KEY:?set OPENWA_API_KEY in .env}
+      NODE_ENV: production
+      ENABLE_SWAGGER: ${OPENWA_ENABLE_SWAGGER:-false}
+      SEND_PACING_ENABLED: "true"
+      # Dashboard is reached over plain HTTP through an SSH tunnel; without
+      # this the browser upgrades its scripts to https:// and renders blank.
+      CSP_UPGRADE_INSECURE_REQUESTS: "false"
+    volumes:
+      - openwa-data:/app/data
+    ports:
+      - "127.0.0.1:2785:2785"
+
+volumes:
+  openwa-data:

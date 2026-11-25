@@ -10,3 +10,9 @@ class WhatsAppSettingsResponse(BaseModel):
 
 class WhatsAppSettingsUpdate(BaseModel):
     number: str = Field(..., max_length=32)
+
+
+class WhatsAppStatusResponse(BaseModel):
+    enabled: bool
+    configured: bool
+    connected: bool
