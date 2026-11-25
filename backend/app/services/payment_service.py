@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.authorization import get_active_branch_or_error, require_write_branch_access
-from app.core.business_time import business_date_today
+from app.core.business_time import business_date_today, utcnow
 from app.core.exceptions import NotFoundException, ValidationException, debt_error
 from app.models.opening_balance import OpeningBalance
 from app.models.payment import Payment, PaymentAllocation
@@ -220,3 +220,47 @@ async def build_receipt(db: AsyncSession, payment: Payment) -> PaymentReceipt:
         received_by=payment.receiver.full_name,
         reversed=payment.status == "reversed",
     )
+
+
+async def reverse_payment(db: AsyncSession, payment_id: UUID, reason: str, user) -> Payment:
+    """Undo a debt payment (admin only, spec §6.3). The original row stays,
+    marked reversed; its allocations stop counting (derived), so the debts
+    it paid reopen; a ledger payment_reversal debit records it. Lock order
+    customer → payment, the same as void_sale, so the two can't deadlock."""
+    found = await db.get(Payment, payment_id)
+    if not found:
+        raise NotFoundException("Malipo", "payment")
+    if found.customer_id:
+        await ledger_service.lock_customer(db, found.customer_id)
+    payment = (await db.execute(
+        select(Payment).where(Payment.id == payment_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )).scalar_one()
+    if payment.status == "reversed":
+        raise debt_error("PAYMENT_ALREADY_REVERSED")
+    if payment.kind == "sale":
+        raise debt_error("SALE_PAYMENT_USE_VOID")
+    await ensure_day_open(db, payment.branch_id, payment.business_date)
+
+    payment.status = "reversed"
+    payment.reversed_by = user.id
+    payment.reversed_at = utcnow()
+    payment.reversal_reason = reason
+    await db.flush()
+    original = await ledger_service.find_entry(db, "payment", payment.id, "payment")
+    await ledger_service.post(
+        db, customer_id=payment.customer_id, branch_id=payment.branch_id,
+        entry_type="payment_reversal", source_type="payment", source_id=payment.id,
+        business_date=business_date_today(), debit=payment.amount,
+        reverses_entry_id=original.id if original else None,
+        description=f"Malipo {payment.payment_no} yamebatilishwa", created_by=user.id,
+    )
+    await db.commit()
+    await db.refresh(payment)
+    await audit_service.log(
+        db, action="CUSTOMER_PAYMENT_REVERSED", category="sales",
+        user_id=user.id, username=user.username, user_role=user.role.name,
+        branch_id=payment.branch_id, entity_type="payment", entity_id=str(payment.id),
+        details={"payment_no": payment.payment_no, "amount": str(payment.amount), "reason": reason},
+    )
+    return payment
