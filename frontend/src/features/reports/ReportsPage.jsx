@@ -14,7 +14,8 @@ import { reportService } from '@services/reportService'
 import { usePermission } from '@hooks/usePermission'
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from '@utils/formatters'
 import { getReportPeriods } from '@utils/constants'
-import { downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
+import { buildPDF, downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
+import SendWhatsAppButton from '@components/ui/SendWhatsAppButton'
 import { useToast } from '@hooks/useToast'
 import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import SW from '@constants/sw'
@@ -172,6 +173,12 @@ export default function ReportsPage() {
             >
               {SW.ripoti.pakuaExcel}
             </Button>
+            <SendWhatsAppButton
+              reportType={activeReportType}
+              getPdf={() => buildPDF(activeReportType, data, period)}
+              branchId={branchFilter.branch_id}
+              disabled={!!exporting}
+            />
           </div>
         </div>
       )}
@@ -195,13 +202,14 @@ export default function ReportsPage() {
           onClosingExport={handleClosingExport}
           closingExporting={exporting}
           canDownloadClosing={can('reports.closing')}
+          closingBranchId={branchFilter.branch_id}
         />
       )}
     </PageWrapper>
   )
 }
 
-function ReportContent({ type, data, onClosingExport, closingExporting, canDownloadClosing }) {
+function ReportContent({ type, data, onClosingExport, closingExporting, canDownloadClosing, closingBranchId }) {
   switch (type) {
     case 'sales': return <SalesReport data={data} />
     case 'inventory': return <InventoryReport data={data} />
@@ -216,6 +224,7 @@ function ReportContent({ type, data, onClosingExport, closingExporting, canDownl
         onExport={onClosingExport}
         exporting={closingExporting}
         canDownload={canDownloadClosing}
+        branchId={closingBranchId}
       />
     )
     case 'profit_loss': return <ProfitLossReport data={data} />
@@ -415,7 +424,7 @@ function CashierReport({ data }) {
   )
 }
 
-function ClosingReport({ data, onExport, exporting, canDownload }) {
+function ClosingReport({ data, onExport, exporting, canDownload, branchId }) {
   const s = data.summary || {}
 
   return (
@@ -491,6 +500,14 @@ function ClosingReport({ data, onExport, exporting, canDownload }) {
                   loading={exporting === `${row.business_date}-excel`}
                   disabled={!!exporting}
                   title={SW.ripoti.pakuaExcel}
+                />
+                <SendWhatsAppButton
+                  reportType="closing"
+                  iconOnly
+                  size="sm"
+                  getPdf={() => buildPDF('closing', toClosingExportData([row]), row.business_date)}
+                  branchId={branchId}
+                  disabled={!!exporting}
                 />
               </div>
             ) : null,

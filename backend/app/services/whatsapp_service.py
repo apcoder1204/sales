@@ -146,13 +146,21 @@ async def _sent_today_count(db: AsyncSession) -> int:
     ) or 0
 
 
-async def _recently_sent(db: AsyncSession, sha256: str) -> bool:
+def _report_key(report_type: str, title: str, branch_id: UUID | None) -> str:
+    """Identifies *which report* is being sent, independent of the PDF bytes:
+    browser-built PDFs embed a generation timestamp, so re-sending the same
+    report produces a different file every time."""
+    raw = f"{report_type}|{title}|{branch_id or ''}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+async def _recently_sent(db: AsyncSession, report_key: str) -> bool:
     since = utcnow() - DUPLICATE_WINDOW
     found = await db.scalar(
         select(AuditLog.id).where(
             AuditLog.action == SEND_ACTION,
             AuditLog.details["status"].astext == "sent",
-            AuditLog.details["sha256"].astext == sha256,
+            AuditLog.details["report_key"].astext == report_key,
             AuditLog.created_at >= since,
         ).limit(1)
     )
@@ -181,12 +189,13 @@ async def send_report(
     title = _clean(title, 120)
     period_label = _clean(period_label, 60)
     sha256 = hashlib.sha256(pdf).hexdigest()
+    report_key = _report_key(report_type, title, resolved_branch_id)
 
     await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _SEND_LOCK_KEY})
     if await _sent_today_count(db) >= settings.WHATSAPP_DAILY_CAP:
         await db.rollback()
         raise whatsapp_error("WHATSAPP_DAILY_CAP", {"cap": settings.WHATSAPP_DAILY_CAP})
-    if await _recently_sent(db, sha256):
+    if await _recently_sent(db, report_key):
         await db.rollback()
         raise whatsapp_error("WHATSAPP_DUPLICATE")
 
@@ -210,7 +219,7 @@ async def send_report(
 
     details = {
         "report_type": report_type, "title": title, "period_label": period_label,
-        "sha256": sha256, "status": status,
+        "sha256": sha256, "report_key": report_key, "status": status,
     }
     if error_code:
         details["error_code"] = error_code

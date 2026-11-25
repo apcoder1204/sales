@@ -170,15 +170,34 @@ async def test_duplicate_pdf_refused(client, db_session, gateway):
     assert len(gateway.calls) == 1
 
 
+async def test_same_report_regenerated_is_duplicate(client, db_session, gateway):
+    """Browser-built PDFs embed a generation timestamp, so a double-send of
+    the same report arrives with different bytes. It must still be refused."""
+    admin = await _with_receiver(db_session)
+    first = await _send(client, admin, body=pdf(1), title="Mauzo — TODAY")
+    second = await _send(client, admin, body=pdf(2), title="Mauzo — TODAY")
+    assert first.status_code == 200
+    assert second.status_code == 409
+    assert second.json()["code"] == "WHATSAPP_DUPLICATE"
+    assert len(gateway.calls) == 1
+
+
+async def test_different_reports_not_duplicates(client, db_session, gateway):
+    admin = await _with_receiver(db_session)
+    r1 = await _send(client, admin, body=pdf(1), title="Mauzo — TODAY")
+    r2 = await _send(client, admin, body=pdf(2), title="Mauzo — WEEK")
+    assert (r1.status_code, r2.status_code) == (200, 200)
+
+
 async def test_daily_cap(client, db_session, gateway, monkeypatch):
     admin = await _with_receiver(db_session)
     # Count already-sent entries today (dev DB may have some) and cap just above.
     from app.services.whatsapp_service import _sent_today_count
     already = await _sent_today_count(db_session)
     monkeypatch.setattr(settings, "WHATSAPP_DAILY_CAP", already + 2)
-    r1 = await _send(client, admin, body=pdf(1))
-    r2 = await _send(client, admin, body=pdf(2))
-    r3 = await _send(client, admin, body=pdf(3))
+    r1 = await _send(client, admin, body=pdf(1), title="R1")
+    r2 = await _send(client, admin, body=pdf(2), title="R2")
+    r3 = await _send(client, admin, body=pdf(3), title="R3")
     assert (r1.status_code, r2.status_code) == (200, 200)
     assert r3.status_code == 429
     assert r3.json()["code"] == "WHATSAPP_DAILY_CAP"

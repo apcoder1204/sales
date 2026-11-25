@@ -708,6 +708,23 @@ export const SW = {
   },
 
   // Errors
+  whatsapp: {
+    tuma: 'Tuma WhatsApp',
+    inatuma: 'Inatuma...',
+    imetumwa: 'Imetumwa WhatsApp ✓',
+    haijaunganishwa: 'WhatsApp haijaunganishwa',
+    imeunganishwa: 'Imeunganishwa',
+    hakunaNamba: 'Namba ya kupokea haijawekwa',
+    haijathibitishwa: 'Haijathibitishwa — angalia WhatsApp kabla ya kutuma tena',
+    mipangilio: 'WhatsApp — Ripoti',
+    maelezo: 'Ripoti zote zinazotumwa kwa WhatsApp zinaenda kwa namba hii moja.',
+    nambaYaKupokea: 'Namba ya kupokea ripoti',
+    mfanoNamba: 'Mfano: 0712 345 678',
+    imefungwaNaSeva: 'Namba hii imewekwa na seva na haiwezi kubadilishwa hapa.',
+    hifadhi: 'Hifadhi',
+    imehifadhiwa: 'Namba imehifadhiwa',
+  },
+
   makosa: {
     hisaHaitoshi: 'Bidhaa haitoshi',
     haisahihi: 'Thamani si sahihi',
@@ -723,6 +740,17 @@ export const SW = {
     // kamili katika en.js — muundo ni sawa, maneno ni ya Kiswahili
     // yanayolingana kabisa na `detail` ya asili ya backend.
     msimbo: {
+      INVALID_PHONE: 'Namba ya simu si sahihi',
+      WHATSAPP_RECEIVER_LOCKED: 'Namba ya kupokea imewekwa na seva na haiwezi kubadilishwa hapa',
+      WHATSAPP_DISABLED: 'Kutuma kwa WhatsApp hakujawashwa',
+      WHATSAPP_NO_RECEIVER: 'Namba ya kupokea ripoti haijawekwa',
+      WHATSAPP_NOT_CONNECTED: 'WhatsApp haijaunganishwa — ripoti haijatumwa',
+      WHATSAPP_SEND_FAILED: 'Imeshindwa kutuma kwa WhatsApp',
+      WHATSAPP_TIMEOUT: 'Haijathibitishwa — angalia WhatsApp kabla ya kutuma tena',
+      WHATSAPP_DAILY_CAP: (p) => `Kikomo cha ripoti ${p?.cap ?? ''} kwa siku kimefikiwa. Jaribu kesho.`,
+      WHATSAPP_DUPLICATE: 'Ripoti hii imeshatumwa',
+      WHATSAPP_INVALID_PDF: 'Faili si PDF sahihi',
+      WHATSAPP_PDF_TOO_LARGE: 'Faili ni kubwa mno kutumwa kwa WhatsApp',
       INVALID_TOKEN: 'Kipindi si sahihi. Tafadhali ingia tena.',
       TOKEN_EXPIRED: 'Muda wa kipindi chako umeisha. Tafadhali ingia tena.',
       INVALID_CREDENTIALS: 'Jina la mtumiaji au neno la siri si sahihi',

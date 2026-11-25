@@ -16,7 +16,8 @@ import { useToast } from '@hooks/useToast'
 import { useBranch } from '@hooks/useBranch'
 import { isGlobalRole } from '@utils/permissions'
 import { formatCurrency, formatDateTime } from '@utils/formatters'
-import { downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
+import { buildPDF, downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
+import SendWhatsAppButton from '@components/ui/SendWhatsAppButton'
 import SW from '@constants/sw'
 
 // Use LOCAL date parts, not toISOString() (which is UTC) — otherwise the
@@ -204,6 +205,14 @@ export default function ClosingPage() {
                 disabled={!!exporting}
                 title={SW.ripoti.pakuaExcel}
               />
+              <SendWhatsAppButton
+                reportType="closing"
+                iconOnly
+                size="sm"
+                getPdf={() => buildPDF('closing', toClosingExportData([row]), row.business_date)}
+                branchId={row.branch_id}
+                disabled={!!exporting}
+              />
             </div>
           )}
           {row.status === 'closed' && can('closing.reopen') ? (
@@ -304,6 +313,13 @@ export default function ClosingPage() {
                       >
                         {SW.ripoti.pakuaExcel}
                       </Button>
+                      <SendWhatsAppButton
+                        reportType="closing"
+                        size="sm"
+                        getPdf={() => buildPDF('closing', toClosingExportData([closedToday]), closedToday.business_date)}
+                        branchId={closedToday.branch_id}
+                        disabled={!!exporting}
+                      />
                     </div>
                   )}
                 </div>

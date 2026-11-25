@@ -284,7 +284,11 @@ function normalise(type, data, period) {
 
 // ── PDF — loaded lazily on first call ─────────────────────────────────────────
 
-export async function downloadPDF(type, data, period) {
+/**
+ * Build the report PDF in memory. Returns the Blob plus metadata used both
+ * for downloading and for sending to WhatsApp (same document either way).
+ */
+export async function buildPDF(type, data, period) {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),
@@ -347,7 +351,24 @@ export async function downloadPDF(type, data, period) {
     doc.text(SW.ripoti.ukurasa(i, pageCount), 297 / 2, 205, { align: 'center' })
   }
 
-  doc.save(filename(type, 'pdf', period))
+  return {
+    blob: doc.output('blob'),
+    filename: filename(type, 'pdf', period),
+    title,
+    periodLabel: timestamp(),
+  }
+}
+
+export async function downloadPDF(type, data, period) {
+  const { blob, filename: name } = await buildPDF(type, data, period)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 // ── Excel — loaded lazily on first call ──────────────────────────────────────

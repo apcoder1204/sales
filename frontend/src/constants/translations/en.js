@@ -707,6 +707,23 @@ export const EN = {
   },
 
   // Errors
+  whatsapp: {
+    tuma: 'Send to WhatsApp',
+    inatuma: 'Sending...',
+    imetumwa: 'Sent to WhatsApp ✓',
+    haijaunganishwa: 'WhatsApp is not connected',
+    imeunganishwa: 'Connected',
+    hakunaNamba: 'No receiver number set',
+    haijathibitishwa: 'Not confirmed — check WhatsApp before sending again',
+    mipangilio: 'WhatsApp — Reports',
+    maelezo: 'Every report sent to WhatsApp goes to this one number.',
+    nambaYaKupokea: 'Report receiver number',
+    mfanoNamba: 'Example: 0712 345 678',
+    imefungwaNaSeva: 'This number is set by the server and cannot be changed here.',
+    hifadhi: 'Save',
+    imehifadhiwa: 'Number saved',
+  },
+
   makosa: {
     hisaHaitoshi: 'Insufficient stock',
     haisahihi: 'Invalid value',
@@ -725,6 +742,17 @@ export const EN = {
     // here falls back to the backend's own (Swahili) `detail` text — see
     // hooks/useApi.js.
     msimbo: {
+      INVALID_PHONE: 'Invalid phone number',
+      WHATSAPP_RECEIVER_LOCKED: 'The receiver number is set by the server and cannot be changed here',
+      WHATSAPP_DISABLED: 'WhatsApp sending is not enabled',
+      WHATSAPP_NO_RECEIVER: 'No report receiver number has been set',
+      WHATSAPP_NOT_CONNECTED: 'WhatsApp is not connected — report not sent',
+      WHATSAPP_SEND_FAILED: 'Failed to send to WhatsApp',
+      WHATSAPP_TIMEOUT: 'Not confirmed — check WhatsApp before sending again',
+      WHATSAPP_DAILY_CAP: (p) => `Daily limit of ${p?.cap ?? ''} reports reached. Try again tomorrow.`,
+      WHATSAPP_DUPLICATE: 'This report was already sent',
+      WHATSAPP_INVALID_PDF: 'The file is not a valid PDF',
+      WHATSAPP_PDF_TOO_LARGE: 'The file is too large to send to WhatsApp',
       INVALID_TOKEN: 'Invalid session. Please log in again.',
       TOKEN_EXPIRED: 'Your session has expired. Please log in again.',
       INVALID_CREDENTIALS: 'Incorrect username or password',
