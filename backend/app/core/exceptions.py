@@ -125,3 +125,48 @@ _WHATSAPP_ERRORS: dict[str, tuple[int, str]] = {
     "WHATSAPP_INVALID_PDF": (400, "Faili si PDF sahihi"),
     "WHATSAPP_PDF_TOO_LARGE": (413, "Faili ni kubwa mno"),
 }
+
+
+class DebtException(AppException):
+    """Customer accounts / debt errors — each code has a fixed status and a
+    Swahili fallback message (frontend translates by `code`)."""
+    def __init__(self, status_code: int, detail: str, code: str, params: dict | None = None):
+        super().__init__(status_code, detail, code, params)
+        self.code = code
+        self.params = params or {}
+
+
+def debt_error(code: str, params: dict | None = None) -> DebtException:
+    status, detail = _DEBT_ERRORS[code]
+    if params:
+        detail = detail.format(**params)
+    return DebtException(status, detail, code, params)
+
+
+_DEBT_ERRORS: dict[str, tuple[int, str]] = {
+    "CUSTOMER_PHONE_DUPLICATE": (409, "Mteja mwenye namba hii ya simu tayari yupo"),
+    "CUSTOMER_INACTIVE": (400, "Mteja huyu amezimwa"),
+    "CREDIT_REQUIRES_CUSTOMER": (400, "Chagua mteja aliyesajiliwa ili kuuza kwa mkopo"),
+    "CREDIT_NOT_ALLOWED": (400, "Mteja huyu hajaruhusiwa kukopa"),
+    "CREDIT_LIMIT_EXCEEDED": (
+        422,
+        "Kikomo cha mkopo kimezidi. Kikomo: {limit}, Deni la sasa: {current}, "
+        "Unaloomba: {requested}, Kilichobaki: {available}",
+    ),
+    "PAYMENT_EXCEEDS_TOTAL": (400, "Kiasi kilicholipwa kinazidi jumla ya mauzo"),
+    "PAYMENT_EXCEEDS_DEBT": (400, "Kiasi kinazidi deni lililopo ({owed})"),
+    "ALLOCATION_INVALID": (400, "Mgawanyo wa malipo si sahihi"),
+    "ALLOCATION_MISMATCH": (400, "Jumla ya mgawanyo hailingani na kiasi cha malipo"),
+    "SALE_HAS_DEBT_PAYMENTS": (
+        400, "Muamala huu una malipo ya deni. Batilisha malipo hayo kwanza"
+    ),
+    "PAYMENT_ALREADY_REVERSED": (400, "Malipo haya tayari yamebatilishwa"),
+    "SALE_PAYMENT_USE_VOID": (
+        400, "Malipo ya wakati wa mauzo hubatilishwa kwa kubatilisha muamala"
+    ),
+    "OPENING_BALANCE_DUPLICATE": (409, "Deni hili la zamani tayari limeingizwa"),
+    "OPENING_BALANCE_SELF_DECISION": (
+        403, "Huwezi kuidhinisha au kukataa deni ulilaloingiza mwenyewe"
+    ),
+    "OPENING_BALANCE_NOT_PENDING": (400, "Deni hili la zamani limeshaamuliwa"),
+}
