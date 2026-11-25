@@ -1,9 +1,11 @@
+import random
 import uuid
+from decimal import Decimal
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.config import settings
@@ -12,6 +14,7 @@ from app.db.session import get_db
 from app.main import app as fastapi_app
 from app.models.branch import Branch
 from app.models.category import Category
+from app.models.customer import Customer
 from app.models.inventory import Inventory
 from app.models.product import Product
 from app.models.role import Role
@@ -151,6 +154,31 @@ async def make_inventory(
     db.add(inv)
     await db.flush()
     return inv
+
+
+async def make_customer(
+    db: AsyncSession,
+    *,
+    credit_limit: Decimal = Decimal("0"),
+    credit_days: int = 30,
+    status: str = "active",
+    phone: str | None = None,
+    name: str | None = None,
+    customer_type: str = "individual",
+) -> Customer:
+    seq = (await db.execute(text("SELECT nextval('seq_customer_number')"))).scalar()
+    c = Customer(
+        customer_no=f"CUS-{seq:04d}",
+        name=name or _uid("customer"),
+        phone=phone or f"2557{random.randint(0, 99_999_999):08d}",
+        customer_type=customer_type,
+        credit_limit=credit_limit,
+        credit_days=credit_days,
+        status=status,
+    )
+    db.add(c)
+    await db.flush()
+    return c
 
 
 def auth_headers(user: User) -> dict:

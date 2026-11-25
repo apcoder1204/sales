@@ -35,6 +35,14 @@ class DailyClosing(Base):
     total_bank_transfer: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=0)
     total_sales_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_revenue: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=0)
+    # Sale value handed over on credit in the period, and debt payments
+    # received in it (spec §6.4). Existing rows keep 0.
+    total_credit_given: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), nullable=False, default=0, server_default="0"
+    )
+    total_debt_collected: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), nullable=False, default=0, server_default="0"
+    )
     counted_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     cash_variance: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     closing_notes: Mapped[str | None] = mapped_column(Text)

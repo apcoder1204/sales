@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import String, Numeric, ForeignKey, Enum as SAEnum, Text, CheckConstraint
+from sqlalchemy import String, Numeric, ForeignKey, Enum as SAEnum, Text, CheckConstraint, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -17,11 +17,18 @@ class Sale(Base):
     cashier_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
-    payment_method: Mapped[str] = mapped_column(
+    # Legacy single-payment columns: kept (nullable) for pre-debt history,
+    # never written for new sales. Payments live in `payments` +
+    # `payment_allocations` (spec §6.2).
+    payment_method: Mapped[str | None] = mapped_column(
         SAEnum("cash", "mobile_money", "bank_transfer", name="payment_method_enum"),
-        nullable=False
+        nullable=True
     )
     payment_reference: Mapped[str | None] = mapped_column(String(100))
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("customers.id"), index=True
+    )
+    due_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(
         SAEnum("completed", "voided", name="sale_status_enum"),
         nullable=False, default="completed"
@@ -38,6 +45,7 @@ class Sale(Base):
     branch: Mapped["Branch"] = relationship("Branch", lazy="selectin")
     cashier: Mapped["User"] = relationship("User", foreign_keys=[cashier_id], lazy="selectin")
     voider: Mapped["User | None"] = relationship("User", foreign_keys=[voided_by], lazy="selectin")
+    customer: Mapped["Customer | None"] = relationship("Customer", lazy="selectin")
 
     __table_args__ = (
         CheckConstraint("subtotal >= 0", name="chk_sales_subtotal_pos"),
