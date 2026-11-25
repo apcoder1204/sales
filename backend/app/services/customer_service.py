@@ -13,8 +13,9 @@ from app.models.customer import Customer
 from app.models.sale import Sale
 from app.schemas.customer import (
     CustomerCreate, CustomerCreditUpdate, CustomerDetailResponse, CustomerResponse,
-    CustomerSummary, CustomerUpdate,
+    CustomerUpdate,
 )
+from app.services import ledger_service
 from app.services.audit_service import audit_service
 
 _PROFILE_FIELDS = ("name", "phone", "email", "address", "customer_type", "tin", "notes")
@@ -93,12 +94,8 @@ async def update(db: AsyncSession, customer_id: UUID, data: CustomerUpdate, user
 async def update_credit(
     db: AsyncSession, customer_id: UUID, data: CustomerCreditUpdate, user
 ) -> Customer:
-    c = (
-        await db.execute(select(Customer).where(Customer.id == customer_id).with_for_update())
-    ).scalar_one_or_none()
-    if not c:
-        raise NotFoundException("Mteja", "customer")
-    exposure = Decimal("0")
+    c = await ledger_service.lock_customer(db, customer_id)
+    exposure = await ledger_service.customer_balance(db, c.id)
     details = {
         "old_limit": money(c.credit_limit), "new_limit": money(data.credit_limit),
         "old_days": c.credit_days, "new_days": data.credit_days,
@@ -147,8 +144,14 @@ async def search(
     return list(rows), total
 
 
-async def get_detail(db: AsyncSession, customer_id: UUID, user) -> CustomerDetailResponse:
+async def get_detail(
+    db: AsyncSession, customer_id: UUID, branch_scope: UUID | None
+) -> CustomerDetailResponse:
+    """`branch_scope` comes from `branch_context` (cashier → own branch;
+    global roles → requested branch or None for all). Balance and overdue
+    are scoped; available credit is always the all-branch figure (D4)."""
     c = await get_or_404(db, customer_id)
     return CustomerDetailResponse(
-        customer=CustomerResponse.model_validate(c), summary=CustomerSummary()
+        customer=CustomerResponse.model_validate(c),
+        summary=await ledger_service.summary(db, c, branch_scope),
     )

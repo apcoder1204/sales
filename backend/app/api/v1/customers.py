@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.authorization import branch_context
 from app.core.dependencies import get_current_user, require_admin, require_cashier_access, require_role
 from app.db.session import get_db
 from app.schemas.customer import (
@@ -45,10 +46,11 @@ async def create_customer(
 @router.get("/{customer_id}", response_model=CustomerDetailResponse)
 async def get_customer(
     customer_id: UUID,
+    branch_id: UUID | None = Depends(branch_context),
     current_user=Depends(require_customer_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    return await customer_service.get_detail(db, customer_id, current_user)
+    return await customer_service.get_detail(db, customer_id, branch_id)
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
