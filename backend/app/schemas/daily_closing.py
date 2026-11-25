@@ -19,6 +19,8 @@ class ClosingPreviewResponse(BaseModel):
     total_bank_transfer: float
     total_sales_count: int
     total_revenue: float
+    total_credit_given: float = 0
+    total_debt_collected: float = 0
 
 
 class OpenRegisterRequest(BaseModel):
@@ -67,6 +69,8 @@ class ClosingResponse(BaseModel):
     total_bank_transfer: Decimal
     total_sales_count: int
     total_revenue: Decimal
+    total_credit_given: Decimal = Decimal("0")
+    total_debt_collected: Decimal = Decimal("0")
     counted_cash: Decimal | None
     cash_variance: Decimal | None
     total_expenses: Decimal

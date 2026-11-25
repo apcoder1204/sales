@@ -8,6 +8,8 @@ from app.core.authorization import branch_context
 from app.services.report_service import report_service
 from app.core.business_time import business_date_today, utc_range_for_business_date
 from app.repositories.inventory_repo import inventory_repo
+from app.repositories.sale_repo import credit_at_sale_expr
+from app.models.payment import Payment
 
 UTC = timezone.utc
 
@@ -77,22 +79,34 @@ async def dashboard_summary(
     # Drill-down data for the revenue KPI cards — "why does this number
     # exist" for today's/this month's revenue is the payment-method split.
     def _payment_breakdown_query(since):
+        # Money taken at the till for sales (spec §6.4) — debt collections
+        # are not sales and are reported separately.
         return select(
-            Sale.payment_method, func.coalesce(func.sum(Sale.total_amount), 0).label("total")
+            Payment.method, func.coalesce(func.sum(Payment.amount), 0).label("total")
         ).where(
-            Sale.status == "completed", Sale.created_at >= since, *sale_branch_filter
-        ).group_by(Sale.payment_method)
+            Payment.kind == "sale", Payment.status == "active", Payment.created_at >= since,
+            *([Payment.branch_id == scoped_branch_id] if scoped_branch_id else []),
+        ).group_by(Payment.method)
+
+    async def _credit_given_since(since):
+        return float((await db.execute(
+            select(func.coalesce(func.sum(credit_at_sale_expr()), 0)).where(
+                Sale.status == "completed", Sale.created_at >= since, *sale_branch_filter
+            )
+        )).scalar_one() or 0)
 
     def _breakdown_dict(rows):
         breakdown = {"cash": 0.0, "mobile_money": 0.0, "bank_transfer": 0.0}
         for r in rows:
-            breakdown[r.payment_method] = float(r.total or 0)
+            breakdown[r.method] = float(r.total or 0)
         return breakdown
 
     today_payment_rows = (await db.execute(_payment_breakdown_query(today_start))).all()
     today_payment_breakdown = _breakdown_dict(today_payment_rows)
+    today_payment_breakdown["credit"] = await _credit_given_since(today_start)
     month_payment_rows = (await db.execute(_payment_breakdown_query(month_start))).all()
     month_payment_breakdown = _breakdown_dict(month_payment_rows)
+    month_payment_breakdown["credit"] = await _credit_given_since(month_start)
 
     from app.models.sale_item import SaleItem
     today_items_sold = (await db.execute(

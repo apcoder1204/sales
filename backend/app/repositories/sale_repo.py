@@ -9,6 +9,21 @@ from app.repositories.base import BaseRepository
 from app.core.business_time import business_date_today
 
 
+def credit_at_sale_expr():
+    """Per-sale SQL expression: the part of the sale total not paid at the
+    till (active kind='sale' allocations) — i.e. credit given on the sale."""
+    paid_at_till = (
+        select(func.coalesce(func.sum(PaymentAllocation.amount), 0))
+        .join(Payment, Payment.id == PaymentAllocation.payment_id)
+        .where(
+            PaymentAllocation.sale_id == Sale.id,
+            Payment.kind == "sale", Payment.status == "active",
+        )
+        .scalar_subquery()
+    )
+    return Sale.total_amount - paid_at_till
+
+
 class SaleRepository(BaseRepository[Sale]):
     model = Sale
 
@@ -101,17 +116,8 @@ class SaleRepository(BaseRepository[Sale]):
             select(func.count(Sale.id), func.coalesce(func.sum(Sale.total_amount), 0))
             .where(*sale_window)
         )).one()
-        paid_at_till = (
-            select(func.coalesce(func.sum(PaymentAllocation.amount), 0))
-            .join(Payment, Payment.id == PaymentAllocation.payment_id)
-            .where(
-                PaymentAllocation.sale_id == Sale.id,
-                Payment.kind == "sale", Payment.status == "active",
-            )
-            .scalar_subquery()
-        )
         credit_given = (await db.execute(
-            select(func.coalesce(func.sum(Sale.total_amount - paid_at_till), 0)).where(*sale_window)
+            select(func.coalesce(func.sum(credit_at_sale_expr()), 0)).where(*sale_window)
         )).scalar()
         debt_collected = (await db.execute(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(*in_window, Payment.kind == "debt")

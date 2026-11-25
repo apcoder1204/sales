@@ -8,6 +8,8 @@ from sqlalchemy import select, func, and_
 UTC = timezone.utc
 
 from app.models.sale import Sale
+from app.models.payment import Payment
+from app.repositories.sale_repo import credit_at_sale_expr
 from app.models.sale_item import SaleItem
 from app.models.product import Product
 from app.models.category import Category
@@ -154,25 +156,42 @@ class ReportService:
             for r in top_rows
         ]
 
+        # Payment-method split of sales = money taken at the till, plus a
+        # "Credit" row for the part sold on credit (spec §6.4).
         pay_q = select(
-            Sale.payment_method,
-            func.count(Sale.id).label("cnt"),
-            func.sum(Sale.total_amount).label("total"),
+            Payment.method,
+            func.count(Payment.id).label("cnt"),
+            func.sum(Payment.amount).label("total"),
         ).where(
-            Sale.status == "completed",
-            Sale.created_at >= from_dt,
-            Sale.created_at <= to_dt,
-        ).group_by(Sale.payment_method)
+            Payment.kind == "sale", Payment.status == "active",
+            Payment.created_at >= from_dt,
+            Payment.created_at <= to_dt,
+        ).group_by(Payment.method)
         if branch_id:
-            pay_q = pay_q.where(Sale.branch_id == branch_id)
+            pay_q = pay_q.where(Payment.branch_id == branch_id)
         pay_rows = (await db.execute(pay_q)).all()
         payment_breakdown = [
             PaymentBreakdown(
-                method=r.payment_method.replace("_", " ").title(),
+                method=r.method.replace("_", " ").title(),
                 count=int(r.cnt),
                 total=float(r.total or 0),
             ) for r in pay_rows
         ]
+        credit = credit_at_sale_expr()
+        credit_q = select(
+            func.count(Sale.id).filter(credit > 0), func.coalesce(func.sum(credit), 0)
+        ).where(
+            Sale.status == "completed",
+            Sale.created_at >= from_dt,
+            Sale.created_at <= to_dt,
+        )
+        if branch_id:
+            credit_q = credit_q.where(Sale.branch_id == branch_id)
+        credit_count, credit_total = (await db.execute(credit_q)).one()
+        if credit_total and credit_total > 0:
+            payment_breakdown.append(PaymentBreakdown(
+                method="Credit", count=int(credit_count), total=float(credit_total),
+            ))
 
         return SalesReportResponse(
             summary=SalesSummary(

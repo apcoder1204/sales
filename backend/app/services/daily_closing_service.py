@@ -62,6 +62,7 @@ class DailyClosingService:
             total_cash=totals["cash"], total_mobile_money=totals["mobile_money"],
             total_bank_transfer=totals["bank_transfer"],
             total_sales_count=totals["count"], total_revenue=totals["revenue"],
+            total_credit_given=totals["credit_given"], total_debt_collected=totals["debt_collected"],
         )
 
     async def open_register(self, db: AsyncSession, data: OpenRegisterRequest, user):
@@ -139,6 +140,8 @@ class DailyClosingService:
             "total_cash": totals["cash"], "total_mobile_money": totals["mobile_money"],
             "total_bank_transfer": totals["bank_transfer"],
             "total_sales_count": totals["count"], "total_revenue": totals["revenue"],
+            "total_credit_given": totals["credit_given"],
+            "total_debt_collected": totals["debt_collected"],
             "counted_cash": data.counted_cash, "cash_variance": cash_variance,
             "closing_notes": data.notes,
             "closed_by": user.id, "closed_at": _utcnow(),
@@ -179,6 +182,8 @@ class DailyClosingService:
                 "business_date": str(business_date),
                 "total_cash": totals["cash"], "total_mobile_money": totals["mobile_money"],
                 "total_bank_transfer": totals["bank_transfer"], "total_revenue": totals["revenue"],
+                "total_credit_given": totals["credit_given"],
+                "total_debt_collected": totals["debt_collected"],
                 "counted_cash": float(data.counted_cash) if data.counted_cash is not None else None,
                 "cash_variance": float(cash_variance) if cash_variance is not None else None,
                 "expenses": [{"description": e.description, "amount": float(e.amount)} for e in data.expenses],
@@ -234,6 +239,7 @@ class DailyClosingService:
             total_cash=c.total_cash, total_mobile_money=c.total_mobile_money,
             total_bank_transfer=c.total_bank_transfer,
             total_sales_count=c.total_sales_count, total_revenue=c.total_revenue,
+            total_credit_given=c.total_credit_given, total_debt_collected=c.total_debt_collected,
             counted_cash=c.counted_cash, cash_variance=c.cash_variance,
             total_expenses=sum((e.amount for e in c.expenses), Decimal("0")),
             expenses=[ExpenseResponse(id=e.id, description=e.description, amount=e.amount) for e in c.expenses],
