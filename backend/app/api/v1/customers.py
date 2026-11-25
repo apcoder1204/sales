@@ -13,8 +13,10 @@ from app.db.session import get_db
 from app.schemas.customer import (
     CustomerCreate, CustomerCreditUpdate, CustomerDetailResponse, CustomerResponse, CustomerUpdate,
 )
-from app.schemas.payment import DebtPaymentCreate, PaymentOut, ReceivableOut
-from app.services import customer_service, ledger_service, payment_service
+from app.schemas.payment import (
+    DebtPaymentCreate, OpeningBalanceCreate, OpeningBalanceOut, PaymentOut, ReceivableOut,
+)
+from app.services import customer_service, ledger_service, opening_balance_service, payment_service
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -124,3 +126,14 @@ async def list_payments(
     await customer_service.get_or_404(db, customer_id)
     rows = await payment_service.list_customer_payments(db, customer_id, branch_id)
     return await payment_service.payments_out(db, rows)
+
+
+@router.post("/{customer_id}/opening-balances", response_model=OpeningBalanceOut, status_code=201)
+async def enter_opening_balance(
+    customer_id: UUID,
+    data: OpeningBalanceCreate,
+    current_user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    ob = await opening_balance_service.create(db, customer_id, data, current_user)
+    return opening_balance_service.to_out(ob)

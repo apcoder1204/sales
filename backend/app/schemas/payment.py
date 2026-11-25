@@ -106,3 +106,49 @@ class PaymentReceipt(BaseModel):
     branch_name: str
     received_by: str
     reversed: bool
+
+
+class OpeningBalanceCreate(BaseModel):
+    branch_id: UUID
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    effective_date: date
+    due_date: date | None = None
+    reference: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+
+    @model_validator(mode="after")
+    def not_in_future(self):
+        from app.core.business_time import business_date_today
+
+        if self.effective_date > business_date_today():
+            raise PydanticCustomError(
+                "effective_date_future", "Tarehe ya deni haiwezi kuwa ya baadaye"
+            )
+        return self
+
+
+class OpeningBalanceDecision(BaseModel):
+    note: str | None = Field(None, max_length=500)
+
+
+class OpeningBalanceReject(BaseModel):
+    note: str = Field(min_length=3, max_length=500)
+
+
+class OpeningBalanceOut(BaseModel):
+    id: UUID
+    customer: CustomerRef
+    branch_id: UUID
+    branch_name: str
+    amount: Decimal
+    effective_date: date
+    due_date: date | None
+    reference: str
+    description: str | None
+    status: str
+    entered_by: UUID
+    entered_by_name: str
+    decided_by_name: str | None
+    decided_at: datetime | None
+    decision_note: str | None
+    created_at: datetime
