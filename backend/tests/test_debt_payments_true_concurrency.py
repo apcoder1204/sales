@@ -104,3 +104,42 @@ async def test_concurrent_reversals():
         await v.close()
     finally:
         await w.cleanup()
+
+
+async def test_void_lock_does_not_deadlock_with_debt_payment():
+    """void_sale locks the sale, then the customer; a debt payment locks the
+    customer, then inserts an allocation whose FK check takes KEY SHARE on
+    the sale. The void's sale lock must not conflict with that (FOR NO KEY
+    UPDATE), or the two deadlock."""
+    from app.repositories.sale_repo import sale_repo
+    from app.services import ledger_service
+
+    w = World()
+    payment = void_side = None
+    try:
+        branch, cashier, admin, customer, sale = await _debt_world(w, Decimal("300000"))
+        void_side = w.session()
+        await sale_repo.get_by_id_locked(void_side, sale.id)  # void step 1: lock the sale
+
+        async def pay():
+            s = w.session()
+            try:
+                await payment_service.record_debt_payment(
+                    s, customer.id, DebtPaymentCreate(method="cash", amount=Decimal("100000")),
+                    await s.get(User, cashier.id),
+                )
+                return "ok"
+            finally:
+                await s.close()
+
+        payment = asyncio.create_task(pay())
+        await asyncio.sleep(1.5)  # payment holds the customer lock and inserts the allocation
+        await ledger_service.lock_customer(void_side, customer.id)  # void step 2: must not deadlock
+        await void_side.rollback()
+        assert await asyncio.wait_for(payment, 10) == "ok"
+    finally:
+        if void_side is not None:
+            await void_side.close()
+        if payment is not None:
+            await asyncio.gather(payment, return_exceptions=True)
+        await w.cleanup()

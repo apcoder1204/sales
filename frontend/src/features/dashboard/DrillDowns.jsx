@@ -13,6 +13,8 @@ export function PaymentBreakdownModal({ open, onClose, title, breakdown, count }
     { label: SW.mauzo.taslimu, value: breakdown?.cash || 0 },
     { label: SW.mauzo.simuLipa, value: breakdown?.mobile_money || 0 },
     { label: SW.mauzo.benki, value: breakdown?.bank_transfer || 0 },
+    // Sold on credit — not yet received (spec §6.4); the rows sum to revenue.
+    { label: SW.hali.malipo.credit, value: breakdown?.credit || 0 },
     { label: SW.mauzo.miamala, value: formatNumber(count || 0), isCurrency: false },
   ]
   return <KpiDrillDownModal open={open} onClose={onClose} title={title} subtitle={SW.dashibodi.mchanganyikoMalipo} rows={rows} />

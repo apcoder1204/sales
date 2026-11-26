@@ -14,10 +14,14 @@ import { getPaymentMethods } from '@utils/constants'
 import SW from '@constants/sw'
 
 const NEEDS_REFERENCE = ['mobile_money', 'bank_transfer']
+// What the user typed: digits only (whole shillings).
 const toInt = (v) => {
   const n = parseInt(String(v ?? '').replace(/[^0-9]/g, ''), 10)
   return Number.isFinite(n) ? n : 0
 }
+// Amounts from the API are decimal strings ("300000.00") — parse, never
+// strip characters (that would turn 300000.00 into 30000000).
+const fromApi = (v) => Math.round(Number(v) || 0)
 
 // Debt is paid at the branch that owns it (decision D2): a cashier only at
 // their own branch; an admin picks one of the branches where this customer
@@ -58,14 +62,14 @@ export default function RecordPaymentModal({ open, onClose, customer, onRecorded
   }, [receivables])
 
   const open_ = receivables.filter((r) => r.branch_id === branchId)
-  const owed = open_.reduce((s, r) => s + toInt(r.outstanding), 0)
+  const owed = open_.reduce((s, r) => s + fromApi(r.outstanding), 0)
   const amount = toInt(form.amount)
 
   // FIFO preview — same order the server uses (receivables come FIFO-sorted).
   const fifo = useMemo(() => {
     let left = amount
     return open_.map((r) => {
-      const take = Math.min(left, toInt(r.outstanding))
+      const take = Math.min(left, fromApi(r.outstanding))
       left -= take
       return { ...r, take }
     }).filter((r) => r.take > 0)
@@ -73,7 +77,7 @@ export default function RecordPaymentModal({ open, onClose, customer, onRecorded
 
   const allocSum = Object.values(alloc).reduce((s, v) => s + toInt(v), 0)
   const allocInvalid = manual && (allocSum !== amount
-    || open_.some((r) => toInt(alloc[`${r.kind}:${r.id}`]) > toInt(r.outstanding)))
+    || open_.some((r) => toInt(alloc[`${r.kind}:${r.id}`]) > fromApi(r.outstanding)))
   const missingRef = NEEDS_REFERENCE.includes(form.method) && !form.reference.trim()
   const canSave = branchId && amount > 0 && amount <= owed && !missingRef && !allocInvalid
 

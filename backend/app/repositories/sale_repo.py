@@ -42,7 +42,11 @@ class SaleRepository(BaseRepository[Sale]):
     async def get_by_id_locked(self, db: AsyncSession, id: UUID) -> Sale | None:
         """Locks the Sale row so void can safely check-then-act on its
         status without racing a concurrent void of the same sale."""
-        result = await db.execute(select(Sale).where(Sale.id == id).with_for_update())
+        # FOR NO KEY UPDATE (key_share=True): still blocks a second void, but
+        # doesn't conflict with the KEY SHARE lock a concurrent debt payment's
+        # payment_allocations FK check takes on this sale — FOR UPDATE would
+        # deadlock with it (void: sale → customer; payment: customer → sale).
+        result = await db.execute(select(Sale).where(Sale.id == id).with_for_update(key_share=True))
         return result.scalar_one_or_none()
 
     async def create_sale_item(self, db: AsyncSession, data: dict) -> SaleItem:

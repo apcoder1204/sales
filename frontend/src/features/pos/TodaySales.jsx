@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Banknote, Smartphone, Landmark, ChevronRight } from 'lucide-react'
+import { CalendarCheck, Banknote, Smartphone, Landmark, ChevronRight, HandCoins } from 'lucide-react'
 import { reportService } from '@services/reportService'
 import { usePermission } from '@hooks/usePermission'
 import { formatCurrency } from '@utils/formatters'
@@ -10,6 +10,8 @@ const PAYMENT_ROWS = [
   { key: 'cash', icon: Banknote, label: SW.hali.malipo.cash },
   { key: 'bank_transfer', icon: Landmark, label: SW.hali.malipo.bank_transfer },
   { key: 'mobile_money', icon: Smartphone, label: SW.hali.malipo.mobile_money },
+  // Sold on credit today (not yet received) — with it the rows sum to revenue.
+  { key: 'credit', icon: HandCoins, label: SW.hali.malipo.credit },
 ]
 
 export default function TodaySales({ refreshKey }) {
