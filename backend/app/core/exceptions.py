@@ -167,6 +167,12 @@ _DEBT_ERRORS: dict[str, tuple[int, str]] = {
     "OPENING_BALANCE_DUPLICATE": (409, "Deni hili la zamani tayari limeingizwa"),
     "OPENING_BALANCE_NOT_PENDING": (400, "Deni hili la zamani limeshaamuliwa"),
     "DATE_RANGE_INVALID": (422, "Tarehe ya mwanzo haiwezi kuwa baada ya tarehe ya mwisho"),
+    "RECON_SCOPE_INVALID": (422, "Chagua kipimo sahihi cha upatanisho (tawi, mteja, muamala au malipo yaliyopo)"),
+    "EXCEPTION_STILL_PRESENT": (
+        409, "Tofauti hii bado ipo. Fanya marekebisho kwanza, kisha uiweke kuwa imetatuliwa"
+    ),
+    "EXCEPTION_CLOSED": (422, "Tofauti hii tayari imefungwa (imetatuliwa au imepuuzwa)"),
+    "EXCEPTION_TRANSITION_INVALID": (422, "Hali ya tofauti haiwezi kubadilishwa hivyo"),
     "OPENING_BALANCE_NOT_APPROVED": (400, "Ni deni la zamani lililoidhinishwa tu linaloweza kubatilishwa"),
     "OPENING_BALANCE_HAS_PAYMENTS": (
         400, "Deni hili lina malipo. Batilisha malipo hayo kwanza"

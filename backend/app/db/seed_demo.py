@@ -552,6 +552,19 @@ async def seed_demo() -> None:
         await _sync_inventory_rows(db, stock)
 
         await db.commit()
+
+        # One reconciliation over the whole seeded history, so the demo's
+        # Upatanisho page isn't empty and the seed proves its own data
+        # reconciles. If this run ever fails, the seed is wrong, not the check.
+        from app.schemas.reconciliation import RunCreate
+        from app.core.business_time import business_date_today
+        from app.services import reconciliation_service
+        today = business_date_today()
+        runner = next((u for u in users if u.role.name == "admin"), actor)
+        run = await reconciliation_service.run(db, RunCreate(
+            scope="all", period="custom", from_date=today - timedelta(days=DAYS_OF_HISTORY + 1), to_date=today,
+        ), runner)
+        print(f"Reconciliation {run.run_no}: {run.status} ({run.discrepancy_count} discrepancies)")
         print("\n✓ Demo data generated successfully!")
 
 
