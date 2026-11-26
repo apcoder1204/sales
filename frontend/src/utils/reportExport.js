@@ -64,10 +64,52 @@ export function toClosingExportData(closings) {
   }
 }
 
+/** The title and sheets a report exports as — exported so screens can show
+ *  exactly the figures the PDF/Excel will carry (DebtReportView). */
+export function normaliseReport(type, data, period) {
+  return normalise(type, data, period)
+}
+
 function normalise(type, data, period) {
   const label = periodLabel(period)
 
   switch (type) {
+    case 'customer_statement': {
+      const c = data.customer || {}
+      const T = SW.taarifa
+      return {
+        title: `${T.kichwa} — ${c.name}${label}`,
+        sheets: [
+          {
+            name: SW.ripoti.muhtasariSheet,
+            head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]],
+            rows: [
+              [SW.wateja.mteja, `${c.name} (${c.customer_no})`],
+              [SW.wateja.simu, c.phone],
+              [T.kipindi, `${data.date_from} – ${data.date_to}`],
+              [T.salioLaKuanzia, fmtCurrency(data.opening_balance)],
+              [T.debiti, fmtCurrency(data.total_debit)],
+              [T.krediti, fmtCurrency(data.total_credit)],
+              [T.salioLaMwisho, fmtCurrency(data.closing_balance)],
+            ],
+          },
+          {
+            name: T.miamala,
+            head: [[SW.wateja.tarehe, SW.wateja.kumbukumbu, T.maelezo, SW.wateja.tawi, T.debiti, T.krediti, T.salio]],
+            rows: [
+              [data.date_from, '', T.salioLaKuanzia, '', '', '', fmtCurrency(data.opening_balance)],
+              ...(data.lines || []).map((l) => [
+                l.date, l.reference, l.description, l.branch_name,
+                Number(l.debit) ? fmtCurrency(l.debit) : '', Number(l.credit) ? fmtCurrency(l.credit) : '',
+                fmtCurrency(l.balance),
+              ]),
+              [data.date_to, '', T.salioLaMwisho, '', fmtCurrency(data.total_debit), fmtCurrency(data.total_credit), fmtCurrency(data.closing_balance)],
+            ],
+          },
+        ],
+      }
+    }
+
     case 'sales': {
       const s = data.summary || {}
       return {

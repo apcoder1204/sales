@@ -20,6 +20,9 @@ import SW from '@constants/sw'
 import CustomerFormModal from './CustomerFormModal'
 import RecordPaymentModal from './RecordPaymentModal'
 import PaymentReceiptModal from './PaymentReceiptModal'
+import StatementTab from './StatementTab'
+import FollowUpsTab from './FollowUpsTab'
+import RiskFlags from './RiskFlags'
 
 const STATUS_COLOR = { UNPAID: 'yellow', PARTIALLY_PAID: 'blue', PAID: 'green', OVERDUE: 'red' }
 
@@ -65,7 +68,7 @@ export default function CustomerDetail() {
   if (!detail) {
     return <PageWrapper title={SW.wateja.mteja}>{!loading && <p className="text-text-muted">{SW.wateja.mtejaHajapatikana}</p>}</PageWrapper>
   }
-  const { customer: c, summary: s } = detail
+  const { customer: c, summary: s, risk } = detail
 
   const receivableColumns = [
     { key: 'reference', header: SW.wateja.kumbukumbu, render: (v) => <span className="font-mono text-xs">{v}</span> },
@@ -145,8 +148,21 @@ export default function CustomerDetail() {
         />
       </div>
 
-      <div className="flex items-center gap-2 border-b border-border">
-        {['madeni', 'malipo'].map((t) => (
+      {risk && (
+        <div className="glass-card p-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <RiskFlags flags={s.flags} />
+          <span className="text-text-secondary">{SW.hatariTakwimu.jumlaManunuzi}: <b className="text-text-primary">{formatCurrency(risk.total_purchases)}</b></span>
+          <span className="text-text-secondary">{SW.hatariTakwimu.jumlaMalipo}: <b className="text-text-primary">{formatCurrency(risk.total_payments)}</b></span>
+          <span className="text-text-secondary">{SW.hatariTakwimu.idadiYaliyochelewa}: <b className="text-text-primary">{risk.overdue_count}</b></span>
+          <span className="text-text-secondary">{SW.hatariTakwimu.deniLaZamaniZaidi}: <b className="text-text-primary">{risk.oldest_open_date ? formatDate(risk.oldest_open_date) : '-'}</b></span>
+          {risk.limit_used_pct != null && (
+            <span className="text-text-secondary">{SW.hatariTakwimu.kikomoKilichotumika}: <b className="text-text-primary">{Number(risk.limit_used_pct).toLocaleString('en-TZ', { maximumFractionDigits: 1 })}%</b></span>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 border-b border-border overflow-x-auto">
+        {['madeni', 'malipo', 'taarifa', 'ufuatiliaji'].map((t) => (
           <button
             key={t}
             type="button"
@@ -164,11 +180,14 @@ export default function CustomerDetail() {
         )}
       </div>
 
-      {tab === 'madeni' ? (
+      {tab === 'madeni' && (
         <DataTable columns={receivableColumns} data={receivables} loading={loading} emptyTitle={SW.wateja.hakunaMadeni} />
-      ) : (
+      )}
+      {tab === 'malipo' && (
         <DataTable columns={paymentColumns} data={payments} loading={loading} emptyTitle={SW.wateja.hakunaMalipo} />
       )}
+      {tab === 'taarifa' && <StatementTab customerId={id} branchFilter={branchFilter} />}
+      {tab === 'ufuatiliaji' && <FollowUpsTab customerId={id} branchFilter={branchFilter} />}
 
       <CustomerFormModal open={editOpen} onClose={() => setEditOpen(false)} customer={c} onSaved={load} />
       <RecordPaymentModal

@@ -14,6 +14,7 @@ import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import { formatCurrency, formatDate } from '@utils/formatters'
 import SW from '@constants/sw'
 import CustomerFormModal from './CustomerFormModal'
+import RiskFlags from './RiskFlags'
 
 export default function CustomersPage() {
   const [rows, setRows] = useState([])
@@ -73,7 +74,12 @@ export default function CustomersPage() {
     { key: 'last_payment_at', header: SW.wateja.malipoYaMwisho, render: (v) => formatDate(v) },
     {
       key: 'status', header: SW.wateja.hali,
-      render: (v) => <Badge color={v === 'active' ? 'green' : 'gray'}>{SW.hali.mteja[v] || v}</Badge>,
+      render: (v, row) => (
+        <div>
+          <Badge color={v === 'active' ? 'green' : 'gray'}>{SW.hali.mteja[v] || v}</Badge>
+          <RiskFlags flags={row.flags} className="mt-1" />
+        </div>
+      ),
     },
   ]
 

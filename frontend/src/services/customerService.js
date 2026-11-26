@@ -47,6 +47,22 @@ export const customerService = {
     return data
   },
 
+  statement: async (id, params = {}) => {
+    const { data } = await api.get(`/customers/${id}/statement`, { params })
+    return data
+  },
+
+  followUps: {
+    list: async (id, params = {}) => {
+      const { data } = await api.get(`/customers/${id}/follow-ups`, { params })
+      return data
+    },
+    create: async (id, payload) => {
+      const { data } = await api.post(`/customers/${id}/follow-ups`, payload)
+      return data
+    },
+  },
+
   // Madeni Yote: every open debt, branch-scoped by the server.
   allDebts: async (params = {}) => {
     const { data } = await api.get('/receivables', { params })
