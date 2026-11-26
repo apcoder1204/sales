@@ -481,3 +481,10 @@ Decided by the owner after stage 1 went live:
 - **Cashiers enter old debts** for their own branch (the server pins the branch); only the admin decides. Cashiers see their branch's entries and statuses.
 - **Cancel ("Batilisha") an approved old debt**, admin only, reason required, only while no active payment is allocated to it. Status `cancelled`, posts an `opening_void` ledger credit. Lock order customer → old debt, the same as debt payments.
 - **Madeni menu:** "Madeni Yote" (`GET /receivables`): every open debt with totals (owed, overdue, customers owing), status filter, search, and a per-row "Pokea Malipo". Branch-scoped like the customer pages. "Madeni ya Zamani" moves under it. Stage 2's ageing and debt dashboard extend this page rather than adding a new one.
+
+## Stage 2 status (2026-11-27)
+
+Built as planned in `docs/superpowers/plans/2026-11-27-customer-debt-stage2.md`: statements, ageing, the debt dashboard on Madeni Yote, factual risk flags, follow-up notes (`customer_follow_ups`, migration `e2f3a4b5c6d7`) and seven debt reports with PDF, Excel and WhatsApp. Rulings made while building:
+- Ageing is always as of today (no `as_of` parameter).
+- Ledger rows get their own `created_at`, so a sale always comes before its till payment in a statement.
+- The "reconciliation exceptions" report (brief §29 item 8) belongs to stage 3.

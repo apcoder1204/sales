@@ -159,6 +159,10 @@ that is a no-op.
   are lost**, so restore from the pre-deploy dump instead if the feature has
   been used.
 
+**Follow-up notes (`e2f3a4b5c6d7`).** A new `customer_follow_ups` table only;
+no existing rows change. Rollback: `alembic downgrade d1e2f3a4b5c6` drops the
+table and its notes (no financial data).
+
 **Old debts with one admin (`d1e2f3a4b5c6`).** Schema only, no rows change.
 Drops the two-person check on `opening_balances` (each business has a single
 admin), allows status `cancelled` with new columns `cancelled_by`,

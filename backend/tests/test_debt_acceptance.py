@@ -1,4 +1,4 @@
-"""Stage 1 acceptance scenario (brief §33 / spec §12): ABC Technologies buys
+"""Acceptance scenario (brief §33 / spec §12), stages 1 and 2: ABC Technologies buys
 5 items at 80,000 (cost 50,000), pays 150,000 cash, owes 250,000."""
 import uuid
 from decimal import Decimal
@@ -94,6 +94,25 @@ async def test_abc_technologies_scenario(client, db_session):
         ("payment_reversal", Decimal("100000.00"), Decimal("0.00")),
         ("sale", Decimal("400000.00"), Decimal("0.00")),
     ]
+
+    # Stage 2: the statement tells the same story and ends at the balance
+    st = await client.get(f"/api/v1/customers/{abc.id}/statement", headers=auth_headers(admin))
+    assert st.status_code == 200, st.text
+    st = st.json()
+    assert [(x["entry_type"], Decimal(x["debit"]), Decimal(x["credit"])) for x in st["lines"]] == [
+        ("sale", Decimal("400000"), 0), ("payment", 0, Decimal("150000")),
+        ("payment", 0, Decimal("100000")), ("payment_reversal", Decimal("100000"), 0),
+    ]
+    assert Decimal(st["closing_balance"]) == Decimal("250000") == await ledger_service.customer_balance(db, abc.id)
+    # ageing: due in 30 days → not yet due; the outstanding report agrees
+    ag = (await client.get("/api/v1/reports/debts/ageing", params={"branch_id": str(branch.id)},
+                           headers=auth_headers(admin))).json()
+    [abc_row] = [r for r in ag["rows"] if r["customer"]["id"] == str(abc.id)]
+    assert Decimal(abc_row["buckets"]["not_due"]) == Decimal("250000") == Decimal(abc_row["total"])
+    out = (await client.get("/api/v1/reports/debts/outstanding", params={"branch_id": str(branch.id)},
+                            headers=auth_headers(admin))).json()
+    [abc_out] = [r for r in out["rows"] if r["customer"]["id"] == str(abc.id)]
+    assert Decimal(abc_out["balance"]) == Decimal("250000")
 
     # A cashier at another branch: no receivables, no sale, can't pay it
     h = auth_headers(other_cashier)

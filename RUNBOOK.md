@@ -227,6 +227,14 @@ That only works while no active payment is recorded on it; reverse such
 payments first. The cancelled entry stays visible with who cancelled it and
 why, and the ledger gets an offsetting "opening_void" credit.
 
+**Statements, ageing and reports.**
+- **Statement:** Wateja → customer → "Taarifa". Pick a date range and download it as PDF or Excel, or send it to WhatsApp. The closing balance always equals the ledger balance up to the end date; a different figure means a bug, not a data fix.
+- **Debt dashboard and ageing:** at the top of Madeni → Madeni Yote, with the "Umri wa Madeni" tab next to the list. Days overdue are counted from each debt's due date, using Tanzania business dates.
+- **Debt reports:** Ripoti → the seven "Madeni: …" types. Credit-limit use is for the admin and manager only.
+- **Who sees what:** a cashier sees only their branch everywhere. The admin and manager see all branches or the one picked in the switcher.
+
+**Follow-up notes don't change balances.** "Ufuatiliaji" on the customer page records calls, visits and promises to pay. The cashier writes for their own branch and the admin for any POS branch; the manager can only read. Nothing there touches payments or what is owed.
+
 **The customer ledger is append-only.** `customer_ledger_entries` has a database
 trigger that refuses UPDATE and DELETE. Nobody should ever need to bypass it on
 prod. The only sanctioned bypass is inside a single transaction:
