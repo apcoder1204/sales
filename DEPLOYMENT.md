@@ -158,6 +158,14 @@ that is a no-op.
   had none) and drops the new tables. **All customer, debt and payment records
   are lost**, so restore from the pre-deploy dump instead if the feature has
   been used.
+
+**Old debts with one admin (`d1e2f3a4b5c6`).** Schema only, no rows change.
+Drops the two-person check on `opening_balances` (each business has a single
+admin), allows status `cancelled` with new columns `cancelled_by`,
+`cancelled_at` and `cancel_reason`, and allows ledger entry type
+`opening_void`. Rollback: `alembic downgrade c0d1e2f3a4b5` drops the three
+columns and re-adds the old checks as NOT VALID, so rows written meanwhile
+(self-approved or cancelled old debts) stay readable.
 - The demo nightly reset (`seed_demo`) clears and regenerates the new tables
   too, including 6 demo customers with some credit sales.
 

@@ -47,6 +47,12 @@ export const customerService = {
     return data
   },
 
+  // Madeni Yote: every open debt, branch-scoped by the server.
+  allDebts: async (params = {}) => {
+    const { data } = await api.get('/receivables', { params })
+    return data
+  },
+
   openingBalances: {
     list: async (params = {}) => {
       const { data } = await api.get('/opening-balances', { params })
@@ -62,6 +68,10 @@ export const customerService = {
     },
     reject: async (id, note) => {
       const { data } = await api.post(`/opening-balances/${id}/reject`, { note })
+      return data
+    },
+    cancel: async (id, reason) => {
+      const { data } = await api.post(`/opening-balances/${id}/cancel`, { reason })
       return data
     },
   },

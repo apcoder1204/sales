@@ -26,7 +26,8 @@ const fromApi = (v) => Math.round(Number(v) || 0)
 // Debt is paid at the branch that owns it (decision D2): a cashier only at
 // their own branch; an admin picks one of the branches where this customer
 // owes. The server re-validates everything (branch, amounts, allocation).
-export default function RecordPaymentModal({ open, onClose, customer, onRecorded }) {
+// `branchId` (optional) preselects the branch when opened from a specific debt.
+export default function RecordPaymentModal({ open, onClose, customer, branchId: preferredBranch, onRecorded }) {
   const { user } = useAuth()
   const { isGlobal } = usePermission()
   const { activeBranchId } = useBranch()
@@ -51,9 +52,10 @@ export default function RecordPaymentModal({ open, onClose, customer, onRecorded
       setReceivables(rows)
       const owing = [...new Set(rows.map((r) => r.branch_id))]
       if (!isGlobal) setBranchId(user?.branch_id || '')
+      else if (owing.includes(preferredBranch)) setBranchId(preferredBranch)
       else setBranchId(owing.includes(activeBranchId) ? activeBranchId : owing[0] || '')
     }).catch((e) => setError(resolveApiErrorMessage(e)))
-  }, [open, customer, isGlobal, user, activeBranchId])
+  }, [open, customer, isGlobal, user, activeBranchId, preferredBranch])
 
   const branchOptions = useMemo(() => {
     const seen = new Map()

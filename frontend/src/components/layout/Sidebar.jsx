@@ -4,22 +4,21 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, ArrowLeftRight,
   BarChart3, ScrollText, Users, ChevronLeft, ChevronDown, Zap,
-  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2, Contact, BookOpen,
+  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2, Contact, BookOpen, HandCoins,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { usePermission } from '@hooks/usePermission'
 import SW from '@constants/sw'
 
 // Every nav item that isn't the Dashboard (always first, for everyone —
-// it's the one page that makes sense as a universal anchor) or the Bidhaa
-// group (order controlled separately below, since it's rendered specially).
+// it's the one page that makes sense as a universal anchor) or a group with
+// sub-items (Bidhaa, Madeni — see navGroups, rendered by NavGroup).
 // Visibility is still decided purely by permission, same as before — this
 // map only controls display metadata, never access.
 const NAV_ITEMS = {
   mauzo: { to: '/mauzo', icon: ShoppingCart, label: SW.nav.mauzo, permission: 'sales.create' },
   historiaMauzo: { to: '/mauzo/historia', icon: Receipt, label: SW.nav.historiaMauzo, permission: 'sales.read' },
   wateja: { to: '/wateja', icon: Contact, label: SW.nav.wateja, permission: 'customers.read' },
-  madeniYaZamani: { to: '/wateja/madeni-ya-zamani', icon: BookOpen, label: SW.nav.madeniYaZamani, permission: 'opening_balances.manage' },
   uhamisho: { to: '/uhamisho', icon: ArrowLeftRight, label: SW.nav.uhamisho, permission: 'transfers.read' },
   ufungaji: { to: '/ufungaji', icon: Lock, label: SW.nav.ufungaji, permission: 'closing.view' },
   ripoti: { to: '/ripoti', icon: BarChart3, label: SW.nav.ripoti, permission: ['reports.sales', 'reports.inventory', 'reports.closing'] },
@@ -35,33 +34,130 @@ const NAV_ITEMS = {
 // instead. This is purely presentational — `can()` below is still what
 // actually decides whether an item renders at all, exactly as before.
 const ROLE_NAV_ORDER = {
-  cashier: ['mauzo', 'historiaMauzo', 'wateja', 'ufungaji', 'bidhaa', 'uhamisho', 'ripoti'],
+  cashier: ['mauzo', 'historiaMauzo', 'wateja', 'madeni', 'ufungaji', 'bidhaa', 'uhamisho', 'ripoti'],
   store_keeper: ['bidhaa', 'uhamisho', 'ripoti', 'kumbukumbu'],
-  general_manager: ['uhamisho', 'ripoti', 'ufungaji', 'wateja', 'bidhaa', 'kumbukumbu'],
-  admin: ['mauzo', 'historiaMauzo', 'wateja', 'madeniYaZamani', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
-  super_admin: ['mauzo', 'historiaMauzo', 'wateja', 'madeniYaZamani', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
+  general_manager: ['uhamisho', 'ripoti', 'ufungaji', 'wateja', 'madeni', 'bidhaa', 'kumbukumbu'],
+  admin: ['mauzo', 'historiaMauzo', 'wateja', 'madeni', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
+  super_admin: ['mauzo', 'historiaMauzo', 'wateja', 'madeni', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi'],
 }
-const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'wateja', 'madeniYaZamani', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi']
+const DEFAULT_NAV_ORDER = ['mauzo', 'historiaMauzo', 'wateja', 'madeni', 'bidhaa', 'uhamisho', 'ufungaji', 'ripoti', 'kumbukumbu', 'watumiaji', 'matawi']
+
+// Groups with sub-items. `prefix` decides when the group counts as active
+// (and starts expanded); a group shows only if one of its children does.
+// Built per render so labels follow a language switch.
+const navGroups = () => ({
+  bidhaa: {
+    label: SW.nav.bidhaa, icon: Package, prefix: '/bidhaa',
+    children: [
+      { to: '/bidhaa', label: SW.nav.orodhaYaBidhaa, icon: List, permission: 'products.read', exact: true },
+      { to: '/bidhaa/jamii', label: SW.nav.jamiiYaBidhaa, icon: Tag, permission: 'products.read' },
+      { to: '/bidhaa/marekebisho', label: SW.nav.marekebishoYaBidhaa, icon: RefreshCw, permission: 'inventory.adjust' },
+      { to: '/hifadhi/harakati', label: SW.nav.harakatiZaBidhaa, icon: Activity, permission: 'inventory.read' },
+    ],
+  },
+  madeni: {
+    label: SW.nav.madeni, icon: HandCoins, prefix: '/madeni',
+    children: [
+      { to: '/madeni', label: SW.nav.madeniYote, icon: List, permission: 'customers.read', exact: true },
+      { to: '/madeni/zamani', label: SW.nav.madeniYaZamani, icon: BookOpen, permission: 'opening_balances.enter' },
+    ],
+  },
+})
+
+function NavGroup({ group, open, can, pathname }) {
+  const children = group.children.filter((c) => !c.permission || can(c.permission))
+  const isActive = pathname.startsWith(group.prefix)
+  const [expanded, setExpanded] = useState(isActive)
+  if (children.length === 0) return null
+  const Icon = group.icon
+
+  if (!open) {
+    return (
+      <NavLink
+        to={children[0].to}
+        title={group.label}
+        className={clsx(
+          'flex items-center justify-center px-3 py-2.5 rounded-lg transition-colors duration-150',
+          isActive
+            ? 'bg-primary/15 text-primary-light border border-primary/20'
+            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+        )}
+      >
+        <Icon size={18} />
+      </NavLink>
+    )
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className={clsx(
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150',
+          isActive
+            ? 'bg-primary/10 text-primary-light'
+            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+        )}
+      >
+        <Icon size={18} className={clsx('flex-shrink-0', isActive && 'text-primary-light')} />
+        <span className="text-sm font-medium truncate flex-1 text-left">{group.label}</span>
+        <motion.span
+          style={{ display: 'inline-flex' }}
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown size={14} />
+        </motion.span>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1 ml-4 pl-3 border-l border-border space-y-1">
+              {children.map((child) => (
+                <NavLink
+                  key={child.to}
+                  to={child.to}
+                  end={child.exact}
+                  className={({ isActive: on }) =>
+                    clsx(
+                      'flex items-center gap-2 px-2 py-2 rounded-lg transition-colors duration-150 text-xs',
+                      on
+                        ? 'bg-primary/15 text-primary-light border border-primary/20'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                    )
+                  }
+                >
+                  {({ isActive: on }) => (
+                    <>
+                      <child.icon size={14} className={clsx('flex-shrink-0', on && 'text-primary-light')} />
+                      <span className="font-medium truncate">{child.label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function Sidebar({ open, onToggle }) {
   const { can, role } = usePermission()
   const location = useLocation()
-  const [bidhaaOpen, setBidhaaOpen] = useState(location.pathname.startsWith('/bidhaa'))
-
-  const bidhaaChildren = [
-    { to: '/bidhaa', label: SW.nav.orodhaYaBidhaa, icon: List, permission: 'products.read', exact: true },
-    { to: '/bidhaa/jamii', label: SW.nav.jamiiYaBidhaa, icon: Tag, permission: 'products.read' },
-    { to: '/bidhaa/marekebisho', label: SW.nav.marekebishoYaBidhaa, icon: RefreshCw, permission: 'inventory.adjust' },
-    { to: '/hifadhi/harakati', label: SW.nav.harakatiZaBidhaa, icon: Activity, permission: 'inventory.read' },
-  ]
-
   const topNavItems = [
     { to: '/dashibodi', icon: LayoutDashboard, label: SW.nav.dashibodi, permission: null },
   ]
   const navOrder = ROLE_NAV_ORDER[role] || DEFAULT_NAV_ORDER
-
-  const showBidhaa = bidhaaChildren.some((c) => !c.permission || can(c.permission))
-  const isBidhaaActive = location.pathname.startsWith('/bidhaa')
+  const groups = navGroups()
 
   const renderNavItem = (item) => {
     const hasAccess = !item.permission
@@ -101,88 +197,6 @@ export default function Sidebar({ open, onToggle }) {
     )
   }
 
-  const renderBidhaaGroup = () => {
-    if (!showBidhaa) return null
-    return (
-      <div key="bidhaa">
-        {open ? (
-          <>
-            <button
-              onClick={() => setBidhaaOpen((v) => !v)}
-              className={clsx(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150',
-                isBidhaaActive
-                  ? 'bg-primary/10 text-primary-light'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-              )}
-            >
-              <Package size={18} className={clsx('flex-shrink-0', isBidhaaActive && 'text-primary-light')} />
-              <span className="text-sm font-medium truncate flex-1 text-left">{SW.nav.bidhaa}</span>
-              <motion.span
-                style={{ display: 'inline-flex' }}
-                animate={{ rotate: bidhaaOpen ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronDown size={14} />
-              </motion.span>
-            </button>
-
-            <AnimatePresence>
-              {bidhaaOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-1 ml-4 pl-3 border-l border-border space-y-1">
-                    {bidhaaChildren.map((child) => {
-                      if (child.permission && !can(child.permission)) return null
-                      return (
-                        <NavLink
-                          key={child.to}
-                          to={child.to}
-                          end={child.exact}
-                          className={({ isActive }) =>
-                            clsx(
-                              'flex items-center gap-2 px-2 py-2 rounded-lg transition-colors duration-150 text-xs',
-                              isActive
-                                ? 'bg-primary/15 text-primary-light border border-primary/20'
-                                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                            )
-                          }
-                        >
-                          {({ isActive }) => (
-                            <>
-                              <child.icon size={14} className={clsx('flex-shrink-0', isActive && 'text-primary-light')} />
-                              <span className="font-medium truncate">{child.label}</span>
-                            </>
-                          )}
-                        </NavLink>
-                      )
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
-        ) : (
-          <NavLink
-            to="/bidhaa"
-            className={clsx(
-              'flex items-center justify-center px-3 py-2.5 rounded-lg transition-colors duration-150',
-              isBidhaaActive
-                ? 'bg-primary/15 text-primary-light border border-primary/20'
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-            )}
-          >
-            <Package size={18} />
-          </NavLink>
-        )}
-      </div>
-    )
-  }
-
   return (
     <motion.aside
       animate={{ width: open ? 240 : 64 }}
@@ -218,7 +232,9 @@ export default function Sidebar({ open, onToggle }) {
       {/* Nav — Dashboard always first, then role-ordered (see ROLE_NAV_ORDER) */}
       <nav className="flex-1 overflow-y-auto py-3 space-y-1 px-2 pb-3">
         {topNavItems.map(renderNavItem)}
-        {navOrder.map((key) => (key === 'bidhaa' ? renderBidhaaGroup() : renderNavItem(NAV_ITEMS[key])))}
+        {navOrder.map((key) => (groups[key]
+          ? <NavGroup key={key} group={groups[key]} open={open} can={can} pathname={location.pathname} />
+          : renderNavItem(NAV_ITEMS[key])))}
       </nav>
     </motion.aside>
   )

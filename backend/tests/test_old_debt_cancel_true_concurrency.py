@@ -61,7 +61,10 @@ async def test_cancel_and_payment_race_has_one_winner():
                 finally:
                     await session.close()
 
-            results = set(await asyncio.gather(cancel(), pay()))
+            # return_exceptions: both tasks always finish before we assert or
+            # clean up, even if one fails unexpectedly.
+            outcomes = await asyncio.gather(cancel(), pay(), return_exceptions=True)
+            results = {o if isinstance(o, str) else f"{type(o).__name__}: {o}" for o in outcomes}
             assert results in ({"cancelled", "PAYMENT_EXCEEDS_DEBT"}, {"paid", "OPENING_BALANCE_HAS_PAYMENTS"}), results
 
             s = w.session()

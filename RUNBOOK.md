@@ -194,9 +194,10 @@ and restart the service: the button and settings card disappear.
 
 **Who can do what.** A cashier can register customers, sell on credit at their own
 branch (only to an active customer, within the customer's credit limit), and
-receive debt payments at their own branch. Only admin/super_admin can set or
-raise a credit limit, deactivate a customer, reverse a debt payment, or enter
-and approve old debts. A general manager can look but not change anything.
+receive debt payments at their own branch. A cashier can also enter an old
+debt for their own branch. Only the admin can set or raise a credit limit,
+deactivate a customer, reverse a debt payment, or approve, reject and cancel
+old debts. A general manager can look but not change anything.
 Every one of these is in the audit log (category "sales").
 
 **Raising a credit limit.** Wateja → customer → "Mkopo". A reason is required;
@@ -212,9 +213,19 @@ branch's day is closed: reopen the day first (admin), reverse, re-record, close.
 Payments taken at the till during a sale are undone only by voiding the sale.
 A sale with debt payments against it can't be voided until those are reversed.
 
-**Old debts (Madeni ya Zamani).** One admin enters the debt with a reference
-(e.g. ledger book page). A different admin approves or rejects it; the system
-won't let the same person do both. Only an approved old debt is owed.
+**Seeing who owes.** Madeni → Madeni Yote lists every open debt (credit sales
+and approved old debts) with totals, filters and a "Pokea Malipo" button per
+row. A cashier sees only their own branch.
+
+**Old debts (Madeni ya Zamani).** The admin, or a cashier for their own branch,
+enters the debt with a reference (e.g. ledger book page). It waits as
+"Linasubiri" and is not owed yet. The admin checks it against the notebook and
+presses "Idhinisha" (or "Kataa" with a reason) as a separate step; each
+business has one admin, so the admin may approve their own entries. An
+approved old debt that was wrong: the admin presses "Batilisha" with a reason.
+That only works while no active payment is recorded on it; reverse such
+payments first. The cancelled entry stays visible with who cancelled it and
+why, and the ledger gets an offsetting "opening_void" credit.
 
 **The customer ledger is append-only.** `customer_ledger_entries` has a database
 trigger that refuses UPDATE and DELETE. Nobody should ever need to bypass it on
