@@ -300,7 +300,9 @@ A sale with no payments and no customer is rejected (`CREDIT_REQUIRES_CUSTOMER`)
 | Credit sale within limit | ✔ own branch | ✘ | ✘ (cannot sell today) | ✔ |
 | Record debt payment | ✔ own branch | ✘ | ✘ | ✔ any branch |
 | Reverse payment | ✘ | ✘ | ✘ | ✔ |
-| Enter / approve old debt | ✘ | ✘ | ✘ | ✔ (approver ≠ enterer) |
+| Enter old debt | ✔ own branch | ✘ | ✘ | ✔ |
+| Approve / reject / cancel old debt | ✘ | ✘ | ✘ | ✔ (may decide own entry, as a separate step) |
+| See all debts (Madeni Yote) | own branch only | ✘ | all branches, read-only | all branches |
 | Run reconciliation (stage 3) | ✘ | ✘ | ✔ read-only | ✔ |
 | Resolve reconciliation exception (stage 3) | ✘ | ✘ | ✘ | ✔ |
 
@@ -469,3 +471,13 @@ Each stage gets its own implementation plan and is deployed only with the owner'
 9. Old payment columns on sales are kept, unused, until a later release, because prod now holds real data.
 10. Debt payments and reversals are blocked on a closed day, the same as sales and voids.
 11. Old-debt approval doesn't check the credit limit; the debt already exists.
+
+
+## Addendum (2026-11-26): one admin per business, Madeni menu
+
+Decided by the owner after stage 1 went live:
+
+- **Each business has exactly one admin.** The superadmin is the system owner's hidden account and never acts for the business. The two-person rule for old debts (D5) is replaced: the admin checks an old debt against the notebook and approves or rejects it as a separate step, and may decide their own entries (migration `d1e2f3a4b5c6` drops `chk_opening_balances_two_person`).
+- **Cashiers enter old debts** for their own branch (the server pins the branch); only the admin decides. Cashiers see their branch's entries and statuses.
+- **Cancel ("Batilisha") an approved old debt**, admin only, reason required, only while no active payment is allocated to it. Status `cancelled`, posts an `opening_void` ledger credit. Lock order customer → old debt, the same as debt payments.
+- **Madeni menu:** "Madeni Yote" (`GET /receivables`): every open debt with totals (owed, overdue, customers owing), status filter, search, and a per-row "Pokea Malipo". Branch-scoped like the customer pages. "Madeni ya Zamani" moves under it. Stage 2's ageing and debt dashboard extend this page rather than adding a new one.
