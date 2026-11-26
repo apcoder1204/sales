@@ -14,8 +14,11 @@ from app.db.session import get_db
 from app.core.authorization import branch_context
 from app.models.customer import Customer
 from app.schemas.customer import CustomerRef
+from app.schemas.debt import AgeingOut, DashboardOut
 from app.schemas.payment import DebtListItem, DebtListResponse, DebtListSummary, ReceivableOut
-from app.services import ledger_service
+from app.services import debt_insights_service, ledger_service
+from app.services.report_service import _resolve_period_dates
+from datetime import date
 
 router = APIRouter(prefix="/receivables", tags=["Receivables"])
 
@@ -55,3 +58,25 @@ async def list_receivables(
         for r in page_rows
     ]
     return DebtListResponse(items=items, total=len(rows), summary=summary)
+
+
+@router.get("/ageing", response_model=AgeingOut)
+async def receivables_ageing(
+    branch_id: UUID | None = Depends(branch_context),
+    current_user=Depends(require_customer_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    return await debt_insights_service.ageing(db, branch_id)
+
+
+@router.get("/dashboard", response_model=DashboardOut)
+async def receivables_dashboard(
+    period: str = "month",
+    from_date: date | None = None,
+    to_date: date | None = None,
+    branch_id: UUID | None = Depends(branch_context),
+    current_user=Depends(require_customer_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    date_from, date_to = _resolve_period_dates(period, from_date, to_date)
+    return await debt_insights_service.dashboard(db, branch_id, date_from, date_to)
