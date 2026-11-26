@@ -138,6 +138,29 @@ types/defaults):
 | `WHATSAPP_CAPTION_PREFIX` | demo only: `"[DEMO] "` |
 | `REDIS_URL` | present in the prod `.env` as a leftover from before Redis was removed from the app (rate limiting is in-process `memory://` now) — unused, safe to remove whenever the file is next touched, not urgent |
 
+## Migration notes
+
+**Customers and debts, stage 1 (`c0d1e2f3a4b5`).** Additive only. It creates
+`customers`, `payments`, `payment_allocations`, `opening_balances` and the
+append-only `customer_ledger_entries` (with trigger `trg_ledger_append_only`).
+It adds `sales.customer_id` and `sales.due_date`, adds
+`daily_closings.total_credit_given` and `total_debt_collected` (existing rows
+get 0), and makes `sales.payment_method` and `payment_reference` nullable.
+Those two legacy columns are kept, but new sales no longer write them. The
+only data written is one backfilled `payments` row plus one allocation per
+existing sale (voided sale → reversed payment). On a database with no sales
+that is a no-op.
+
+- Backup: `deploy.sh` already dumps prod before `alembic upgrade head`. Take
+  one by hand as well if deploying manually (`BACKUP_RESTORE.md`).
+- Rollback: `alembic downgrade f1a2b3c4d5e6`. This restores each sale's legacy
+  payment method from its first payment ('cash' for a full-credit sale, which
+  had none) and drops the new tables. **All customer, debt and payment records
+  are lost**, so restore from the pre-deploy dump instead if the feature has
+  been used.
+- The demo nightly reset (`seed_demo`) clears and regenerates the new tables
+  too, including 6 demo customers with some credit sales.
+
 ## Known gaps
 
 - **No CI gate.** A push to `main` deploys unconditionally, even if

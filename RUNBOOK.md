@@ -190,6 +190,45 @@ category System) with the sender, report, PDF SHA-256 and outcome.
 **Turn it off quickly.** Set `WHATSAPP_ENABLED=false` in the backend `.env`
 and restart the service: the button and settings card disappear.
 
+## Customers and debts (Wateja na Madeni)
+
+**Who can do what.** A cashier can register customers, sell on credit at their own
+branch (only to an active customer, within the customer's credit limit), and
+receive debt payments at their own branch. Only admin/super_admin can set or
+raise a credit limit, deactivate a customer, reverse a debt payment, or enter
+and approve old debts. A general manager can look but not change anything.
+Every one of these is in the audit log (category "sales").
+
+**Raising a credit limit.** Wateja → customer → "Mkopo". A reason is required;
+the audit entry keeps the old and new limit and what the customer owed at that
+moment. The limit is one total across all branches. A credit limit of 0 means
+"no credit".
+
+**A debt payment was recorded wrongly** (wrong amount, wrong customer, or the
+wrong branch). Don't edit anything. An admin opens the customer → Malipo →
+"Batilisha" on that payment, gives a reason, then records the correct payment.
+The original stays visible as reversed. A payment can't be reversed once that
+branch's day is closed: reopen the day first (admin), reverse, re-record, close.
+Payments taken at the till during a sale are undone only by voiding the sale.
+A sale with debt payments against it can't be voided until those are reversed.
+
+**Old debts (Madeni ya Zamani).** One admin enters the debt with a reference
+(e.g. ledger book page). A different admin approves or rejects it; the system
+won't let the same person do both. Only an approved old debt is owed.
+
+**The customer ledger is append-only.** `customer_ledger_entries` has a database
+trigger that refuses UPDATE and DELETE. Nobody should ever need to bypass it on
+prod. The only sanctioned bypass is inside a single transaction:
+`SET LOCAL dukani.ledger_maintenance = 'on'`. The demo reset and the tests use
+it to wipe their own data. Never run it against production data; corrections
+are always new rows (reversals), never edits.
+
+**Where the money is counted.** Daily closing and the "by payment method"
+figures come from the `payments` table: money actually received. The credit
+part of a sale shows separately as "Mkopo Uliotolewa" and debt collections
+as "Madeni Yaliyolipwa". Profit & loss still counts a sale's full value on
+the day of the sale, and a later debt payment never adds revenue.
+
 ## Useful one-liners
 
 ```bash

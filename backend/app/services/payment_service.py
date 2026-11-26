@@ -100,7 +100,10 @@ async def record_debt_payment(
     customer = await ledger_service.lock_customer(db, customer_id)
     open_rows = await ledger_service.receivables(db, customer.id, branch_id, open_only=True)
     owed = sum((r.outstanding for r in open_rows), Decimal("0"))
-    if data.amount > owed:
+    # Explicit allocations are checked first: naming a debt that isn't open
+    # here (another branch's or customer's sale) is ALLOCATION_INVALID. Valid
+    # allocations that sum to the amount already imply amount <= owed.
+    if not data.allocations and data.amount > owed:
         raise debt_error("PAYMENT_EXCEEDS_DEBT", {"owed": _whole(owed)})
     plan = _plan_allocations(open_rows, data)
 
