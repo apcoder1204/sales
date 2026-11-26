@@ -10,6 +10,17 @@ function mapReportParams(params = {}) {
 }
 
 export const reportService = {
+  // Debt reports (brief §29), branch-scoped by the server.
+  debts: {
+    outstanding: async (params = {}) => (await api.get('/reports/debts/outstanding', { params: mapReportParams(params) })).data,
+    overdue: async (params = {}) => (await api.get('/reports/debts/overdue', { params: mapReportParams(params) })).data,
+    ageing: async (params = {}) => (await api.get('/reports/debts/ageing', { params: mapReportParams(params) })).data,
+    collections: async (params = {}) => (await api.get('/reports/debts/collections', { params: mapReportParams(params) })).data,
+    branches: async (params = {}) => (await api.get('/reports/debts/branches', { params: mapReportParams(params) })).data,
+    creditUtilization: async () => (await api.get('/reports/debts/credit-utilization')).data,
+    openingBalances: async (params = {}) => (await api.get('/reports/debts/opening-balances', { params: mapReportParams(params) })).data,
+  },
+
   sales: async (params = {}) => {
     const { data } = await api.get('/reports/sales', { params: mapReportParams(params) })
     return data

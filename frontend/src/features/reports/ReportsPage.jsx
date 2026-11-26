@@ -16,9 +16,14 @@ import { formatCurrency, formatDateTime, formatNumber, formatPercent } from '@ut
 import { getReportPeriods } from '@utils/constants'
 import { buildPDF, downloadPDF, downloadExcel, toClosingExportData } from '@utils/reportExport'
 import SendWhatsAppButton from '@components/ui/SendWhatsAppButton'
+import DebtReportView from './DebtReportView'
 import { useToast } from '@hooks/useToast'
 import { useActiveBranchFilter } from '@hooks/useActiveBranchFilter'
 import SW from '@constants/sw'
+
+// Debt reports that show the current state, not a period (only collections
+// and branches take one).
+const NO_PERIOD_DEBT_REPORTS = ['debt_outstanding', 'debt_overdue', 'debt_ageing', 'debt_credit_utilization', 'debt_opening_balances']
 
 export default function ReportsPage() {
   const { can } = usePermission()
@@ -35,6 +40,13 @@ export default function ReportsPage() {
     { value: 'inventory_valuation', label: SW.ripoti.thamaniYaInventory, permission: 'reports.inventory' },
     { value: 'closing', label: SW.ripoti.ufungaji, permission: 'reports.closing' },
     { value: 'profit_loss', label: SW.ripoti.faida.jina, permission: 'reports.profit_loss' },
+    { value: 'debt_outstanding', label: SW.ripotiMadeni.outstanding, permission: 'reports.debts' },
+    { value: 'debt_overdue', label: SW.ripotiMadeni.overdue, permission: 'reports.debts' },
+    { value: 'debt_ageing', label: SW.ripotiMadeni.ageing, permission: 'reports.debts' },
+    { value: 'debt_collections', label: SW.ripotiMadeni.collections, permission: 'reports.debts' },
+    { value: 'debt_branches', label: SW.ripotiMadeni.branches, permission: 'reports.debts' },
+    { value: 'debt_credit_utilization', label: SW.ripotiMadeni.creditUtilization, permission: 'reports.debts_credit' },
+    { value: 'debt_opening_balances', label: SW.ripotiMadeni.openingBalances, permission: 'opening_balances.enter' },
   ]
 
   const [reportType, setReportType] = useState('sales')
@@ -110,6 +122,13 @@ export default function ReportsPage() {
         case 'inventory_valuation': result = await reportService.inventoryValuation(params); break
         case 'closing': result = await reportService.closing(params); break
         case 'profit_loss': result = await reportService.profitLoss(params); break
+        case 'debt_outstanding': result = await reportService.debts.outstanding(params); break
+        case 'debt_overdue': result = await reportService.debts.overdue(params); break
+        case 'debt_ageing': result = await reportService.debts.ageing(params); break
+        case 'debt_collections': result = await reportService.debts.collections(params); break
+        case 'debt_branches': result = await reportService.debts.branches(params); break
+        case 'debt_credit_utilization': result = await reportService.debts.creditUtilization(params); break
+        case 'debt_opening_balances': result = await reportService.debts.openingBalances(params); break
         default: result = null
       }
       setData(result)
@@ -128,11 +147,13 @@ export default function ReportsPage() {
           <Select
             label={SW.ripoti.aina}
             value={reportType}
-            onChange={(e) => setReportType(e.target.value)}
+            // Clear the previous report in the same render: its data has another
+            // shape, and drawing it as the new type would crash the page.
+            onChange={(e) => { setData(null); setReportType(e.target.value) }}
             options={availableTypes}
             containerClassName="min-w-48"
           />
-          {!['stock_movements', 'inventory', 'low_stock', 'inventory_valuation'].includes(activeReportType) && (
+          {!['stock_movements', 'inventory', 'low_stock', 'inventory_valuation', ...NO_PERIOD_DEBT_REPORTS].includes(activeReportType) && (
             <Select
               label={SW.ripoti.kipindiLabel}
               value={period}
@@ -205,6 +226,7 @@ export default function ReportsPage() {
         <ReportContent
           type={activeReportType}
           data={data}
+          period={period}
           onClosingExport={handleClosingExport}
           closingExporting={exporting}
           canDownloadClosing={can('reports.closing')}
@@ -214,7 +236,7 @@ export default function ReportsPage() {
   )
 }
 
-function ReportContent({ type, data, onClosingExport, closingExporting, canDownloadClosing }) {
+function ReportContent({ type, data, period, onClosingExport, closingExporting, canDownloadClosing }) {
   switch (type) {
     case 'sales': return <SalesReport data={data} />
     case 'inventory': return <InventoryReport data={data} />
@@ -232,7 +254,7 @@ function ReportContent({ type, data, onClosingExport, closingExporting, canDownl
       />
     )
     case 'profit_loss': return <ProfitLossReport data={data} />
-    default: return null
+    default: return type.startsWith('debt_') ? <DebtReportView type={type} data={data} period={period} /> : null
   }
 }
 

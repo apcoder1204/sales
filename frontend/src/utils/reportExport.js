@@ -74,6 +74,135 @@ function normalise(type, data, period) {
   const label = periodLabel(period)
 
   switch (type) {
+    // ── Debt reports (brief §29) — one summary sheet plus the rows ──
+    case 'debt_outstanding': {
+      const R = SW.ripotiMadeni
+      const s = data.summary || {}
+      return {
+        title: R.outstanding,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]], rows: [
+            [R.jumlaYaMadeni, fmtCurrency(s.total_balance)],
+            [R.yaliyochelewa, fmtCurrency(s.total_overdue)],
+            [R.idadiWateja, fmt(s.customers)],
+          ] },
+          { name: R.wateja, head: [[SW.wateja.mteja, SW.wateja.simu, R.salio, R.yaliyochelewa, R.kikomo, R.malipoYaMwisho, R.viashiria]],
+            rows: (data.rows || []).map((r) => [
+              `${r.customer.name} (${r.customer.customer_no})`, r.customer.phone, fmtCurrency(r.balance),
+              fmtCurrency(r.overdue), fmtCurrency(r.credit_limit), r.last_payment_at ? r.last_payment_at.slice(0, 10) : '-',
+              (r.flags || []).map((f) => SW.hatari[f] || f).join(', '),
+            ]) },
+        ],
+      }
+    }
+
+    case 'debt_overdue': {
+      const R = SW.ripotiMadeni
+      const s = data.summary || {}
+      return {
+        title: R.overdue,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]], rows: [
+            [R.jumlaYaMadeni, fmtCurrency(s.total)], [R.idadi, fmt(s.count)],
+          ] },
+          { name: R.madeni, head: [[SW.wateja.mteja, SW.wateja.tawi, SW.wateja.kumbukumbu, SW.wateja.tareheYaKulipa, R.sikuZilizochelewa, R.salio]],
+            rows: (data.rows || []).map((r) => [
+              r.customer.name, r.branch_name, r.reference, r.due_date, fmt(r.days_overdue), fmtCurrency(r.outstanding),
+            ]) },
+        ],
+      }
+    }
+
+    case 'debt_ageing': {
+      const R = SW.ripotiMadeni
+      const B = ['not_due', '1_30', '31_60', '61_90', '90_plus']
+      const head = [B.map((b) => SW.madeni.umri[b]).concat(SW.madeni.jumlaFupi)]
+      return {
+        title: R.ageing,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]],
+            rows: B.map((b) => [SW.madeni.umri[b], fmtCurrency(data.totals?.[b])]).concat([[SW.madeni.jumlaFupi, fmtCurrency(data.total)]]) },
+          { name: R.wateja, head: [[SW.wateja.mteja, ...head[0]]],
+            rows: (data.rows || []).map((r) => [r.customer.name, ...B.map((b) => fmtCurrency(r.buckets[b])), fmtCurrency(r.total)]) },
+          { name: R.matawi, head: [[SW.wateja.tawi, ...head[0]]],
+            rows: (data.by_branch || []).map((r) => [r.branch_name, ...B.map((b) => fmtCurrency(r.buckets[b])), fmtCurrency(r.total)]) },
+        ],
+      }
+    }
+
+    case 'debt_collections': {
+      const R = SW.ripotiMadeni
+      const s = data.summary || {}
+      return {
+        title: `${R.collections}${label}`,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]], rows: [
+            [R.jumlaIliyokusanywa, fmtCurrency(s.total)], [R.idadi, fmt(s.count)],
+            ...Object.entries(s.by_method || {}).map(([m, v]) => [SW.hali.malipo[m] || m, fmtCurrency(v)]),
+          ] },
+          { name: R.malipo, head: [[SW.wateja.namba, SW.wateja.tarehe, SW.wateja.mteja, SW.wateja.tawi, SW.wateja.njia, SW.wateja.kiasi, SW.wateja.aliyepokea]],
+            rows: (data.rows || []).map((r) => [
+              r.payment_no, r.business_date, r.customer.name, r.branch_name, SW.hali.malipo[r.method] || r.method,
+              fmtCurrency(r.amount), r.received_by,
+            ]) },
+        ],
+      }
+    }
+
+    case 'debt_branches': {
+      const R = SW.ripotiMadeni
+      const s = data.summary || {}
+      return {
+        title: `${R.branches}${label}`,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]], rows: [
+            [R.jumlaYaMadeni, fmtCurrency(s.outstanding)], [R.yaliyochelewa, fmtCurrency(s.overdue)],
+            [R.idadiWateja, fmt(s.customers_owing)], [R.jumlaIliyokusanywa, fmtCurrency(s.collected_in_period)],
+          ] },
+          { name: R.matawi, head: [[SW.wateja.tawi, R.salio, R.yaliyochelewa, R.idadiWateja, R.jumlaIliyokusanywa]],
+            rows: (data.rows || []).map((r) => [
+              r.branch_name, fmtCurrency(r.outstanding), fmtCurrency(r.overdue), fmt(r.customers_owing), fmtCurrency(r.collected_in_period),
+            ]) },
+        ],
+      }
+    }
+
+    case 'debt_credit_utilization': {
+      const R = SW.ripotiMadeni
+      const s = data.summary || {}
+      return {
+        title: R.creditUtilization,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]], rows: [
+            [SW.hatari.OVER_LIMIT, fmt(s.customers_over_limit)], [SW.hatari.NEAR_LIMIT, fmt(s.customers_near_limit)],
+          ] },
+          { name: R.wateja, head: [[SW.wateja.mteja, R.kikomo, R.salio, R.asilimiaIliyotumika, R.inayopatikana, R.viashiria]],
+            rows: (data.rows || []).map((r) => [
+              r.customer.name, fmtCurrency(r.credit_limit), fmtCurrency(r.balance),
+              r.used_pct == null ? '-' : `${Number(r.used_pct).toLocaleString('en-TZ', { maximumFractionDigits: 1 })}%`,
+              fmtCurrency(r.available), (r.flags || []).map((f) => SW.hatari[f] || f).join(', '),
+            ]) },
+        ],
+      }
+    }
+
+    case 'debt_opening_balances': {
+      const R = SW.ripotiMadeni
+      const s = data.summary || {}
+      return {
+        title: R.openingBalances,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.wateja.hali, R.idadi, SW.wateja.kiasi]],
+            rows: Object.entries(s).map(([k, v]) => [SW.hali.aliyeingizaHali[k] || k, fmt(v.count), fmtCurrency(v.amount)]) },
+          { name: R.madeni, head: [[SW.wateja.mteja, SW.wateja.tawi, SW.wateja.kiasi, SW.madeniYaZamani.tareheYaDeni, SW.wateja.kumbukumbu, SW.wateja.hali, SW.madeniYaZamani.aliyeingiza, SW.madeniYaZamani.aliyeamua]],
+            rows: (data.rows || []).map((r) => [
+              r.customer.name, r.branch_name, fmtCurrency(r.amount), r.effective_date, r.reference,
+              SW.hali.aliyeingizaHali[r.status] || r.status, r.entered_by_name, r.decided_by_name || '-',
+            ]) },
+        ],
+      }
+    }
+
     case 'customer_statement': {
       const c = data.customer || {}
       const T = SW.taarifa
