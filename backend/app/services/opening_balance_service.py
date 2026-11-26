@@ -8,13 +8,14 @@ the credit limit — the debt already exists.
 from datetime import timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.authorization import get_active_branch_or_error
-from app.core.business_time import utcnow
+from app.core.authorization import get_active_branch_or_error, require_write_branch_access
+from app.core.business_time import business_date_today, utcnow
 from app.core.exceptions import NotFoundException, ValidationException, debt_error
 from app.models.opening_balance import OpeningBalance
+from app.models.payment import Payment, PaymentAllocation
 from app.schemas.customer import CustomerRef
 from app.schemas.payment import OpeningBalanceCreate, OpeningBalanceOut
 from app.services import ledger_service
@@ -28,7 +29,9 @@ def to_out(ob: OpeningBalance) -> OpeningBalanceOut:
         due_date=ob.due_date, reference=ob.reference, description=ob.description,
         status=ob.status, entered_by=ob.entered_by, entered_by_name=ob.enterer.full_name,
         decided_by_name=ob.decider.full_name if ob.decider else None,
-        decided_at=ob.decided_at, decision_note=ob.decision_note, created_at=ob.created_at,
+        decided_at=ob.decided_at, decision_note=ob.decision_note,
+        cancelled_by_name=ob.canceller.full_name if ob.canceller else None,
+        cancelled_at=ob.cancelled_at, cancel_reason=ob.cancel_reason, created_at=ob.created_at,
     )
 
 
@@ -45,9 +48,21 @@ async def _audit(db, user, action, ob: OpeningBalance, extra: dict | None = None
     )
 
 
+async def _entry_branch_id(db: AsyncSession, data: OpeningBalanceCreate, user) -> UUID:
+    """A cashier enters only for their own branch; the admin must pick one."""
+    if user.role.name == "cashier":
+        if data.branch_id is not None:
+            await require_write_branch_access(db, user, data.branch_id)
+        return user.branch_id
+    if data.branch_id is None:
+        raise ValidationException("Chagua tawi la deni", "BRANCH_REQUIRED")
+    return data.branch_id
+
+
 async def create(db: AsyncSession, customer_id: UUID, data: OpeningBalanceCreate, user) -> OpeningBalance:
+    branch_id = await _entry_branch_id(db, data, user)
     customer = await ledger_service.lock_customer(db, customer_id)
-    branch = await get_active_branch_or_error(db, data.branch_id, "Tawi")
+    branch = await get_active_branch_or_error(db, branch_id, "Tawi")
     if branch.branch_type != "pos_point":
         raise ValidationException("Deni la zamani ni la Sehemu ya Mauzo pekee", "BRANCH_NOT_POS")
     dup = (await db.execute(select(OpeningBalance.id).where(
@@ -82,8 +97,6 @@ async def _lock_pending(db: AsyncSession, ob_id: UUID, user) -> OpeningBalance:
         raise NotFoundException("Deni la zamani", "opening_balance")
     if ob.status != "pending":
         raise debt_error("OPENING_BALANCE_NOT_PENDING")
-    if ob.entered_by == user.id:
-        raise debt_error("OPENING_BALANCE_SELF_DECISION")
     return ob
 
 
@@ -117,6 +130,46 @@ async def reject(db: AsyncSession, ob_id: UUID, user, note: str | None) -> Openi
     await db.commit()
     await db.refresh(ob)
     await _audit(db, user, "OPENING_BALANCE_REJECTED", ob, {"note": ob.decision_note})
+    return ob
+
+
+async def cancel(db: AsyncSession, ob_id: UUID, user, reason: str) -> OpeningBalance:
+    """Undo an approved old debt entered by mistake. Lock order customer →
+    old debt, the same as debt payments, so a payment arriving at the same
+    moment either lands first (and blocks this) or waits and finds nothing
+    left to pay."""
+    found = await db.get(OpeningBalance, ob_id)
+    if not found:
+        raise NotFoundException("Deni la zamani", "opening_balance")
+    await ledger_service.lock_customer(db, found.customer_id)
+    ob = (await db.execute(
+        select(OpeningBalance).where(OpeningBalance.id == ob_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )).scalar_one()
+    if ob.status != "approved":
+        raise debt_error("OPENING_BALANCE_NOT_APPROVED")
+    paid = (await db.execute(
+        select(func.coalesce(func.sum(PaymentAllocation.amount), 0))
+        .join(Payment, Payment.id == PaymentAllocation.payment_id)
+        .where(PaymentAllocation.opening_balance_id == ob.id, Payment.status == "active")
+    )).scalar()
+    if paid and paid > 0:
+        raise debt_error("OPENING_BALANCE_HAS_PAYMENTS")
+    ob.status = "cancelled"
+    ob.cancelled_by = user.id
+    ob.cancelled_at = utcnow()
+    ob.cancel_reason = reason.strip()
+    await db.flush()
+    original = await ledger_service.find_entry(db, "opening_balance", ob.id, "opening_balance")
+    await ledger_service.post(
+        db, customer_id=ob.customer_id, branch_id=ob.branch_id, entry_type="opening_void",
+        source_type="opening_balance", source_id=ob.id, business_date=business_date_today(),
+        credit=ob.amount, reverses_entry_id=original.id if original else None,
+        description=f"Deni la zamani ({ob.reference}) limebatilishwa", created_by=user.id,
+    )
+    await db.commit()
+    await db.refresh(ob)
+    await _audit(db, user, "OPENING_BALANCE_CANCELLED", ob, {"reason": ob.cancel_reason})
     return ob
 
 

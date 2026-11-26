@@ -35,7 +35,7 @@ class CustomerLedgerEntry(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "entry_type IN ('sale','payment','payment_reversal','sale_void','opening_balance')",
+            "entry_type IN ('sale','payment','payment_reversal','sale_void','opening_balance','opening_void')",
             name="chk_ledger_entry_type",
         ),
         CheckConstraint(

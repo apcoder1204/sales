@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.business_time import business_date_for, business_date_today
@@ -34,6 +34,7 @@ OPENING_BALANCE_PREFIX = "DENI-ZAMANI "
 class Receivable:
     kind: Literal["sale", "opening_balance"]
     id: UUID
+    customer_id: UUID
     reference: str
     branch_id: UUID
     branch_name: str
@@ -86,23 +87,50 @@ async def receivables(
     branch_id: UUID | None = None,
     open_only: bool = True,
 ) -> list[Receivable]:
+    return await collect_receivables(db, customer_id=customer_id, branch_id=branch_id, open_only=open_only)
+
+
+async def collect_receivables(
+    db: AsyncSession,
+    *,
+    customer_id: UUID | None = None,
+    branch_id: UUID | None = None,
+    search: str | None = None,
+    open_only: bool = True,
+) -> list[Receivable]:
+    """Credit sales and approved old debts, FIFO-sorted. One customer's (the
+    customer page, payment allocation) or everyone's (Madeni Yote); `search`
+    matches the customer's name, phone or number, or the debt's reference."""
     today = business_date_today()
     out: list[Receivable] = []
+    like = f"%{search.strip()}%" if search and search.strip() else None
+
+    def who(q, customer_col, ref_col):
+        if like:
+            q = q.join(Customer, Customer.id == customer_col).where(or_(
+                Customer.name.ilike(like), Customer.phone.ilike(like),
+                Customer.customer_no.ilike(like), ref_col.ilike(like),
+            ))
+        return q
 
     paid_sale = _active_paid(PaymentAllocation.sale_id)
     q = (
         select(Sale, Branch.name, func.coalesce(paid_sale.c.paid, 0))
         .join(Branch, Branch.id == Sale.branch_id)
         .outerjoin(paid_sale, paid_sale.c.rid == Sale.id)
-        .where(Sale.customer_id == customer_id, Sale.status == "completed")
+        .where(Sale.customer_id.isnot(None), Sale.status == "completed")
     )
+    if customer_id is not None:
+        q = q.where(Sale.customer_id == customer_id)
     if branch_id is not None:
         q = q.where(Sale.branch_id == branch_id)
-    for sale, branch_name, paid in (await db.execute(q)).all():
+    if open_only:
+        q = q.where(Sale.total_amount > func.coalesce(paid_sale.c.paid, 0))
+    for sale, branch_name, paid in (await db.execute(who(q, Sale.customer_id, Sale.transaction_no))).all():
         paid = Decimal(paid).quantize(CENT)
         outstanding = sale.total_amount - paid
         out.append(Receivable(
-            kind="sale", id=sale.id, reference=sale.transaction_no,
+            kind="sale", id=sale.id, customer_id=sale.customer_id, reference=sale.transaction_no,
             branch_id=sale.branch_id, branch_name=branch_name,
             date=business_date_for(sale.created_at), due_date=sale.due_date,
             amount=sale.total_amount, paid=paid, outstanding=outstanding,
@@ -114,15 +142,20 @@ async def receivables(
         select(OpeningBalance, Branch.name, func.coalesce(paid_ob.c.paid, 0))
         .join(Branch, Branch.id == OpeningBalance.branch_id)
         .outerjoin(paid_ob, paid_ob.c.rid == OpeningBalance.id)
-        .where(OpeningBalance.customer_id == customer_id, OpeningBalance.status == "approved")
+        .where(OpeningBalance.status == "approved")
     )
+    if customer_id is not None:
+        q = q.where(OpeningBalance.customer_id == customer_id)
     if branch_id is not None:
         q = q.where(OpeningBalance.branch_id == branch_id)
-    for ob, branch_name, paid in (await db.execute(q)).all():
+    if open_only:
+        q = q.where(OpeningBalance.amount > func.coalesce(paid_ob.c.paid, 0))
+    for ob, branch_name, paid in (await db.execute(who(q, OpeningBalance.customer_id, OpeningBalance.reference))).all():
         paid = Decimal(paid).quantize(CENT)
         outstanding = ob.amount - paid
         out.append(Receivable(
-            kind="opening_balance", id=ob.id, reference=OPENING_BALANCE_PREFIX + ob.reference,
+            kind="opening_balance", id=ob.id, customer_id=ob.customer_id,
+            reference=OPENING_BALANCE_PREFIX + ob.reference,
             branch_id=ob.branch_id, branch_name=branch_name,
             date=ob.effective_date, due_date=ob.due_date,
             amount=ob.amount, paid=paid, outstanding=outstanding,

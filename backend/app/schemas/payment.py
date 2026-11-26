@@ -58,6 +58,22 @@ class ReceivableOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class DebtListItem(ReceivableOut):
+    customer: CustomerRef
+
+
+class DebtListSummary(BaseModel):
+    total_outstanding: Decimal
+    overdue: Decimal
+    customers_owing: int
+
+
+class DebtListResponse(BaseModel):
+    items: list[DebtListItem]
+    total: int
+    summary: DebtListSummary
+
+
 class AllocationOut(BaseModel):
     receivable_kind: Literal["sale", "opening_balance"]
     receivable_id: UUID
@@ -109,7 +125,8 @@ class PaymentReceipt(BaseModel):
 
 
 class OpeningBalanceCreate(BaseModel):
-    branch_id: UUID
+    # Cashiers always enter for their own branch; the admin must choose one.
+    branch_id: UUID | None = None
     amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
     effective_date: date
     due_date: date | None = None
@@ -135,6 +152,10 @@ class OpeningBalanceReject(BaseModel):
     note: str = Field(min_length=3, max_length=500)
 
 
+class OpeningBalanceCancel(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
 class OpeningBalanceOut(BaseModel):
     id: UUID
     customer: CustomerRef
@@ -151,4 +172,7 @@ class OpeningBalanceOut(BaseModel):
     decided_by_name: str | None
     decided_at: datetime | None
     decision_note: str | None
+    cancelled_by_name: str | None = None
+    cancelled_at: datetime | None = None
+    cancel_reason: str | None = None
     created_at: datetime

@@ -23,6 +23,9 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
 
 # Everyone but store_keeper may look customers up (spec §6.5).
 require_customer_reader = require_role("super_admin", "admin", "general_manager", "cashier")
+# Old debts: the admin for any POS branch, a cashier for their own (the
+# service pins the branch); deciding stays admin-only.
+require_old_debt_enterer = require_role("super_admin", "admin", "cashier")
 
 
 @router.get("")
@@ -139,7 +142,7 @@ async def list_payments(
 async def enter_opening_balance(
     customer_id: UUID,
     data: OpeningBalanceCreate,
-    current_user=Depends(require_admin),
+    current_user=Depends(require_old_debt_enterer),
     db: AsyncSession = Depends(get_db),
 ):
     ob = await opening_balance_service.create(db, customer_id, data, current_user)

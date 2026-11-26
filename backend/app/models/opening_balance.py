@@ -27,19 +27,20 @@ class OpeningBalance(Base):
     decided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     decision_note: Mapped[str | None] = mapped_column(Text)
+    cancelled_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     customer: Mapped["Customer"] = relationship("Customer", lazy="selectin")
     branch: Mapped["Branch"] = relationship("Branch", lazy="selectin")
     enterer: Mapped["User"] = relationship("User", foreign_keys=[entered_by], lazy="selectin")
     decider: Mapped["User | None"] = relationship("User", foreign_keys=[decided_by], lazy="selectin")
+    canceller: Mapped["User | None"] = relationship("User", foreign_keys=[cancelled_by], lazy="selectin")
 
     __table_args__ = (
         CheckConstraint("amount > 0", name="chk_opening_balances_amount_pos"),
         CheckConstraint(
-            "status IN ('pending','approved','rejected')", name="chk_opening_balances_status"
-        ),
-        CheckConstraint(
-            "decided_by IS NULL OR decided_by <> entered_by", name="chk_opening_balances_two_person"
+            "status IN ('pending','approved','rejected','cancelled')", name="chk_opening_balances_status"
         ),
     )
