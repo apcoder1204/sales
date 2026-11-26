@@ -3,7 +3,7 @@ debt payment never adds revenue (spec §6.4)."""
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 
 from app.db import seed_demo
 from app.models.customer import Customer
@@ -131,14 +131,22 @@ async def test_sales_report_breakdown_includes_credit_row(w):
 @pytest.mark.asyncio
 async def test_demo_wipe_handles_debt_tables(w, db_session):
     await _scenario(w)
-    # Pre-existing gap, out of scope here: the demo wipe doesn't delete stock
-    # requests, which reference products. Clear them (rolled back with the test).
-    await db_session.execute(delete(StockTransferItem))
-    await db_session.execute(delete(StockTransfer))
-    await db_session.execute(delete(StockRequestItem))
-    await db_session.execute(delete(StockRequest))
+    # A demo visitor's stock request (with a transfer made from it) references
+    # products; the nightly wipe must clear it rather than fail on the FK.
+    req = StockRequest(request_no=f"REQ-T-{w.b.id.hex[:8]}", requested_by=w.cashier_b.id,
+                       from_branch_id=w.a.id, to_branch_id=w.b.id, status="fulfilled")
+    db_session.add(req)
+    await db_session.flush()
+    db_session.add(StockRequestItem(request_id=req.id, product_id=w.product.id, requested_qty=1))
+    transfer = StockTransfer(transfer_no=f"TRF-T-{w.b.id.hex[:8]}", request_id=req.id,
+                             from_branch_id=w.a.id, to_branch_id=w.b.id, transferred_by=w.admin.id)
+    db_session.add(transfer)
+    await db_session.flush()
+    db_session.add(StockTransferItem(transfer_id=transfer.id, product_id=w.product.id, quantity=1))
+    await db_session.flush()
     await seed_demo._wipe_generated_data(db_session, commit=False)
-    for model in (CustomerLedgerEntry, Payment, Customer):
+    for model in (CustomerLedgerEntry, Payment, Customer, StockRequest, StockRequestItem,
+                  StockTransfer, StockTransferItem):
         n = (await db_session.execute(select(func.count()).select_from(model))).scalar()
         assert n == 0, model.__name__
 

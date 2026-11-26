@@ -131,13 +131,15 @@ async def _ensure_skeleton(db) -> None:
 
 async def _wipe_generated_data(db, commit: bool = True) -> None:
     """Delete everything this script owns, in FK-safe (dependents-first)
-    order. Never touches branches/roles/users/categories. The customer
+    order. Includes stock requests made by demo visitors (they reference
+    products). Never touches branches/roles/users/categories. The customer
     ledger is append-only (DB trigger); this transaction-scoped flag is the
     one sanctioned way to clear it."""
     await db.execute(text("SET LOCAL dukani.ledger_maintenance = 'on'"))
     for model in (
         CustomerLedgerEntry, PaymentAllocation, Payment, OpeningBalance,
         SaleItem, Sale, Customer, StockTransferItem, StockTransfer,
+        StockRequestItem, StockRequest,
         InventoryTransaction, Inventory, DailyClosing, Product,
     ):
         await db.execute(delete(model))
