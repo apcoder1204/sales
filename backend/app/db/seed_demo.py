@@ -31,7 +31,7 @@ from app.db.base import (  # noqa: F401
     Sale, SaleItem, StockRequest, StockRequestItem, StockTransfer,
     StockTransferItem, AuditLog, DailyClosing, DailyClosingExpense,
     PasswordResetToken, Customer, OpeningBalance, Payment, PaymentAllocation,
-    CustomerLedgerEntry,
+    CustomerLedgerEntry, CustomerFollowUp,
 )
 
 UTC = timezone.utc
@@ -137,7 +137,7 @@ async def _wipe_generated_data(db, commit: bool = True) -> None:
     one sanctioned way to clear it."""
     await db.execute(text("SET LOCAL dukani.ledger_maintenance = 'on'"))
     for model in (
-        CustomerLedgerEntry, PaymentAllocation, Payment, OpeningBalance,
+        CustomerFollowUp, CustomerLedgerEntry, PaymentAllocation, Payment, OpeningBalance,
         SaleItem, Sale, Customer, StockTransferItem, StockTransfer,
         StockRequestItem, StockRequest,
         InventoryTransaction, Inventory, DailyClosing, Product,
@@ -254,8 +254,9 @@ async def _settle_sale(db, sale: Sale, cashier: User, when: datetime, debts: _De
 
 async def _generate_debt_activity(db, debts: _Debts, cashier_by_branch: dict, actor: User,
                                   pos_branches: list[Branch]) -> None:
-    """Today: three debt payments against older credit sales, and one old
-    debt waiting for a second admin's approval."""
+    """Today: three debt payments against older credit sales, follow-up
+    notes on three debtors, and one old debt waiting for the admin's
+    approval."""
     now = _utcnow()
     candidates = [row for row in debts.open_sales if row[0].created_at.date() < now.date()]
     for sale, customer, outstanding in random.sample(candidates, min(3, len(candidates))):
@@ -270,6 +271,14 @@ async def _generate_debt_activity(db, debts: _Debts, cashier_by_branch: dict, ac
         db.add(_ledger(customer, sale.branch_id, "payment", "payment", payment.id, now, cashier.id,
                        f"Malipo ya deni {payment.payment_no}", credit=amount))
         debts.branch_balance[key] = before - amount
+    notes = [("phone", "Amesema atalipa wiki hii", 5), ("visit", "Tumemtembelea dukani kwake", None),
+             ("whatsapp", "Ametumiwa ukumbusho wa deni", 10)]
+    for (sale, customer, _), (method, note, promise) in zip(debts.open_sales[:3], notes):
+        db.add(CustomerFollowUp(
+            customer_id=customer.id, branch_id=sale.branch_id, contact_date=now.date(), method=method,
+            note=note, expected_payment_date=(now.date() + timedelta(days=promise)) if promise else None,
+            responsible_user_id=cashier_by_branch[sale.branch_id].id, created_by=cashier_by_branch[sale.branch_id].id,
+        ))
     if pos_branches and len(debts.customers) > 4:
         effective = now.date() - timedelta(days=90)
         customer = debts.customers[4]

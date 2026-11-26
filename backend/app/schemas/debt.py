@@ -1,10 +1,12 @@
 """Stage 2 read models: statements, ageing, dashboard, risk, follow-ups and
 debt reports. All amounts are Decimal; nothing here writes money."""
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from app.schemas.customer import CustomerRef
 
@@ -75,3 +77,32 @@ class DashboardOut(BaseModel):
     oldest_debt: OldestDebt | None
     ageing: dict[str, Decimal]
     top_debtors: list[TopDebtor]
+
+
+class FollowUpCreate(BaseModel):
+    # Cashiers always note for their own branch; the admin must choose one.
+    branch_id: UUID | None = None
+    contact_date: date
+    method: Literal["phone", "visit", "sms", "whatsapp"]
+    note: str = Field(min_length=3, max_length=1000)
+    expected_payment_date: date | None = None
+
+    @model_validator(mode="after")
+    def contact_not_in_future(self):
+        from app.core.business_time import business_date_today
+
+        if self.contact_date > business_date_today():
+            raise PydanticCustomError("contact_date_future", "Tarehe ya mawasiliano haiwezi kuwa ya baadaye")
+        return self
+
+
+class FollowUpOut(BaseModel):
+    id: UUID
+    branch_id: UUID
+    branch_name: str
+    contact_date: date
+    method: str
+    note: str
+    expected_payment_date: date | None
+    responsible_user_name: str
+    created_at: datetime

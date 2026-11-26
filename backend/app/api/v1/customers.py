@@ -18,9 +18,10 @@ from app.schemas.payment import (
     DebtPaymentCreate, OpeningBalanceCreate, OpeningBalanceOut, PaymentOut, ReceivableOut,
 )
 from app.services import (
-    customer_service, ledger_service, opening_balance_service, payment_service, statement_service,
+    customer_service, follow_up_service, ledger_service, opening_balance_service, payment_service,
+    statement_service,
 )
-from app.schemas.debt import StatementOut
+from app.schemas.debt import FollowUpCreate, FollowUpOut, StatementOut
 from app.core.business_time import business_date_today
 from datetime import date
 
@@ -168,3 +169,23 @@ async def customer_statement(
         db, customer_id, branch_id,
         date_from or today.replace(day=1), date_to or today,
     )
+
+
+@router.get("/{customer_id}/follow-ups", response_model=list[FollowUpOut])
+async def list_follow_ups(
+    customer_id: UUID,
+    branch_id: UUID | None = Depends(branch_context),
+    current_user=Depends(require_customer_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    return [follow_up_service.to_out(f) for f in await follow_up_service.list_(db, customer_id, branch_id)]
+
+
+@router.post("/{customer_id}/follow-ups", response_model=FollowUpOut, status_code=201)
+async def add_follow_up(
+    customer_id: UUID,
+    data: FollowUpCreate,
+    current_user=Depends(require_old_debt_enterer),  # admin any POS branch, cashier own branch
+    db: AsyncSession = Depends(get_db),
+):
+    return follow_up_service.to_out(await follow_up_service.create(db, customer_id, data, current_user))
