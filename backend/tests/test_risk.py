@@ -119,3 +119,21 @@ async def test_list_carries_flags_without_extra_queries(w, db_session):
     # 13 = what stage 1 already spent per row (measured on the pre-flags code,
     # including the selectin loads behind receivables); flags must add none.
     assert per_customer <= 13, per_customer
+
+
+@pytest.mark.asyncio
+async def test_cashier_never_sees_all_branch_limit_use(w):
+    """A cashier at branch B must not learn branch A's debt: over the limit,
+    the % used would reveal the all-branch balance (D4: cashiers see only
+    the available credit)."""
+    w.customer.credit_limit = D("1000000")
+    await w.db.flush()
+    await w.credit_sale(w.a, w.cashier_a, 9)          # A owes 900k
+    await w.credit_sale(w.b, w.cashier_b, 1)          # B owes 100k
+    w.customer.credit_limit = D("500000")             # now 200% used overall
+    await w.db.flush()
+    cashier_view = await detail(w, user=w.cashier_b)
+    assert cashier_view["risk"]["limit_used_pct"] is None
+    assert D(cashier_view["summary"]["balance"]) == D(100000)
+    admin_view = await detail(w)
+    assert D(admin_view["risk"]["limit_used_pct"]) == D("200.00")

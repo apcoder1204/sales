@@ -181,7 +181,8 @@ def risk_flags(customer: Customer, scope_rows: list[Receivable], scope_balance: 
     return flags
 
 
-async def risk_details(db: AsyncSession, customer: Customer, branch_id: UUID | None) -> RiskOut:
+async def risk_details(db: AsyncSession, customer: Customer, branch_id: UUID | None,
+                       show_limit_use: bool = True) -> RiskOut:
     today = business_date_today()
     open_rows = await collect_receivables(db, customer_id=customer.id, branch_id=branch_id)
     total_balance = (await all_branch_balances(db, [customer.id])).get(customer.id, ZERO)
@@ -193,7 +194,7 @@ async def risk_details(db: AsyncSession, customer: Customer, branch_id: UUID | N
         purchases = purchases.where(Sale.branch_id == branch_id)
         paid = paid.where(Payment.branch_id == branch_id)
     pct = None
-    if customer.credit_limit > 0:
+    if show_limit_use and customer.credit_limit > 0:
         pct = (max(total_balance, ZERO) * 100 / customer.credit_limit).quantize(CENT)
     return RiskOut(
         limit_used_pct=pct,

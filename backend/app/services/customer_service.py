@@ -16,6 +16,9 @@ from app.schemas.customer import (
     CustomerUpdate,
 )
 from app.services import debt_insights_service, ledger_service
+
+# Roles that see all branches (and so all-branch credit figures).
+GLOBAL_ROLES = ("super_admin", "admin", "general_manager")
 from app.services.audit_service import audit_service
 
 _PROFILE_FIELDS = ("name", "phone", "email", "address", "customer_type", "tin", "notes")
@@ -145,7 +148,7 @@ async def search(
 
 
 async def get_detail(
-    db: AsyncSession, customer_id: UUID, branch_scope: UUID | None
+    db: AsyncSession, customer_id: UUID, branch_scope: UUID | None, user=None
 ) -> CustomerDetailResponse:
     """`branch_scope` comes from `branch_context` (cashier → own branch;
     global roles → requested branch or None for all). Balance and overdue
@@ -154,5 +157,11 @@ async def get_detail(
     return CustomerDetailResponse(
         customer=CustomerResponse.model_validate(c),
         summary=await ledger_service.summary(db, c, branch_scope),
-        risk=await debt_insights_service.risk_details(db, c, branch_scope),
+        risk=await debt_insights_service.risk_details(
+            db, c, branch_scope,
+            # The all-branch % used would reveal other branches' debt once
+            # over the limit; branch-scoped roles see only available credit
+            # (D4). Decided by role: the admin may also pick one branch.
+            show_limit_use=user is None or user.role.name in GLOBAL_ROLES,
+        ),
     )

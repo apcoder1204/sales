@@ -71,7 +71,7 @@ async def get_customer(
     current_user=Depends(require_customer_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    return await customer_service.get_detail(db, customer_id, branch_id)
+    return await customer_service.get_detail(db, customer_id, branch_id, current_user)
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)

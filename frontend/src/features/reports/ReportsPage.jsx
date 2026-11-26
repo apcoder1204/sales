@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { BarChart3, FileDown, FileSpreadsheet } from 'lucide-react'
 import PageWrapper from '@components/layout/PageWrapper'
 import Select from '@components/ui/Select'
@@ -56,6 +56,10 @@ export default function ReportsPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(null)
+  // Each fetch gets a number; only the latest may set data. A slow answer
+  // for a report the user already left would otherwise be drawn as the new
+  // type and crash the page (its data has another shape).
+  const requestRef = useRef(0)
 
   const availableTypes = REPORT_TYPES.filter((t) => can(t.permission))
   const activeReportType = availableTypes.some((t) => t.value === reportType)
@@ -107,6 +111,7 @@ export default function ReportsPage() {
       setData(null)
       return
     }
+    const requestId = ++requestRef.current
     setLoading(true)
     setData(null)
     try {
@@ -131,9 +136,9 @@ export default function ReportsPage() {
         case 'debt_opening_balances': result = await reportService.debts.openingBalances(params); break
         default: result = null
       }
-      setData(result)
+      if (requestId === requestRef.current) setData(result)
     } finally {
-      setLoading(false)
+      if (requestId === requestRef.current) setLoading(false)
     }
   }, [activeReportType, period, dateFrom, dateTo, branchFilter.branch_id])
 
