@@ -17,7 +17,12 @@ from app.schemas.customer import (
 from app.schemas.payment import (
     DebtPaymentCreate, OpeningBalanceCreate, OpeningBalanceOut, PaymentOut, ReceivableOut,
 )
-from app.services import customer_service, ledger_service, opening_balance_service, payment_service
+from app.services import (
+    customer_service, ledger_service, opening_balance_service, payment_service, statement_service,
+)
+from app.schemas.debt import StatementOut
+from app.core.business_time import business_date_today
+from datetime import date
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -147,3 +152,19 @@ async def enter_opening_balance(
 ):
     ob = await opening_balance_service.create(db, customer_id, data, current_user)
     return opening_balance_service.to_out(ob)
+
+
+@router.get("/{customer_id}/statement", response_model=StatementOut)
+async def customer_statement(
+    customer_id: UUID,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    branch_id: UUID | None = Depends(branch_context),  # a cashier gets their branch
+    current_user=Depends(require_customer_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    today = business_date_today()
+    return await statement_service.statement(
+        db, customer_id, branch_id,
+        date_from or today.replace(day=1), date_to or today,
+    )

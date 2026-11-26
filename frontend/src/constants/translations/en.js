@@ -966,6 +966,7 @@ export const EN = {
       PAYMENT_ALREADY_REVERSED: "This payment is already reversed",
       SALE_PAYMENT_USE_VOID: "A payment taken at the sale is undone by voiding the sale",
       OPENING_BALANCE_DUPLICATE: "This old debt has already been entered",
+      DATE_RANGE_INVALID: "The start date cannot be after the end date",
       OPENING_BALANCE_NOT_APPROVED: "Only an approved old debt can be cancelled",
       OPENING_BALANCE_HAS_PAYMENTS: "This debt has payments. Reverse those payments first",
       OPENING_BALANCE_NOT_PENDING: "This old debt has already been decided",

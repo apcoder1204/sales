@@ -964,6 +964,7 @@ export const SW = {
       PAYMENT_ALREADY_REVERSED: "Malipo haya tayari yamebatilishwa",
       SALE_PAYMENT_USE_VOID: "Malipo ya wakati wa mauzo hubatilishwa kwa kubatilisha muamala",
       OPENING_BALANCE_DUPLICATE: "Deni hili la zamani tayari limeingizwa",
+      DATE_RANGE_INVALID: "Tarehe ya mwanzo haiwezi kuwa baada ya tarehe ya mwisho",
       OPENING_BALANCE_NOT_APPROVED: "Ni deni la zamani lililoidhinishwa tu linaloweza kubatilishwa",
       OPENING_BALANCE_HAS_PAYMENTS: "Deni hili lina malipo. Batilisha malipo hayo kwanza",
       OPENING_BALANCE_NOT_PENDING: "Deni hili la zamani limeshaamuliwa",
