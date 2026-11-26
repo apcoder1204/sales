@@ -15,7 +15,7 @@ from app.schemas.customer import (
     CustomerCreate, CustomerCreditUpdate, CustomerDetailResponse, CustomerResponse,
     CustomerUpdate,
 )
-from app.services import ledger_service
+from app.services import debt_insights_service, ledger_service
 from app.services.audit_service import audit_service
 
 _PROFILE_FIELDS = ("name", "phone", "email", "address", "customer_type", "tin", "notes")
@@ -154,4 +154,5 @@ async def get_detail(
     return CustomerDetailResponse(
         customer=CustomerResponse.model_validate(c),
         summary=await ledger_service.summary(db, c, branch_scope),
+        risk=await debt_insights_service.risk_details(db, c, branch_scope),
     )

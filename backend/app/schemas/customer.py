@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -90,11 +90,24 @@ class CustomerSummary(BaseModel):
     overdue: Decimal = Decimal("0.00")
     available_credit: Decimal = Decimal("0.00")
     last_payment_at: datetime | None = None
+    # Factual risk codes (brief §15): NEAR_LIMIT, OVER_LIMIT, OVERDUE,
+    # LONG_OUTSTANDING, INACTIVE_WITH_DEBT.
+    flags: list[str] = []
+
+
+class RiskOut(BaseModel):
+    """Customer-page risk figures; limit_used_pct is all-branch (one limit, D4)."""
+    limit_used_pct: Decimal | None
+    overdue_count: int
+    oldest_open_date: date | None
+    total_purchases: Decimal
+    total_payments: Decimal
 
 
 class CustomerDetailResponse(BaseModel):
     customer: CustomerResponse
     summary: CustomerSummary
+    risk: RiskOut | None = None
 
 
 class CustomerRef(BaseModel):
@@ -112,3 +125,4 @@ class CustomerListItem(CustomerResponse):
     overdue: Decimal = Decimal("0.00")
     available_credit: Decimal = Decimal("0.00")
     last_payment_at: datetime | None = None
+    flags: list[str] = []

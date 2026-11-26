@@ -224,12 +224,12 @@ async def find_entry(
 
 
 async def summary(db: AsyncSession, customer: Customer, branch_id: UUID | None) -> CustomerSummary:
+    from app.services.debt_insights_service import risk_flags  # avoids an import cycle
+
     balance = await customer_balance(db, customer.id, branch_id)
     total = balance if branch_id is None else await customer_balance(db, customer.id)
-    overdue = sum(
-        (r.outstanding for r in await receivables(db, customer.id, branch_id) if r.status == "OVERDUE"),
-        ZERO,
-    )
+    open_rows = await receivables(db, customer.id, branch_id)
+    overdue = sum((r.outstanding for r in open_rows if r.status == "OVERDUE"), ZERO)
     q = select(func.max(Payment.created_at)).where(
         Payment.customer_id == customer.id, Payment.kind == "debt", Payment.status == "active"
     )
@@ -240,4 +240,5 @@ async def summary(db: AsyncSession, customer: Customer, branch_id: UUID | None) 
         balance=balance, overdue=overdue,
         available_credit=max(ZERO, customer.credit_limit - total),
         last_payment_at=last_payment_at,
+        flags=risk_flags(customer, open_rows, balance, total),
     )

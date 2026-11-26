@@ -14,7 +14,8 @@ from app.core.business_time import business_date_today
 from app.models.customer import Customer
 from app.models.customer_ledger import CustomerLedgerEntry
 from app.models.payment import Payment
-from app.schemas.customer import CustomerRef
+from app.models.sale import Sale
+from app.schemas.customer import CustomerRef, RiskOut
 from app.schemas.debt import (
     AgeingOut, AgeingRow, BranchAgeing, DashboardOut, OldestDebt, TopDebtor,
 )
@@ -151,4 +152,53 @@ async def dashboard(db: AsyncSession, branch_id: UUID | None, date_from: date, d
         ageing=buckets,
         top_debtors=[TopDebtor(customer=CustomerRef.model_validate(customers[cid]),
                                outstanding=owed[cid], overdue=overdue[cid]) for cid in top],
+    )
+
+
+NEAR_LIMIT_SHARE = Decimal("0.80")
+LONG_OUTSTANDING_DAYS = 90
+
+
+def risk_flags(customer: Customer, scope_rows: list[Receivable], scope_balance: Decimal,
+               total_balance: Decimal) -> list[str]:
+    """Factual flags only (brief §15). Limit flags use the all-branch balance
+    (one limit, D4); the rest use what the viewer may see (`scope_rows` are
+    the open receivables in their branch scope)."""
+    today = business_date_today()
+    flags: list[str] = []
+    limit = customer.credit_limit
+    if limit > 0 and total_balance > limit:
+        flags.append("OVER_LIMIT")
+    elif limit > 0 and total_balance >= limit * NEAR_LIMIT_SHARE:
+        flags.append("NEAR_LIMIT")
+    days = [(today - effective_due(r, customer.credit_days)).days for r in scope_rows if r.outstanding > 0]
+    if any(d > 0 for d in days):
+        flags.append("OVERDUE")
+    if any(d > LONG_OUTSTANDING_DAYS for d in days):
+        flags.append("LONG_OUTSTANDING")
+    if customer.status != "active" and scope_balance > 0:
+        flags.append("INACTIVE_WITH_DEBT")
+    return flags
+
+
+async def risk_details(db: AsyncSession, customer: Customer, branch_id: UUID | None) -> RiskOut:
+    today = business_date_today()
+    open_rows = await collect_receivables(db, customer_id=customer.id, branch_id=branch_id)
+    total_balance = (await all_branch_balances(db, [customer.id])).get(customer.id, ZERO)
+    purchases = select(func.coalesce(func.sum(Sale.total_amount), 0)).where(
+        Sale.customer_id == customer.id, Sale.status == "completed")
+    paid = select(func.coalesce(func.sum(Payment.amount), 0)).where(
+        Payment.customer_id == customer.id, Payment.status == "active")
+    if branch_id is not None:
+        purchases = purchases.where(Sale.branch_id == branch_id)
+        paid = paid.where(Payment.branch_id == branch_id)
+    pct = None
+    if customer.credit_limit > 0:
+        pct = (max(total_balance, ZERO) * 100 / customer.credit_limit).quantize(CENT)
+    return RiskOut(
+        limit_used_pct=pct,
+        overdue_count=sum(1 for r in open_rows if (today - effective_due(r, customer.credit_days)).days > 0),
+        oldest_open_date=min((r.date for r in open_rows), default=None),
+        total_purchases=Decimal((await db.execute(purchases)).scalar() or 0).quantize(CENT),
+        total_payments=Decimal((await db.execute(paid)).scalar() or 0).quantize(CENT),
     )
