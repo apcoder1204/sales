@@ -69,6 +69,16 @@ export const customerService = {
     return data
   },
 
+  debtDashboard: async (params = {}) => {
+    const { data } = await api.get('/receivables/dashboard', { params })
+    return data
+  },
+
+  ageing: async (params = {}) => {
+    const { data } = await api.get('/receivables/ageing', { params })
+    return data
+  },
+
   openingBalances: {
     list: async (params = {}) => {
       const { data } = await api.get('/opening-balances', { params })
