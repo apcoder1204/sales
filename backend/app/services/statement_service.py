@@ -54,7 +54,8 @@ async def statement(
         .outerjoin(Payment, and_(L.source_type == "payment", Payment.id == L.source_id))
         .outerjoin(OpeningBalance, and_(L.source_type == "opening_balance", OpeningBalance.id == L.source_id))
         .where(*scope, L.business_date >= date_from, L.business_date <= date_to)
-        .order_by(L.business_date, L.created_at, L.id)
+        # Ties (rows written with one timestamp, e.g. demo data): charges first.
+        .order_by(L.business_date, L.created_at, L.debit.desc(), L.id)
     )).all()
 
     balance = opening

@@ -134,3 +134,21 @@ async def test_statement_bad_range_and_roles(w):
     keeper = await make_user(w.db, "store_keeper")
     r = await w.client.get(f"/api/v1/customers/{w.customer.id}/statement", headers=auth_headers(keeper))
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_sale_line_before_its_till_payment(w):
+    """A sale and the payment taken at the till are written in one
+    transaction (same created_at); the sale must always come first so the
+    running balance never dips below what was owed."""
+    for _ in range(5):
+        r = await w.client.post("/api/v1/sales", json={
+            "branch_id": str(w.a.id), "customer_id": str(w.customer.id),
+            "payments": [{"method": "cash", "amount": "40000"}],
+            "items": [{"product_id": str(w.product.id), "quantity": 1}],
+        }, headers=auth_headers(w.cashier_a))
+        assert r.status_code == 201, r.text
+    body = await statement(w, w.admin)
+    kinds = [x["entry_type"] for x in body["lines"]]
+    assert kinds == ["sale", "payment"] * 5
+    assert all(D(x["balance"]) >= 0 for x in body["lines"])

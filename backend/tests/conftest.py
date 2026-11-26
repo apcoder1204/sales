@@ -35,6 +35,17 @@ DEFAULT_TEST_PASSWORD = "Test1234"
 UTC_CONNECT_ARGS = {"server_settings": {"timezone": "UTC"}}
 
 
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """Every test starts with empty in-process rate-limit counters. The
+    limiter still behaves as in production inside a test; without this, a
+    suite of 400+ fast tests from one "client IP" trips the 100/minute
+    default limit and fails at random."""
+    from app.core.rate_limit import limiter
+    limiter.reset()
+    yield
+
+
 @pytest_asyncio.fixture
 async def db_session():
     engine = create_async_engine(settings.DATABASE_URL, connect_args=UTC_CONNECT_ARGS)

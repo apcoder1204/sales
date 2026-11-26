@@ -80,7 +80,7 @@ _FINANCIAL = ("super_admin", "admin", "general_manager")
 _STOCK = ("super_admin", "admin", "general_manager", "store_keeper")
 
 # Copied from the read gates of the matching report endpoints
-# (app/api/v1/reports.py, app/api/v1/inventory.py) — a role may only send a
+# (app/api/v1/reports.py, app/api/v1/inventory.py, app/api/v1/debt_reports.py) — a role may only send a
 # report type it is allowed to view.
 REPORT_TYPE_ROLES: dict[str, tuple[str, ...]] = {
     "sales": _FINANCIAL,
@@ -92,6 +92,15 @@ REPORT_TYPE_ROLES: dict[str, tuple[str, ...]] = {
     "inventory_valuation": _STOCK,
     "stock_movements": _STOCK + ("cashier",),
     "closing": _FINANCIAL + ("cashier",),
+    # Debt reports (app/api/v1/debt_reports.py) and the customer statement.
+    "debt_outstanding": _FINANCIAL + ("cashier",),
+    "debt_overdue": _FINANCIAL + ("cashier",),
+    "debt_ageing": _FINANCIAL + ("cashier",),
+    "debt_collections": _FINANCIAL + ("cashier",),
+    "debt_branches": _FINANCIAL + ("cashier",),
+    "customer_statement": _FINANCIAL + ("cashier",),
+    "debt_credit_utilization": _FINANCIAL,
+    "debt_opening_balances": ("super_admin", "admin", "cashier"),
 }
 
 

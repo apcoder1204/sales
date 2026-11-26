@@ -15,7 +15,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.business_time import business_date_for, business_date_today
+from app.core.business_time import business_date_for, business_date_today, utcnow
 from app.core.exceptions import NotFoundException
 from app.models.branch import Branch
 from app.models.customer import Customer
@@ -198,11 +198,14 @@ async def post(
     due_date: date | None = None,
     reverses_entry_id: UUID | None = None,
 ) -> CustomerLedgerEntry:
+    # created_at is set per row (not the column default, which is the
+    # transaction's start time): a sale and its till payments are posted in
+    # one transaction, and statements order by it.
     entry = CustomerLedgerEntry(
         customer_id=customer_id, branch_id=branch_id, entry_type=entry_type,
         source_type=source_type, source_id=source_id, debit=debit, credit=credit,
         business_date=business_date, due_date=due_date, description=description,
-        reverses_entry_id=reverses_entry_id, created_by=created_by,
+        reverses_entry_id=reverses_entry_id, created_by=created_by, created_at=utcnow(),
     )
     db.add(entry)
     await db.flush()

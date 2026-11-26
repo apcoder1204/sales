@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, users, products, inventory, sales, transfers, reports, audit_logs, daily_closing, branches, whatsapp, customers, payments, opening_balances, receivables
+from app.api.v1 import auth, users, products, inventory, sales, transfers, reports, audit_logs, daily_closing, branches, whatsapp, customers, payments, opening_balances, receivables, debt_reports
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -18,3 +18,4 @@ api_router.include_router(customers.router)
 api_router.include_router(payments.router)
 api_router.include_router(opening_balances.router)
 api_router.include_router(receivables.router)
+api_router.include_router(debt_reports.router)

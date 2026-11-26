@@ -106,3 +106,124 @@ class FollowUpOut(BaseModel):
     expected_payment_date: date | None
     responsible_user_name: str
     created_at: datetime
+
+
+# ---- Debt reports (brief §29) ----
+
+class OutstandingRow(BaseModel):
+    customer: CustomerRef
+    balance: Decimal
+    overdue: Decimal
+    credit_limit: Decimal
+    last_payment_at: datetime | None
+    flags: list[str]
+
+
+class OutstandingSummary(BaseModel):
+    total_balance: Decimal
+    total_overdue: Decimal
+    customers: int
+
+
+class OutstandingReport(BaseModel):
+    rows: list[OutstandingRow]
+    summary: OutstandingSummary
+
+
+class OverdueRow(BaseModel):
+    customer: CustomerRef
+    branch_name: str
+    reference: str
+    due_date: date
+    days_overdue: int
+    outstanding: Decimal
+
+
+class CountTotal(BaseModel):
+    total: Decimal
+    count: int
+
+
+class OverdueReport(BaseModel):
+    rows: list[OverdueRow]
+    summary: CountTotal
+
+
+class CollectionRow(BaseModel):
+    payment_no: str
+    business_date: date
+    customer: CustomerRef
+    branch_name: str
+    method: str
+    amount: Decimal
+    received_by: str
+
+
+class CollectionSummary(CountTotal):
+    by_method: dict[str, Decimal]
+
+
+class CollectionsReport(BaseModel):
+    rows: list[CollectionRow]
+    summary: CollectionSummary
+
+
+class BranchRow(BaseModel):
+    branch_id: UUID
+    branch_name: str
+    outstanding: Decimal
+    overdue: Decimal
+    customers_owing: int
+    collected_in_period: Decimal
+
+
+class BranchSummary(BaseModel):
+    outstanding: Decimal
+    overdue: Decimal
+    customers_owing: int
+    collected_in_period: Decimal
+
+
+class BranchesReport(BaseModel):
+    rows: list[BranchRow]
+    summary: BranchSummary
+
+
+class UtilizationRow(BaseModel):
+    customer: CustomerRef
+    credit_limit: Decimal
+    balance: Decimal
+    used_pct: Decimal | None
+    available: Decimal
+    flags: list[str]
+
+
+class UtilizationSummary(BaseModel):
+    customers_over_limit: int
+    customers_near_limit: int
+
+
+class UtilizationReport(BaseModel):
+    rows: list[UtilizationRow]
+    summary: UtilizationSummary
+
+
+class OpeningBalanceRow(BaseModel):
+    customer: CustomerRef
+    branch_name: str
+    amount: Decimal
+    effective_date: date
+    reference: str
+    status: str
+    entered_by_name: str
+    decided_by_name: str | None
+
+
+class StatusCount(BaseModel):
+    count: int
+    amount: Decimal
+
+
+class OpeningBalancesReport(BaseModel):
+    rows: list[OpeningBalanceRow]
+    summary: dict[str, StatusCount]  # pending / approved / rejected / cancelled
