@@ -17,13 +17,15 @@ from uuid import UUID
 from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.business_time import business_date_for
+from app.core.business_time import business_date_for, utc_range_for_business_date, utcnow
 from app.models.branch import Branch
+from app.models.daily_closing import DailyClosing
 from app.models.customer_ledger import CustomerLedgerEntry as L
 from app.models.opening_balance import OpeningBalance as OB
 from app.models.payment import Payment, PaymentAllocation as PA
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
+from app.repositories.sale_repo import credit_at_sale_expr, sale_repo
 from app.services import ledger_service
 
 ZERO = Decimal("0.00")
@@ -389,3 +391,180 @@ async def check_ledger(db: AsyncSession, scope: Scope) -> CheckResult:
         res.summary = {"branches": dict(branches)}
     res.examined = len(actual)
     return res
+
+
+# ── E: sales per period ─────────────────────────────────────────────────────
+
+def _window(scope: Scope):
+    return utc_range_for_business_date(scope.date_from)[0], utc_range_for_business_date(scope.date_to)[1]
+
+
+def _branch_filter(col, scope: Scope) -> list:
+    return [col == scope.branch_id] if scope.kind == "branch" else []
+
+
+async def check_sales_period(db: AsyncSession, scope: Scope) -> CheckResult:
+    """Per branch for the period: what was sold, taken at the till, given on
+    credit, collected against debt and voided (brief §19 E). Every figure
+    reuses the definitions the daily closing uses. It has no codes of its
+    own: a voided sale with an active payment is B's ORPHAN_ALLOCATION."""
+    res = CheckResult()
+    from_dt, to_dt = _window(scope)
+    sale_win = (Sale.created_at >= from_dt, Sale.created_at <= to_dt, *_branch_filter(Sale.branch_id, scope))
+    pay_win = (Payment.created_at >= from_dt, Payment.created_at <= to_dt, Payment.status == "active",
+               *_branch_filter(Payment.branch_id, scope))
+    branches = defaultdict(lambda: {"sales_total": ZERO, "till_collected": ZERO, "credit_given": ZERO,
+                                    "debt_collected": ZERO, "voided_count": 0, "voided_total": ZERO})
+    for b, total, credit in (await db.execute(
+        select(Sale.branch_id, func.sum(Sale.total_amount), func.sum(credit_at_sale_expr()))
+        .where(Sale.status == "completed", *sale_win).group_by(Sale.branch_id)
+    )).all():
+        branches[b]["sales_total"], branches[b]["credit_given"] = _d(total), _d(credit)
+    for b, n, total in (await db.execute(
+        select(Sale.branch_id, func.count(Sale.id), func.sum(Sale.total_amount))
+        .where(Sale.status == "voided", *sale_win).group_by(Sale.branch_id)
+    )).all():
+        branches[b]["voided_count"], branches[b]["voided_total"] = int(n), _d(total)
+    for b, kind, total in (await db.execute(
+        select(Payment.branch_id, Payment.kind, func.sum(Payment.amount))
+        .where(*pay_win).group_by(Payment.branch_id, Payment.kind)
+    )).all():
+        branches[b]["till_collected" if kind == "sale" else "debt_collected"] = _d(total)
+    res.summary = {"branches": dict(branches)}
+    return res
+
+
+# ── F: P&L ──────────────────────────────────────────────────────────────────
+
+async def check_pnl(db: AsyncSession, scope: Scope) -> CheckResult:
+    """P&L revenue (the real report) = Σ subtotal of completed sales in the
+    same window, per branch. Payments are never an input (brief §19 F)."""
+    from app.services.report_service import _get_date_range, report_service  # avoids an import cycle
+
+    res = CheckResult()
+    branch_id = scope.branch_id if scope.kind == "branch" else None
+    report = await report_service.get_profit_loss_report(db, "custom", scope.date_from, scope.date_to, branch_id)
+    if branch_id is not None:  # the report lists branches only for all-branch requests
+        pnl = {branch_id: _d(Decimal(str(report.summary.revenue)))}
+    else:
+        pnl = {b.branch_id: _d(Decimal(str(b.revenue))) for b in report.branches}
+    from_dt, to_dt = _get_date_range("custom", scope.date_from, scope.date_to)
+    sold = {b: _d(v) for b, v in (await db.execute(
+        select(Sale.branch_id, func.sum(Sale.subtotal))
+        .where(Sale.status == "completed", Sale.created_at >= from_dt, Sale.created_at <= to_dt,
+               *_branch_filter(Sale.branch_id, scope))
+        .group_by(Sale.branch_id)
+    )).all()}
+    branches = {}
+    for b in set(pnl) | set(sold):
+        expected, actual = sold.get(b, ZERO), pnl.get(b, ZERO)
+        branches[b] = {"pnl_revenue": actual}
+        if expected != actual:
+            res.findings.append(_finding(
+                "F", "PNL_REVENUE_MISMATCH", f"{b}:{scope.date_from}:{scope.date_to}",
+                expected=expected, actual=actual, branch_id=b, detail=f"{scope.date_from}…{scope.date_to}"))
+    res.summary = {"branches": branches}
+    return res
+
+
+# ── G: daily closings and payment references ────────────────────────────────
+
+CLOSING_FIELDS = (
+    ("total_cash", "cash"), ("total_mobile_money", "mobile_money"), ("total_bank_transfer", "bank_transfer"),
+    ("total_revenue", "revenue"), ("total_sales_count", "count"),
+    ("total_credit_given", "credit_given"), ("total_debt_collected", "debt_collected"),
+)
+
+
+def closing_window(c: DailyClosing):
+    """The window close_day computed this register's totals over: from its
+    explicit opening to its closing, or (a register never explicitly
+    opened) the whole Tanzania business day."""
+    if c.opened_at:
+        return c.opened_at.replace(tzinfo=None), (c.closed_at or utcnow()).replace(tzinfo=None)
+    return utc_range_for_business_date(c.business_date)
+
+
+async def _duplicate_references(db: AsyncSession, scope: Scope) -> list[Finding]:
+    norm = func.upper(func.trim(Payment.reference))
+    conds = [Payment.status == "active", Payment.method.in_(("mobile_money", "bank_transfer")),
+             Payment.reference.isnot(None), func.trim(Payment.reference) != ""]
+    if scope.kind == "branch":
+        conds.append(Payment.branch_id == scope.branch_id)
+    elif scope.kind == "payment":
+        conds.append(norm == select(norm).where(Payment.id == scope.payment_id).scalar_subquery())
+    groups = defaultdict(list)
+    for ref, pid, no, branch_id, created in (await db.execute(
+        select(norm, Payment.id, Payment.payment_no, Payment.branch_id, Payment.created_at).where(*conds)
+    )).all():
+        groups[ref].append((created, pid, no, branch_id))
+    out = []
+    for ref, rows in groups.items():
+        if len(rows) < 2:
+            continue
+        rows.sort()
+        branch_ids = {r[3] for r in rows}
+        out.append(_finding("G", "DUPLICATE_PAYMENT_REFERENCE", ref, payment_id=rows[0][1],
+                            branch_id=branch_ids.pop() if len(branch_ids) == 1 else None,
+                            detail=f"{ref}: " + ", ".join(r[2] for r in rows)))
+    return out
+
+
+async def check_closings(db: AsyncSession, scope: Scope) -> CheckResult:
+    res = CheckResult()
+    closings = (await db.execute(select(DailyClosing).where(
+        DailyClosing.status == "closed",
+        DailyClosing.business_date >= scope.date_from, DailyClosing.business_date <= scope.date_to,
+        *_branch_filter(DailyClosing.branch_id, scope),
+    ))).scalars().all()
+    for c in closings:
+        from_dt, to_dt = closing_window(c)
+        totals = await sale_repo.get_totals_by_payment_method(db, c.branch_id, from_dt, to_dt)
+        for stored_field, key in CLOSING_FIELDS:
+            stored, recomputed = getattr(c, stored_field), totals[key]
+            if key == "count":
+                stored, recomputed = Decimal(int(stored or 0)), Decimal(int(recomputed))
+            else:
+                stored, recomputed = _d(stored), _d(Decimal(str(recomputed)))
+            if stored != recomputed:
+                res.findings.append(_finding(
+                    "G", "CLOSING_TOTAL_MISMATCH", f"{c.id}:{stored_field}", expected=recomputed,
+                    actual=stored, closing_id=c.id, branch_id=c.branch_id, detail=stored_field))
+    res.findings += await _duplicate_references(db, scope)
+    res.examined = len(closings)
+    return res
+
+
+# ── All checks for a scope ──────────────────────────────────────────────────
+
+SCOPE_CHECKS = {
+    "all": (check_receivables, check_allocations, check_ledger, check_sales_period, check_pnl, check_closings),
+    "branch": (check_receivables, check_allocations, check_ledger, check_sales_period, check_pnl, check_closings),
+    "customer": (check_receivables, check_allocations, check_ledger),
+    "sale": (check_receivables, check_allocations, check_ledger),
+    "payment": (check_allocations, check_ledger),
+}
+
+
+async def _payment_references(db: AsyncSession, scope: Scope) -> CheckResult:
+    return CheckResult(findings=await _duplicate_references(db, scope))
+
+
+async def find_all(db: AsyncSession, scope: Scope) -> CheckResult:
+    """Run every check that applies to the scope (plan "Scope → checks")
+    and merge their findings, counts and per-branch summaries."""
+    checks = list(SCOPE_CHECKS[scope.kind])
+    if scope.kind == "payment":
+        checks.append(_payment_references)
+    out = CheckResult(summary={"branches": {}})
+    seen = set()
+    for check in checks:
+        r = await check(db, scope)
+        for f in r.findings:
+            if f.fingerprint not in seen:
+                seen.add(f.fingerprint)
+                out.findings.append(f)
+        out.examined += r.examined
+        for b, figures in r.summary.get("branches", {}).items():
+            out.summary["branches"].setdefault(b, {}).update(figures)
+    return out
