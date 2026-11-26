@@ -31,7 +31,7 @@ from app.db.base import (  # noqa: F401
     Sale, SaleItem, StockRequest, StockRequestItem, StockTransfer,
     StockTransferItem, AuditLog, DailyClosing, DailyClosingExpense,
     PasswordResetToken, Customer, OpeningBalance, Payment, PaymentAllocation,
-    CustomerLedgerEntry, CustomerFollowUp,
+    CustomerLedgerEntry, CustomerFollowUp, ReconciliationRun, ReconciliationException,
 )
 
 UTC = timezone.utc
@@ -137,6 +137,7 @@ async def _wipe_generated_data(db, commit: bool = True) -> None:
     one sanctioned way to clear it."""
     await db.execute(text("SET LOCAL dukani.ledger_maintenance = 'on'"))
     for model in (
+        ReconciliationException, ReconciliationRun,
         CustomerFollowUp, CustomerLedgerEntry, PaymentAllocation, Payment, OpeningBalance,
         SaleItem, Sale, Customer, StockTransferItem, StockTransfer,
         StockRequestItem, StockRequest,

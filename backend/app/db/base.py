@@ -23,5 +23,6 @@ from app.models.app_setting import AppSetting  # noqa
 from app.models.customer import Customer  # noqa
 from app.models.opening_balance import OpeningBalance  # noqa
 from app.models.follow_up import CustomerFollowUp  # noqa
+from app.models.reconciliation import ReconciliationRun, ReconciliationException  # noqa
 from app.models.payment import Payment, PaymentAllocation  # noqa
 from app.models.customer_ledger import CustomerLedgerEntry  # noqa
