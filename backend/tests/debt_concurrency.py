@@ -25,6 +25,7 @@ from app.models.inventory_transaction import InventoryTransaction
 from app.models.opening_balance import OpeningBalance
 from app.models.payment import Payment, PaymentAllocation
 from app.models.product import Product
+from app.models.reconciliation import ReconciliationException, ReconciliationRun
 from app.models.role import Role
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
@@ -98,6 +99,13 @@ class World:
             await s.execute(text("SET LOCAL dukani.ledger_maintenance = 'on'"))
             sale_ids = select(Sale.id).where(Sale.branch_id.in_(self.branch_ids))
             payment_ids = select(Payment.id).where(Payment.branch_id.in_(self.branch_ids))
+            runs = select(ReconciliationRun.id).where(ReconciliationRun.run_by.in_(self.user_ids))
+            await s.execute(delete(ReconciliationException).where(or_(
+                ReconciliationException.branch_id.in_(self.branch_ids),
+                ReconciliationException.customer_id.in_(self.customer_ids),
+                ReconciliationException.first_run_id.in_(runs), ReconciliationException.last_run_id.in_(runs),
+            )))
+            await s.execute(delete(ReconciliationRun).where(ReconciliationRun.run_by.in_(self.user_ids)))
             await s.execute(delete(AuditLog).where(or_(
                 AuditLog.branch_id.in_(self.branch_ids), AuditLog.user_id.in_(self.user_ids),
             )))

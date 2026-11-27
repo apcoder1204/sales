@@ -173,6 +173,7 @@ _DEBT_ERRORS: dict[str, tuple[int, str]] = {
     ),
     "EXCEPTION_CLOSED": (422, "Tofauti hii tayari imefungwa (imetatuliwa au imepuuzwa)"),
     "EXCEPTION_TRANSITION_INVALID": (422, "Hali ya tofauti haiwezi kubadilishwa hivyo"),
+    "EXCEPTION_REFERENCE_REQUIRED": (422, "Weka kumbukumbu ya uthibitisho (mf. namba ya malipo au barua)"),
     "OPENING_BALANCE_NOT_APPROVED": (400, "Ni deni la zamani lililoidhinishwa tu linaloweza kubatilishwa"),
     "OPENING_BALANCE_HAS_PAYMENTS": (
         400, "Deni hili lina malipo. Batilisha malipo hayo kwanza"

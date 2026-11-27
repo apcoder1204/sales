@@ -19,7 +19,9 @@ from app.models.payment import Payment
 from app.models.reconciliation import LIVE_STATUSES, ReconciliationException, ReconciliationRun
 from app.models.sale import Sale
 from app.schemas.customer import CustomerRef
-from app.schemas.reconciliation import ClosingRef, ExceptionOut, RunCreate, RunDetailOut, RunOut
+from app.schemas.reconciliation import (
+    ClosingRef, ExceptionOut, RunCreate, RunDetailOut, RunOut, StatusChange,
+)
 from app.services import reconciliation_checks as rc
 from app.services.audit_service import audit_service
 from app.services.ledger_service import OPENING_BALANCE_PREFIX
@@ -191,3 +193,63 @@ async def run_detail(db: AsyncSession, run_id: UUID) -> RunDetailOut:
         ReconciliationException.severity, ReconciliationException.code, ReconciliationException.detected_at)
         .execution_options(populate_existing=True))).scalars().all()
     return RunDetailOut(**run_out(r).model_dump(), exceptions=[exception_out(e) for e in rows])
+
+
+TRANSITIONS = {
+    "OPEN": {"UNDER_REVIEW", "RESOLVED", "DISMISSED"},
+    "UNDER_REVIEW": {"OPEN", "RESOLVED", "DISMISSED"},
+}
+
+
+async def list_exceptions(
+    db: AsyncSession, status: list[str] | None = None, code: str | None = None,
+    branch_id: UUID | None = None, run_id: UUID | None = None,
+) -> list[ReconciliationException]:
+    """Newest first. status None → the live ones (OPEN, UNDER_REVIEW);
+    an empty list → every status."""
+    q = select(ReconciliationException)
+    wanted = list(LIVE_STATUSES) if status is None else status
+    if wanted:
+        q = q.where(ReconciliationException.status.in_(wanted))
+    if code:
+        q = q.where(ReconciliationException.code == code)
+    if branch_id:
+        q = q.where(ReconciliationException.branch_id == branch_id)
+    if run_id:
+        q = q.where(ReconciliationException.last_run_id == run_id)
+    q = q.order_by(ReconciliationException.detected_at.desc(), ReconciliationException.code)
+    return (await db.execute(q.execution_options(populate_existing=True))).scalars().all()
+
+
+async def change_status(db: AsyncSession, exception_id: UUID, data: StatusChange, user) -> ReconciliationException:
+    """Move an exception through OPEN → UNDER_REVIEW → RESOLVED/DISMISSED
+    (brief §21). Writes only the exception and an audit row: the fix itself
+    is a normal correcting action, so RESOLVED is refused while a fresh
+    check over the exception's last run scope still finds it."""
+    e = (await db.execute(select(ReconciliationException).where(ReconciliationException.id == exception_id)
+                          .with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
+    if e is None:
+        raise NotFoundException("Tofauti ya upatanisho", "reconciliation_exception")
+    if e.status not in TRANSITIONS:
+        raise debt_error("EXCEPTION_CLOSED")
+    if data.status not in TRANSITIONS[e.status]:
+        raise debt_error("EXCEPTION_TRANSITION_INVALID")
+    if data.status in ("RESOLVED", "DISMISSED") and not data.reference:
+        raise debt_error("EXCEPTION_REFERENCE_REQUIRED")
+    if data.status == "RESOLVED":
+        last_run = await get_run_row(db, e.last_run_id)
+        still = await rc.find_all(db, scope_of(last_run))
+        if any(f.fingerprint == e.fingerprint for f in still.findings):
+            raise debt_error("EXCEPTION_STILL_PRESENT")
+    old = e.status
+    e.status, e.status_reason, e.status_reference = data.status, data.reason, data.reference
+    e.status_by, e.status_at = user.id, utcnow()
+    await db.commit()
+    await audit_service.log(
+        db, action="RECON_EXCEPTION_STATUS", category="sales", user_id=user.id, username=user.username,
+        user_role=user.role.name, branch_id=e.branch_id, entity_type="reconciliation_exception",
+        entity_id=str(e.id), details={"code": e.code, "from": old, "to": data.status,
+                                      "reason": data.reason, "reference": data.reference},
+    )
+    return (await db.execute(select(ReconciliationException).where(ReconciliationException.id == e.id)
+                             .execution_options(populate_existing=True))).scalar_one()
