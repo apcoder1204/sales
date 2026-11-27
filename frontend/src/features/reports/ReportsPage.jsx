@@ -23,7 +23,7 @@ import SW from '@constants/sw'
 
 // Debt reports that show the current state, not a period (only collections
 // and branches take one).
-const NO_PERIOD_DEBT_REPORTS = ['debt_outstanding', 'debt_overdue', 'debt_ageing', 'debt_credit_utilization', 'debt_opening_balances']
+const NO_PERIOD_DEBT_REPORTS = ['debt_outstanding', 'debt_overdue', 'debt_ageing', 'debt_credit_utilization', 'debt_opening_balances', 'debt_reconciliation']
 
 export default function ReportsPage() {
   const { can } = usePermission()
@@ -47,6 +47,7 @@ export default function ReportsPage() {
     { value: 'debt_branches', label: SW.ripotiMadeni.branches, permission: 'reports.debts' },
     { value: 'debt_credit_utilization', label: SW.ripotiMadeni.creditUtilization, permission: 'reports.debts_credit' },
     { value: 'debt_opening_balances', label: SW.ripotiMadeni.openingBalances, permission: 'opening_balances.enter' },
+    { value: 'debt_reconciliation', label: SW.ripotiMadeni.upatanisho, permission: 'reconciliation.read' },
   ]
 
   const [reportType, setReportType] = useState('sales')
@@ -134,6 +135,7 @@ export default function ReportsPage() {
         case 'debt_branches': result = await reportService.debts.branches(params); break
         case 'debt_credit_utilization': result = await reportService.debts.creditUtilization(params); break
         case 'debt_opening_balances': result = await reportService.debts.openingBalances(params); break
+        case 'debt_reconciliation': result = await reportService.debts.reconciliation(params); break
         default: result = null
       }
       if (requestId === requestRef.current) setData(result)

@@ -24,6 +24,7 @@ const SalesPage = lazy(() => import('@features/sales/SalesPage'))
 const CustomersPage = lazy(() => import('@features/customers/CustomersPage'))
 const CustomerDetail = lazy(() => import('@features/customers/CustomerDetail'))
 const OpeningBalancesPage = lazy(() => import('@features/customers/OpeningBalancesPage'))
+const ReconciliationPage = lazy(() => import('@features/reconciliation/ReconciliationPage'))
 const DebtsPage = lazy(() => import('@features/customers/DebtsPage'))
 const TransfersPage = lazy(() => import('@features/transfers/TransfersPage'))
 const ReportsPage = lazy(() => import('@features/reports/ReportsPage'))
@@ -101,6 +102,11 @@ function RoutedApp() {
             <Route path="/madeni" element={
               <RoleRoute permissions={['customers.read']}>
                 <DebtsPage />
+              </RoleRoute>
+            } />
+            <Route path="/madeni/upatanisho" element={
+              <RoleRoute permissions={['reconciliation.read']}>
+                <ReconciliationPage />
               </RoleRoute>
             } />
             <Route path="/madeni/zamani" element={

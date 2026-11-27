@@ -19,6 +19,7 @@ export const reportService = {
     branches: async (params = {}) => (await api.get('/reports/debts/branches', { params: mapReportParams(params) })).data,
     creditUtilization: async () => (await api.get('/reports/debts/credit-utilization')).data,
     openingBalances: async (params = {}) => (await api.get('/reports/debts/opening-balances', { params: mapReportParams(params) })).data,
+    reconciliation: async (params = {}) => (await api.get('/reports/debts/reconciliation', { params: { branch_id: params.branch_id || undefined, status: params.status || undefined } })).data,
   },
 
   sales: async (params = {}) => {

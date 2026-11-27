@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, ArrowLeftRight,
   BarChart3, ScrollText, Users, ChevronLeft, ChevronDown, Zap,
-  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2, Contact, BookOpen, HandCoins,
+  List, Tag, RefreshCw, Activity, Lock, Receipt, Building2, Contact, BookOpen, HandCoins, Scale,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { usePermission } from '@hooks/usePermission'
@@ -60,6 +60,7 @@ const navGroups = () => ({
     children: [
       { to: '/madeni', label: SW.nav.madeniYote, icon: List, permission: 'customers.read', exact: true },
       { to: '/madeni/zamani', label: SW.nav.madeniYaZamani, icon: BookOpen, permission: 'opening_balances.enter' },
+      { to: '/madeni/upatanisho', label: SW.nav.upatanisho, icon: Scale, permission: 'reconciliation.read' },
     ],
   },
 })

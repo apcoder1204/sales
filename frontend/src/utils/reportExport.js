@@ -1,4 +1,5 @@
 import SW from '@constants/sw'
+import { codeText, detailText, figure, recordLabel } from '@utils/reconciliationLabels'
 
 // Brand name is intentionally not localized — same across both languages.
 const BRAND = 'DUKANI POS'
@@ -198,6 +199,28 @@ function normalise(type, data, period) {
             rows: (data.rows || []).map((r) => [
               r.customer.name, r.branch_name, fmtCurrency(r.amount), r.effective_date, r.reference,
               SW.hali.aliyeingizaHali[r.status] || r.status, r.entered_by_name, r.decided_by_name || '-',
+            ]) },
+        ],
+      }
+    }
+
+    case 'debt_reconciliation': {
+      const U = SW.upatanisho
+      const s = data.summary || {}
+      const run = s.last_run
+      return {
+        title: SW.ripotiMadeni.upatanisho,
+        sheets: [
+          { name: SW.ripoti.muhtasariSheet, head: [[SW.ripoti.kipimoSheet, SW.ripoti.thamani]], rows: [
+            [U.historia, run ? `${run.run_no} · ${U.haliRun[run.status] || run.status}` : '-'],
+            [U.fedha, fmt(s.money_open)],
+            ...Object.entries(s.by_status || {}).map(([k, v]) => [U.haliTofauti[k] || k, fmt(v)]),
+          ] },
+          { name: U.tofauti, head: [[U.aina, U.rekodiHusika, SW.wateja.tawi, U.inayotarajiwa, U.halisi, U.kiasiTofauti, U.hali, U.ilionekana]],
+            rows: (data.rows || []).map((e) => [
+              [codeText(e.code), detailText(e)].filter(Boolean).join(' — '), recordLabel(e), e.branch_name || '-',
+              figure(e, e.expected), figure(e, e.actual), figure(e, e.difference),
+              U.haliTofauti[e.status] || e.status, (e.detected_at || '').slice(0, 10),
             ]) },
         ],
       }
