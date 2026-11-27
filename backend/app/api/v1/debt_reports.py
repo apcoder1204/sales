@@ -15,7 +15,7 @@ from app.core.dependencies import require_role
 from app.db.session import get_db
 from app.schemas.debt import (
     AgeingOut, BranchesReport, CollectionsReport, OpeningBalancesReport, OutstandingReport,
-    OverdueReport, UtilizationReport,
+    OverdueReport, ReconciliationReport, UtilizationReport,
 )
 from app.services import debt_insights_service, debt_report_service
 from app.services.report_service import _resolve_period_dates
@@ -70,3 +70,10 @@ async def opening_balances(status: Literal["pending", "approved", "rejected", "c
                            branch_id: UUID | None = Depends(branch_context),
                            current_user=Depends(require_old_debt_reader), db: AsyncSession = Depends(get_db)):
     return await debt_report_service.opening_balances(db, branch_id, status)
+
+
+@router.get("/reconciliation", response_model=ReconciliationReport)
+async def reconciliation(status: str | None = None, branch_id: UUID | None = None,
+                         current_user=Depends(require_global_reader), db: AsyncSession = Depends(get_db)):
+    from app.api.v1.reconciliation import parse_status
+    return await debt_report_service.reconciliation(db, branch_id, parse_status(status))

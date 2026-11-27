@@ -101,6 +101,7 @@ REPORT_TYPE_ROLES: dict[str, tuple[str, ...]] = {
     "customer_statement": _FINANCIAL + ("cashier",),
     "debt_credit_utilization": _FINANCIAL,
     "debt_opening_balances": ("super_admin", "admin", "cashier"),
+    "debt_reconciliation": _FINANCIAL,
 }
 
 

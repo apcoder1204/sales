@@ -155,8 +155,38 @@ async def test_report_totals_reconcile_with_ledger(w):
 
 
 def test_whatsapp_accepts_debt_report_types():
+    assert set(REPORT_TYPE_ROLES["debt_reconciliation"]) == {"super_admin", "admin", "general_manager"}
     for t in ("debt_outstanding", "debt_overdue", "debt_ageing", "debt_collections", "debt_branches",
               "customer_statement"):
         assert set(REPORT_TYPE_ROLES[t]) == {"super_admin", "admin", "general_manager", "cashier"}
     assert set(REPORT_TYPE_ROLES["debt_credit_utilization"]) == {"super_admin", "admin", "general_manager"}
     assert set(REPORT_TYPE_ROLES["debt_opening_balances"]) == {"super_admin", "admin", "cashier"}
+
+
+@pytest.mark.asyncio
+async def test_reconciliation_report(db_session, client):
+    from sqlalchemy import update as sa_update
+
+    from app.models.reconciliation import ReconciliationException
+    from tests.test_recon_documents import ReconWorld
+    from tests.test_recon_runs import corrupt_closing, start
+
+    rw = await ReconWorld(db_session, client).build()
+    await rw.sale(3)
+    await rw.debt_pay(50000, method="mobile_money", reference="RPT1")
+    await rw.debt_pay(50000, method="mobile_money", reference="RPT1")
+    await corrupt_closing(rw, 1000)
+    run = await start(rw)
+    await db_session.execute(sa_update(ReconciliationException).where(
+        ReconciliationException.code == "DUPLICATE_PAYMENT_REFERENCE",
+        ReconciliationException.branch_id == rw.a.id).values(status="DISMISSED"))
+    await db_session.flush()
+
+    body = await report(rw, rw.admin, "reconciliation", branch_id=rw.a.id)
+    assert [x["code"] for x in body["rows"]] == ["CLOSING_TOTAL_MISMATCH"]
+    assert body["summary"]["last_run"]["run_no"] == run["run_no"]
+    assert body["summary"]["by_status"]["DISMISSED"] == 1 and body["summary"]["money_open"] == 1
+    every = await report(rw, rw.admin, "reconciliation", branch_id=rw.a.id, status="all")
+    assert sorted(x["code"] for x in every["rows"]) == ["CLOSING_TOTAL_MISMATCH", "DUPLICATE_PAYMENT_REFERENCE"]
+    await report(rw, await make_user(db_session, "general_manager"), "reconciliation")
+    await report(rw, rw.cashier_a, "reconciliation", expect=403)

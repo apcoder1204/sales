@@ -64,6 +64,15 @@ async def test_abc_technologies_scenario(client, db_session):
     # 8. balance 250,000
     assert await ledger_service.customer_balance(db, abc.id) == Decimal("250000")
 
+    # 13. reconciliation passes (branch and customer scope)
+    async def reconciled():
+        for body in ({"scope": "branch", "branch_id": str(branch.id)},
+                     {"scope": "customer", "customer_id": str(abc.id)}):
+            run = await client.post("/api/v1/reconciliation/runs", json=body, headers=auth_headers(admin))
+            assert run.status_code == 201, run.text
+            assert (run.json()["status"], run.json()["discrepancy_count"]) == ("PASSED", 0), run.json()
+    await reconciled()
+
     # 12. closing: cash includes 150,000; credit given 250,000
     prev = await client.get("/api/v1/closings/preview", params={"branch_id": str(branch.id)},
                             headers=auth_headers(admin))
@@ -77,6 +86,7 @@ async def test_abc_technologies_scenario(client, db_session):
     assert pay.status_code == 201, pay.text
     assert await ledger_service.customer_balance(db, abc.id) == Decimal("150000")
     assert await pl() == (400000, 250000, 150000)
+    await reconciled()
 
     # Reverse it → balance back to 250,000; both payments still listed
     rv = await client.post(f"/api/v1/payments/{pay.json()['id']}/reverse",
@@ -86,6 +96,7 @@ async def test_abc_technologies_scenario(client, db_session):
     listed = await client.get(f"/api/v1/customers/{abc.id}/payments", headers=auth_headers(admin))
     rows = {(p["kind"], p["amount"], p["status"]) for p in listed.json()}
     assert rows == {("debt", "100000.00", "reversed"), ("sale", "150000.00", "active")}
+    await reconciled()
 
     ledger = (await db.execute(select(CustomerLedgerEntry).where(CustomerLedgerEntry.customer_id == abc.id))).scalars().all()
     assert sorted((e.entry_type, e.debit, e.credit) for e in ledger) == [

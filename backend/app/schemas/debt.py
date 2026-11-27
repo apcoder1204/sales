@@ -227,3 +227,22 @@ class StatusCount(BaseModel):
 class OpeningBalancesReport(BaseModel):
     rows: list[OpeningBalanceRow]
     summary: dict[str, StatusCount]  # pending / approved / rejected / cancelled
+
+
+class ReconciliationReportSummary(BaseModel):
+    by_status: dict[str, int]
+    by_code: dict[str, int]
+    money_open: int
+    last_run: "RunOut | None"
+
+
+class ReconciliationReport(BaseModel):
+    """Reconciliation exceptions (brief §29 item 8): the current state, no period."""
+    rows: list["ExceptionOut"]
+    summary: ReconciliationReportSummary
+
+
+from app.schemas.reconciliation import ExceptionOut, RunOut  # noqa: E402  (after the models it may import)
+
+ReconciliationReportSummary.model_rebuild()
+ReconciliationReport.model_rebuild()

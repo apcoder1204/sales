@@ -184,3 +184,30 @@ async def opening_balances(db: AsyncSession, branch_id: UUID | None, status: str
                           decided_by_name=ob.decider.full_name if ob.decider else None)
         for ob in shown
     ], summary=summary)
+
+
+async def reconciliation(db: AsyncSession, branch_id: UUID | None, status: list[str] | None) -> "ReconciliationReport":
+    """Reconciliation exceptions (brief §29 item 8). Rows follow the status
+    filter (default: the live ones); the status counts cover every status."""
+    from app.models.reconciliation import LIVE_STATUSES, ReconciliationException as RE
+    from app.schemas.debt import ReconciliationReport, ReconciliationReportSummary
+    from app.services import reconciliation_service as rs
+
+    rows = await rs.list_exceptions(db, status, None, branch_id, None)
+    counts = select(RE.status, RE.severity, func.count()).group_by(RE.status, RE.severity)
+    if branch_id is not None:
+        counts = counts.where(RE.branch_id == branch_id)
+    by_status, money_open = {s: 0 for s in ("OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED")}, 0
+    for st, severity, n in (await db.execute(counts)).all():
+        by_status[st] += n
+        if st in LIVE_STATUSES and severity == "money":
+            money_open += n
+    by_code: dict[str, int] = {}
+    for e in rows:
+        by_code[e.code] = by_code.get(e.code, 0) + 1
+    last = await rs.list_runs(db, limit=1)
+    return ReconciliationReport(
+        rows=[rs.exception_out(e) for e in rows],
+        summary=ReconciliationReportSummary(by_status=by_status, by_code=by_code, money_open=money_open,
+                                            last_run=rs.run_out(last[0]) if last else None),
+    )
