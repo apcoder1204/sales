@@ -3,7 +3,7 @@
 **System:** DUKANI POS — Wateja na Madeni (customer accounts, debts and reconciliation)
 **Date:** 2026-11-27
 **Covers:** stages 1–3 of `docs/superpowers/specs/2026-11-25-customer-debt-management-design.md`
-**Test evidence:** the full backend suite run on branch `feat/customer-debt-stage3` before release — **452 passed, 0 failed**. Every test named below ran in that suite.
+**Test evidence:** the full backend suite run on branch `feat/customer-debt-stage3` before release — **455 passed, 0 failed**. Every test named below ran in that suite.
 
 Status key: **Completed** · **Partially completed** · **Not implemented**
 
@@ -100,7 +100,7 @@ All four are additive: they create tables, columns, sequences and constraints, a
 
 ## Tests
 
-- **Full backend suite: 452 passed, 0 failed.** These include the brief §31 groups: customers, credit sales, payments, reconciliation, security, dates (Tanzania midnight boundaries in `test_recon_period.py::test_period_uses_tanzania_dates` and the stage 1 and 2 date tests) and concurrency.
+- **Full backend suite: 455 passed, 0 failed.** These include the brief §31 groups: customers, credit sales, payments, reconciliation, security, dates (Tanzania midnight boundaries in `test_recon_period.py::test_period_uses_tanzania_dates` and the stage 1 and 2 date tests) and concurrency.
 - **Acceptance scenario (brief §33, ABC Technologies):** `test_debt_acceptance.py::test_abc_technologies_scenario`, steps 1–13. Reconciliation passes after the first payment, after the second payment and after its reversal, and access from another branch is blocked.
 - **Browser checks (local, not part of the suite):**
   - stage 2: customer page 13/13, Madeni Yote 10/10, reports 14/14;
@@ -124,11 +124,11 @@ Duplicate retries: `test_sale_idempotency.py` (sales) and the idempotency-key te
 
 ### Regression
 
-The suites that existed before this feature (sales, voids, inventory, transfers, closings, P&L, reports, users, WhatsApp) are part of the 452 and all pass.
+The suites that existed before this feature (sales, voids, inventory, transfers, closings, P&L, reports, users, WhatsApp) are part of the 455 and all pass.
 
 ### Seeded data check
 
-The demo seed (21 days of sales, debts, payments and closings) ends with a reconciliation over its whole history: **PASSED, 783 records checked, 0 discrepancies**.
+The demo seed (21 days of sales, debts, payments and closings) ends with a reconciliation over its whole history: **PASSED, 857 records checked, 0 discrepancies**.
 
 ---
 

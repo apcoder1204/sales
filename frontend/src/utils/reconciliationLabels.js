@@ -16,5 +16,6 @@ export const detailText = (e) => (e.detail ? SW.upatanisho.sehemu[e.detail] || e
 
 export function figure(e, value) {
   if (value == null) return '—'
-  return e.detail === 'total_sales_count' ? formatNumber(Number(value)) : formatCurrency(Number(value))
+  const isCount = e.detail === 'total_sales_count' || e.code === 'DUPLICATE_PAYMENT_REFERENCE'
+  return isCount ? formatNumber(Number(value)) : formatCurrency(Number(value))
 }

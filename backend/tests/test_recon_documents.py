@@ -270,3 +270,35 @@ async def test_customer_scope_only_that_customer(rw):
     await rw.db.flush()
     assert await abc(rw, rw.scope("customer")) == []
     assert [f.code for f in await abc(rw, rw.scope("customer", customer_id=other.id))] == ["SALE_ITEMS_MISMATCH"]
+
+
+@pytest.mark.asyncio
+async def test_ledger_check_parameters_do_not_grow_with_documents(rw):
+    """Review finding 4: asyncpg allows 32,767 bind parameters per statement,
+    so no statement may carry one parameter per document (a busy branch
+    would crash the run): the largest statement must not grow when the
+    branch has more sales."""
+    from sqlalchemy import event
+
+    async def largest_statement():
+        sizes = []
+
+        def count(conn, cursor, statement, parameters, context, executemany):
+            sizes.append(len(parameters) if hasattr(parameters, "__len__") else 0)
+
+        engine = rw.db.get_bind()
+        event.listen(engine, "before_cursor_execute", count)
+        try:
+            await rc.check_ledger(rw.db, rw.scope())
+        finally:
+            event.remove(engine, "before_cursor_execute", count)
+        return max(sizes)
+
+    for _ in range(3):
+        await rw.sale(1)
+    await rw.debt_pay(100000)
+    few = await largest_statement()
+    for _ in range(12):
+        await rw.sale(1)
+    await rw.debt_pay(300000)
+    assert await largest_statement() == few

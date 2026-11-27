@@ -280,19 +280,18 @@ def _entry_amount(row) -> Decimal:
 async def check_ledger(db: AsyncSession, scope: Scope) -> CheckResult:
     res = CheckResult()
     cols = (L.id, L.customer_id, L.branch_id, L.entry_type, L.source_type, L.source_id, L.debit, L.credit)
+    lconds = _ledger_conds(scope)
     actual = {(r.source_type, r.source_id, r.entry_type): r
-              for r in (await db.execute(select(*cols).where(*_ledger_conds(scope)))).all()}
-    ref = defaultdict(set)
-    for (stype, sid, _etype) in actual:
-        ref[stype].add(sid)
+              for r in (await db.execute(select(*cols).where(*lconds))).all()}
 
     def docs_filter(conds, id_col, stype):
-        own = and_(*conds) if conds else None
-        refs = id_col.in_(ref[stype]) if ref[stype] else None
-        parts = [p for p in (own, refs) if p is not None]
+        """Documents in scope, plus those the in-scope ledger rows point at.
+        Subqueries, never Python id lists: a busy branch would exceed
+        asyncpg's 32,767 bind parameters."""
         if not conds:
             return []  # scope 'all': every document
-        return [or_(*parts)]
+        refs = select(L.source_id).where(L.source_type == stype, *lconds)
+        return [or_(and_(*conds), id_col.in_(refs))]
 
     sales = (await db.execute(select(Sale.id, Sale.customer_id, Sale.branch_id, Sale.status, Sale.total_amount)
                               .where(Sale.customer_id.isnot(None),
@@ -324,12 +323,22 @@ async def check_ledger(db: AsyncSession, scope: Scope) -> CheckResult:
             expected[("opening_balance", o.id, "opening_void")] = ("credit", _d(o.amount), o.customer_id, o.branch_id, ids)
 
     if scope.kind != "all":
+        # Ledger rows of the in-scope documents that sit outside the scope
+        # (e.g. posted to the wrong branch), so they show as mismatches.
+        doc_rows = or_(
+            and_(L.source_type == "sale", L.source_id.in_(
+                select(Sale.id).where(Sale.customer_id.isnot(None), *docs_filter(_sale_conds(scope), Sale.id, "sale")))),
+            and_(L.source_type == "payment", L.source_id.in_(
+                select(Payment.id).where(Payment.customer_id.isnot(None),
+                                         *docs_filter(_payment_conds(scope), Payment.id, "payment")))),
+            and_(L.source_type == "opening_balance", L.source_id.in_(
+                select(OB.id).where(OB.status.in_(("approved", "cancelled")),
+                                    *docs_filter(_ob_conds(scope), OB.id, "opening_balance")))),
+        )
         known = {r.id for r in actual.values()}
-        doc_ids = {k[1] for k in expected}
-        if doc_ids:
-            for r in (await db.execute(select(*cols).where(L.source_id.in_(doc_ids)))).all():
-                if r.id not in known:
-                    actual[(r.source_type, r.source_id, r.entry_type)] = r
+        for r in (await db.execute(select(*cols).where(doc_rows))).all():
+            if r.id not in known:
+                actual[(r.source_type, r.source_id, r.entry_type)] = r
 
     for key, (side, amount, customer_id, branch_id, ids) in expected.items():
         row = actual.get(key)
@@ -479,10 +488,14 @@ CLOSING_FIELDS = (
 def closing_window(c: DailyClosing):
     """The window close_day computed this register's totals over: from its
     explicit opening to its closing, or (a register never explicitly
-    opened) the whole Tanzania business day."""
+    opened) from the start of its Tanzania business day to its closing."""
+    closed = c.closed_at.replace(tzinfo=None) if c.closed_at else None
     if c.opened_at:
-        return c.opened_at.replace(tzinfo=None), (c.closed_at or utcnow()).replace(tzinfo=None)
-    return utc_range_for_business_date(c.business_date)
+        return c.opened_at.replace(tzinfo=None), closed or utcnow()
+    # Never explicitly opened: the whole business day, but only up to when
+    # it closed — a second register opened later that day has its own sales.
+    day_start, day_end = utc_range_for_business_date(c.business_date)
+    return day_start, min(day_end, closed) if closed else day_end
 
 
 async def _duplicate_references(db: AsyncSession, scope: Scope) -> list[Finding]:
@@ -504,7 +517,10 @@ async def _duplicate_references(db: AsyncSession, scope: Scope) -> list[Finding]
             continue
         rows.sort()
         branch_ids = {r[3] for r in rows}
+        # expected 1 use, actual n uses: a further reuse changes the
+        # difference, so a dismissed finding speaks up again.
         out.append(_finding("G", "DUPLICATE_PAYMENT_REFERENCE", ref, payment_id=rows[0][1],
+                            expected=Decimal(1), actual=Decimal(len(rows)),
                             branch_id=branch_ids.pop() if len(branch_ids) == 1 else None,
                             detail=f"{ref}: " + ", ".join(r[2] for r in rows)))
     return out

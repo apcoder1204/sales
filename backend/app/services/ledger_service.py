@@ -46,6 +46,28 @@ class Receivable:
     status: str
 
 
+@dataclass
+class _Row:
+    id: UUID
+    customer_id: UUID
+    transaction_no: str
+    branch_id: UUID
+    created_at: object
+    due_date: date | None
+    total_amount: Decimal
+
+
+@dataclass
+class _ObRow:
+    id: UUID
+    customer_id: UUID
+    reference: str
+    branch_id: UUID
+    effective_date: date
+    due_date: date | None
+    amount: Decimal
+
+
 def receivable_status(
     amount: Decimal, outstanding: Decimal, due_date: date | None, today: date
 ) -> str:
@@ -114,8 +136,12 @@ async def collect_receivables(
         return q
 
     paid_sale = _active_paid(PaymentAllocation.sale_id)
+    # Columns only, not Sale entities: an entity would eager-load its items,
+    # allocations, cashier and so on for every receivable (spec §14 / stage 3
+    # review: a busy branch's reconciliation run).
     q = (
-        select(Sale, Branch.name, func.coalesce(paid_sale.c.paid, 0))
+        select(Sale.id, Sale.customer_id, Sale.transaction_no, Sale.branch_id, Sale.created_at,
+               Sale.due_date, Sale.total_amount, Branch.name, func.coalesce(paid_sale.c.paid, 0))
         .join(Branch, Branch.id == Sale.branch_id)
         .outerjoin(paid_sale, paid_sale.c.rid == Sale.id)
         .where(Sale.customer_id.isnot(None), Sale.status == "completed")
@@ -126,7 +152,8 @@ async def collect_receivables(
         q = q.where(Sale.branch_id == branch_id)
     if open_only:
         q = q.where(Sale.total_amount > func.coalesce(paid_sale.c.paid, 0))
-    for sale, branch_name, paid in (await db.execute(who(q, Sale.customer_id, Sale.transaction_no))).all():
+    for *cols, branch_name, paid in (await db.execute(who(q, Sale.customer_id, Sale.transaction_no))).all():
+        sale = _Row(*cols)
         paid = Decimal(paid).quantize(CENT)
         outstanding = sale.total_amount - paid
         out.append(Receivable(
@@ -139,7 +166,9 @@ async def collect_receivables(
 
     paid_ob = _active_paid(PaymentAllocation.opening_balance_id)
     q = (
-        select(OpeningBalance, Branch.name, func.coalesce(paid_ob.c.paid, 0))
+        select(OpeningBalance.id, OpeningBalance.customer_id, OpeningBalance.reference, OpeningBalance.branch_id,
+               OpeningBalance.effective_date, OpeningBalance.due_date, OpeningBalance.amount, Branch.name,
+               func.coalesce(paid_ob.c.paid, 0))
         .join(Branch, Branch.id == OpeningBalance.branch_id)
         .outerjoin(paid_ob, paid_ob.c.rid == OpeningBalance.id)
         .where(OpeningBalance.status == "approved")
@@ -150,7 +179,8 @@ async def collect_receivables(
         q = q.where(OpeningBalance.branch_id == branch_id)
     if open_only:
         q = q.where(OpeningBalance.amount > func.coalesce(paid_ob.c.paid, 0))
-    for ob, branch_name, paid in (await db.execute(who(q, OpeningBalance.customer_id, OpeningBalance.reference))).all():
+    for *cols, branch_name, paid in (await db.execute(who(q, OpeningBalance.customer_id, OpeningBalance.reference))).all():
+        ob = _ObRow(*cols)
         paid = Decimal(paid).quantize(CENT)
         outstanding = ob.amount - paid
         out.append(Receivable(

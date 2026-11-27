@@ -110,7 +110,8 @@ async def test_closing_without_opened_at_uses_business_day(rw):
     await rw.sale(1, customer=False, payments=[{"method": "cash", "amount": "100000"}])
     c = await close_day(rw)
     assert c.opened_at is None
-    assert rc.closing_window(c) == utc_range_for_business_date(c.business_date)
+    day_start, day_end = utc_range_for_business_date(c.business_date)
+    assert rc.closing_window(c) == (day_start, min(day_end, c.closed_at.replace(tzinfo=None)))
     assert (await rc.check_closings(rw.db, rw.scope())).findings == []
 
 
@@ -159,3 +160,25 @@ async def test_scope_table(rw):
     assert codes((await rc.find_all(rw.db, rw.scope("customer"))).findings) == []
     assert codes((await rc.find_all(rw.db, rw.scope("payment", payment_id=p1))).findings) == [
         "DUPLICATE_PAYMENT_REFERENCE"]
+
+
+@pytest.mark.asyncio
+async def test_second_register_same_day_is_clean(rw):
+    """Review finding 1: a register closed without an explicit opening, then
+    a second register the same day. The first register's figures are what
+    existed when it closed; the second register's sales are not its own."""
+    await rw.sale(1, customer=False, payments=[{"method": "cash", "amount": "100000"}])
+    c1 = await close_day(rw)
+    assert c1.opened_at is None
+    r = await rw.client.post("/api/v1/closings/open", json={"branch_id": str(rw.a.id), "opening_cash": "0"},
+                             headers=auth_headers(rw.admin))
+    assert r.status_code == 201, r.text
+    # Register 2's sale happens after register 1 closed (the test transaction's
+    # now() is frozen, so place it explicitly).
+    sale = await rw.sale(1, customer=False, payments=[{"method": "cash", "amount": "100000"}])
+    later = c1.closed_at.replace(tzinfo=None) + timedelta(minutes=5)
+    await rw.db.execute(update(Sale).where(Sale.id == sale).values(created_at=later))
+    [p] = await rw.payments_of(sale)
+    await rw.db.execute(update(Payment).where(Payment.id == p.id).values(created_at=later.replace(tzinfo=UTC)))
+    await rw.db.flush()
+    assert (await rc.check_closings(rw.db, rw.scope())).findings == []

@@ -198,3 +198,20 @@ async def test_unauthorized_reconciliation(rw):
     r = await rw.client.get("/api/v1/reconciliation/runs", headers=auth_headers(gm))
     assert r.status_code == 200 and run["id"] in [x["id"] for x in r.json()]
     assert (await detail(rw, run["id"], user=gm))["run_by_name"]
+
+
+@pytest.mark.asyncio
+async def test_dismissed_duplicate_reference_reopens_on_new_reuse(rw):
+    """Review finding 3: dismissing a reused M-Pesa code must not hide a
+    later, third use of the same code."""
+    await rw.sale(5)
+    await rw.debt_pay(50000, method="mobile_money", reference="DUPX")
+    await rw.debt_pay(50000, method="mobile_money", reference="DUPX")
+    await start(rw)
+    await rw.db.execute(update(ReconciliationException).where(ReconciliationException.branch_id == rw.a.id)
+                        .values(status="DISMISSED"))
+    await rw.db.flush()
+    assert (await start(rw))["suppressed_count"] == 1
+    await rw.debt_pay(50000, method="mobile_money", reference="DUPX")
+    run = await start(rw)
+    assert (run["status"], run["warning_count"], run["suppressed_count"]) == ("WARNING", 1, 0)
