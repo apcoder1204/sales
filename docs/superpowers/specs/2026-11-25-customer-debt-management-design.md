@@ -488,3 +488,13 @@ Built as planned in `docs/superpowers/plans/2026-11-27-customer-debt-stage2.md`:
 - Ageing is always as of today (no `as_of` parameter).
 - Ledger rows get their own `created_at`, so a sale always comes before its till payment in a statement.
 - The "reconciliation exceptions" report (brief §29 item 8) belongs to stage 3.
+
+## Stage 3 status (2026-11-27)
+
+Built as planned in `docs/superpowers/plans/2026-11-27-customer-debt-stage3.md`: on-demand reconciliation runs (`reconciliation_runs`, `reconciliation_exceptions`, migration `f3a4b5c6d7e8`), checks A–G, exception review (open, under review, resolved, dismissed), the reconciliation exceptions report and the "Upatanisho wa Hesabu" page. The final report is `docs/customer-debt-implementation-report.md`. Rulings made while building:
+- An active payment on a voided sale is `ORPHAN_ALLOCATION` (group B), not a separate group E code, so it is reported once and in every scope. Group E produces the period figures only.
+- The sale items are compared with `sales.subtotal`, not the total: sales from before VAT was removed (migration 0007) have total = subtotal + VAT, which is history, not a discrepancy. The P&L check uses Σ subtotal for the same reason.
+- Group D has no code of its own: branch totals are in each run's summary, and a branch gap is the sum of that branch's ledger-balance findings.
+- Duplicate payment references are checked across all time, not just the period.
+- Who may: run and read — super_admin, admin, general_manager; change an exception's status — super_admin, admin. Cashiers and store keepers get 403.
+- Sale and payment scopes are started from an exception's "Kagua Tena"; the run form offers all, branch and customer.

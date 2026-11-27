@@ -235,6 +235,16 @@ why, and the ledger gets an offsetting "opening_void" credit.
 
 **Follow-up notes don't change balances.** "Ufuatiliaji" on the customer page records calls, visits and promises to pay. The cashier writes for their own branch and the admin for any POS branch; the manager can only read. Nothing there touches payments or what is owed.
 
+**Reconciliation (Upatanisho wa Hesabu).** Madeni → Upatanisho wa Hesabu, for the admin and the manager. Pick a scope (all branches, one branch or one customer) and a period, then press "Anzisha Upatanisho". The run checks that sales, till payments, debt payments, the customer ledger, P&L and the stored daily closing totals all agree. Debts and payments are always checked in full; the period applies only to sales, P&L and closings.
+- **Imepita:** everything agrees. **Onyo:** only warnings: a mobile-money or bank reference used on more than one payment, or an older sale whose stored payment method doesn't match its payment. **Imeshindwa:** at least one money difference.
+- **A run never changes money.** It only writes its own result and the list of differences. Never "fix" a figure by editing the database.
+- **Handling a difference.** Each one says in plain words what is wrong and which record. Fix it with the normal action: reverse a wrong payment; void a wrong sale; for a closing total that doesn't match, reopen that day and close it again (it recomputes from the payments). Then press "Badilisha Hali" → "Imetatuliwa" with a reason and a supporting reference (e.g. the reversal's payment number). The system refuses "Imetatuliwa" while the difference is still there.
+- **A difference that is accepted as it is** (e.g. a known historical case): "Imepuuzwa", with a reason and a reference. A later run stays quiet about it unless the amount changes.
+- "Inakaguliwa" marks one you are looking into. "Imetatuliwa" and "Imepuuzwa" are final; a new run raises a fresh entry if the problem comes back.
+- "Kagua Tena" on a row re-checks just the affected sale, payment, customer or branch.
+- The exceptions also appear as a report: Ripoti → "Madeni: Tofauti za Upatanisho" (PDF, Excel, WhatsApp).
+- On a healthy system every run passes; a failure means something went wrong in the data or the code and is worth investigating, not just dismissing.
+
 **The customer ledger is append-only.** `customer_ledger_entries` has a database
 trigger that refuses UPDATE and DELETE. Nobody should ever need to bypass it on
 prod. The only sanctioned bypass is inside a single transaction:

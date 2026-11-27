@@ -159,6 +159,14 @@ that is a no-op.
   are lost**, so restore from the pre-deploy dump instead if the feature has
   been used.
 
+**Reconciliation (`f3a4b5c6d7e8`).** New tables `reconciliation_runs` and
+`reconciliation_exceptions` and the sequence `seq_reconciliation_number`
+only; no existing rows change. A reconciliation run writes rows to those
+tables, so don't start one on prod as a deploy check: verify on demo, where
+the nightly seed already ends with one run. Rollback:
+`alembic downgrade e2f3a4b5c6d7` drops both tables (run history only, no
+financial data).
+
 **Follow-up notes (`e2f3a4b5c6d7`).** A new `customer_follow_ups` table only;
 no existing rows change. Rollback: `alembic downgrade d1e2f3a4b5c6` drops the
 table and its notes (no financial data).
