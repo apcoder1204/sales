@@ -79,6 +79,7 @@ export default function InventoryGrid({ items, loading, onAdjust, onSend, pagina
     <DataTable
       columns={columns}
       data={items}
+      keyField="row_key"
       loading={loading}
       pagination={pagination}
       emptyTitle={SW.bidhaa.hakunaBidhaaZilizopatikana}

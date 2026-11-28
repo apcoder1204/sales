@@ -28,11 +28,12 @@ async def list_inventory(
     branch_id: UUID | None = Depends(branch_context),
     low_stock: bool = False,
     category_id: int | None = None,
+    search: str | None = None,
     page: int = 1, per_page: int = 20,
     current_user=_inventory_reader,
     db: AsyncSession = Depends(get_db),
 ):
-    return await inventory_service.get_inventory_list(db, branch_id, low_stock, page, per_page)
+    return await inventory_service.get_inventory_list(db, branch_id, low_stock, page, per_page, search)
 
 
 @router.post("/adjust", response_model=MessageResponse)
