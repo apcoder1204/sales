@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Activity } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '@components/layout/PageWrapper'
@@ -45,8 +45,13 @@ export default function ProductsPage() {
   const [adjustItem, setAdjustItem] = useState(null)
   const [sendItem, setSendItem] = useState(null)
   const branchFilter = useActiveBranchFilter()
+  // A newer search can finish before an older one: only the latest request
+  // may fill the table.
+  const productRequest = useRef(0)
+  const inventoryRequest = useRef(0)
 
   const loadProducts = useCallback(async () => {
+    const requestId = ++productRequest.current
     setLoadingProducts(true)
     try {
       const res = await productService.list({
@@ -54,14 +59,16 @@ export default function ProductsPage() {
         ...branchFilter,
         ...productPagination.params,
       })
+      if (requestId !== productRequest.current) return
       setProducts(res.items || res)
       if (res.total !== undefined) productPagination.setTotal(res.total)
     } finally {
-      setLoadingProducts(false)
+      if (requestId === productRequest.current) setLoadingProducts(false)
     }
   }, [debouncedProductSearch, branchFilter.branch_id, productPagination.page, productPagination.pageSize])
 
   const loadInventory = useCallback(async () => {
+    const requestId = ++inventoryRequest.current
     setLoadingInventory(true)
     try {
       const res = await inventoryService.list({
@@ -69,12 +76,14 @@ export default function ProductsPage() {
         ...branchFilter,
         ...inventoryPagination.params,
       })
+      if (requestId !== inventoryRequest.current) return
       // Backend returns ProductWithInventory objects with nested inventory[].
       // InventoryGrid expects flat records: one row per product+branch.
       const products = res.items || res
       const flat = products.flatMap((p) =>
         (p.inventory && p.inventory.length > 0)
           ? p.inventory.map((stock) => ({
+              row_key: `${p.id}:${stock.branch_id}`,
               product_id: p.id,
               product_name: p.name,
               product_code: p.product_code,
@@ -84,6 +93,7 @@ export default function ProductsPage() {
               ...stock,
             }))
           : [{
+              row_key: `${p.id}:none`,
               product_id: p.id,
               product_name: p.name,
               product_code: p.product_code,
@@ -101,13 +111,16 @@ export default function ProductsPage() {
       setInventoryItems(flat)
       if (res.total !== undefined) inventoryPagination.setTotal(res.total)
     } finally {
-      setLoadingInventory(false)
+      if (requestId === inventoryRequest.current) setLoadingInventory(false)
     }
   }, [debouncedInventorySearch, branchFilter.branch_id, inventoryPagination.page])
 
   useEffect(() => { loadProducts() }, [loadProducts])
   useEffect(() => { loadInventory() }, [loadInventory])
   useEffect(() => { inventoryPagination.reset() }, [branchFilter.branch_id])
+  // A new search starts from page 1, so results never land on an empty page.
+  useEffect(() => { productPagination.reset() }, [debouncedProductSearch])
+  useEffect(() => { inventoryPagination.reset() }, [debouncedInventorySearch])
 
   const openAdd = () => { setEditingProduct(null); setModalOpen(true) }
   const openEdit = (p) => { setEditingProduct(p); setModalOpen(true) }

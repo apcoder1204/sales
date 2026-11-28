@@ -95,7 +95,7 @@ class InventoryService:
 
     async def get_inventory_list(
         self, db: AsyncSession, branch_id: UUID | None,
-        low_stock: bool, page: int, per_page: int
+        low_stock: bool, page: int, per_page: int, search: str | None = None,
     ):
         from sqlalchemy import select
         from app.models.inventory import Inventory
@@ -109,6 +109,11 @@ class InventoryService:
             .where(Product.status == "active")
             .order_by(Product.name)
         )
+        # Same rule as the Bidhaa list (product_repo.list_products): the name
+        # contains the text, any case, filtered before paging so a search
+        # covers every page.
+        if search and search.strip():
+            q = q.where(Product.name.ilike(f"%{search.strip()}%"))
         from sqlalchemy import func
         total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
         products = (await db.execute(q.offset(skip).limit(per_page))).scalars().all()
